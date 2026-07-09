@@ -1,0 +1,12 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    environment:
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-cambiar-en-produccion}
+      - DB_PATH=/app/data/precios.db
+    restart: unless-stopped

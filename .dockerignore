@@ -1,0 +1,6 @@
+*.db
+uploads/
+data/
+__pycache__/
+*.pyc
+.git/

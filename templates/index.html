@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900">Lista de Precios</h1>
+    {% if latest %}<p class="text-sm text-slate-500 mt-1">{{ total }} productos · Precios al {{ latest }}</p>{% endif %}
+  </div>
+</div>
+
+<form method="get" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+  <div class="flex flex-wrap gap-3">
+    <input name="q" value="{{ query }}" placeholder="Buscar nombre, SKU o marca..." class="flex-1 min-w-[200px] px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+    <select name="linea" class="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <option value="">Todas las marcas</option>
+      {% for l in lineas %}<option value="{{ l }}" {{ 'selected' if linea == l }}>{{ l }}</option>{% endfor %}
+    </select>
+    <select name="genero" class="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <option value="">Todos los géneros</option>
+      {% for g in generos %}<option value="{{ g }}" {{ 'selected' if genero == g }}>{{ g }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">Buscar</button>
+  </div>
+</form>
+
+{% if products %}
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-slate-200 bg-slate-50">
+          <th class="text-left px-4 py-3 font-semibold text-slate-600">Marca</th>
+          <th class="text-left px-4 py-3 font-semibold text-slate-600">Nombre</th>
+          <th class="text-left px-4 py-3 font-semibold text-slate-600">SKU</th>
+          <th class="text-left px-4 py-3 font-semibold text-slate-600">EAN</th>
+          <th class="text-left px-4 py-3 font-semibold text-slate-600">Género</th>
+          <th class="text-left px-4 py-3 font-semibold text-slate-600">Formato</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Precio</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for p in products %}
+        <tr>
+          <td class="px-4 py-2.5 text-slate-700">{{ p['linea'] }}</td>
+          <td class="px-4 py-2.5 text-slate-900 max-w-xs truncate" title="{{ p['nombre'] }}">{{ p['nombre'] }}</td>
+          <td class="px-4 py-2.5 text-slate-500 font-mono text-xs">{{ p['sku'] }}</td>
+          <td class="px-4 py-2.5 text-slate-500 font-mono text-xs">{{ p['ean'] }}</td>
+          <td class="px-4 py-2.5 text-slate-600">{{ p['genero'] }}</td>
+          <td class="px-4 py-2.5 text-slate-600">{{ p['formato'] }}</td>
+          <td class="px-4 py-2.5 text-right font-medium text-slate-900 tabular-nums">${{ "{:,}".format(p['precio']).replace(',', '.') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% elif total == 0 %}
+<div class="text-center py-12 text-slate-400">Sin resultados. Probá con otros filtros.</div>
+{% endif %}
+{% endblock %}

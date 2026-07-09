@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-6">Estudio de Mercado</h1>
+
+<!-- Stats cards -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+    <div class="text-3xl font-bold text-slate-900">{{ "{:,}".format(total_wholesale).replace(',', '.') }}</div>
+    <div class="text-sm text-slate-500 mt-1">Prod. mayorista</div>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+    <div class="text-3xl font-bold text-blue-600">{{ "{:,}".format(total_cosmetic).replace(',', '.') }}</div>
+    <div class="text-sm text-slate-500 mt-1">cosmetic.cl</div>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+    <div class="text-3xl font-bold text-purple-600">{{ "{:,}".format(total_silk).replace(',', '.') }}</div>
+    <div class="text-sm text-slate-500 mt-1">silkperfumes.cl</div>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+    <div class="text-3xl font-bold text-emerald-600">{{ avg_gap[1] }}%</div>
+    <div class="text-sm text-slate-500 mt-1">Margen promedio</div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <!-- SKU Matching -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <h2 class="text-lg font-semibold text-slate-900 mb-4">Coincidencia de SKU</h2>
+    <div class="space-y-4">
+      <div>
+        <div class="flex justify-between text-sm mb-1"><span class="text-slate-600">cosmetic.cl (SKU directo)</span><span class="font-medium text-blue-600">{{ match_rate_cosmetic }}%</span></div>
+        <div class="w-full bg-slate-100 rounded-full h-2">
+          <div class="bg-blue-500 h-2 rounded-full" style="width:{{ match_rate_cosmetic }}%"></div>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">{{ "{:,}".format(matched_cosmetic).replace(',', '.') }} de {{ "{:,}".format(total_wholesale).replace(',', '.') }} productos</p>
+      </div>
+      <div>
+        <div class="flex justify-between text-sm mb-1"><span class="text-slate-600">silkperfumes.cl (nombre)</span><span class="font-medium text-purple-600">{{ match_rate_silk }}%</span></div>
+        <div class="w-full bg-slate-100 rounded-full h-2">
+          <div class="bg-purple-500 h-2 rounded-full" style="width:{{ match_rate_silk }}%"></div>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">{{ "{:,}".format(matched_silk).replace(',', '.') }} de {{ "{:,}".format(total_wholesale).replace(',', '.') }} productos</p>
+      </div>
+    </div>
+    <p class="text-xs text-slate-400 mt-4">cosmetic.cl usa los mismos SKU (COSxxxx). silkperfumes.cl usa SKU propios — se matchea por nombre.</p>
+  </div>
+
+  <!-- Price gap -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <h2 class="text-lg font-semibold text-slate-900 mb-4">Brecha de Precios (mayorista vs retail)</h2>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="bg-slate-50 rounded-lg p-4 text-center">
+        <div class="text-2xl font-bold text-slate-900">${{ "{:,}".format(avg_gap[0]).replace(',', '.') }}</div>
+        <div class="text-xs text-slate-500 mt-1">Diferencia promedio</div>
+      </div>
+      <div class="bg-emerald-50 rounded-lg p-4 text-center">
+        <div class="text-2xl font-bold text-emerald-600">{{ avg_gap[1] }}%</div>
+        <div class="text-xs text-emerald-600 mt-1">Margen promedio</div>
+      </div>
+    </div>
+    <p class="text-xs text-slate-400 mt-4">Basado en {{ "{:,}".format(matched_cosmetic).replace(',', '.') }} productos con precio en cosmetic.cl</p>
+  </div>
+</div>
+
+<!-- Brand performance -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+  <div class="px-6 py-4 border-b border-slate-200">
+    <h2 class="text-lg font-semibold text-slate-900">Rendimiento por Marca</h2>
+    <p class="text-xs text-slate-500 mt-1">Marcas con 3+ productos — margen promedio cosmetic.cl</p>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-slate-200 bg-slate-50">
+          <th class="text-left px-4 py-3 font-semibold text-slate-600">Marca</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Productos</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Costo prom.</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Retail prom.</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Margen prom.</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for b in brand_stats %}
+        <tr>
+          <td class="px-4 py-2.5 text-slate-700 font-medium">{{ b['linea'] }}</td>
+          <td class="px-4 py-2.5 text-right text-slate-600">{{ b['n'] }}</td>
+          <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(b['avg_costo']).replace(',', '.') }}</td>
+          <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(b['avg_retail']).replace(',', '.') }}</td>
+          <td class="px-4 py-2.5 text-right font-medium tabular-nums {{ 'text-emerald-600' if b['avg_margin'] > 40 else 'text-indigo-600' if b['avg_margin'] > 25 else 'text-slate-600' }}">{{ b['avg_margin'] }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Top opportunities -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+  <div class="px-6 py-4 border-b border-slate-200">
+    <h2 class="text-lg font-semibold text-slate-900">Mayores Oportunidades</h2>
+    <p class="text-xs text-slate-500 mt-1">Productos con mejor margen en cosmetic.cl</p>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-slate-200 bg-slate-50">
+          <th class="w-14 px-2 py-3"></th>
+          <th class="text-left px-3 py-3 font-semibold text-slate-600">Marca</th>
+          <th class="text-left px-3 py-3 font-semibold text-slate-600">Producto</th>
+          <th class="text-right px-3 py-3 font-semibold text-slate-600">Costo</th>
+          <th class="text-right px-3 py-3 font-semibold text-slate-600">Retail</th>
+          <th class="text-right px-3 py-3 font-semibold text-slate-600">Margen</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for o in opportunities %}
+        <tr>
+          <td class="px-2 py-2.5">
+            {% if o['imagen'] %}<img src="{{ o['imagen'] }}" class="w-10 h-10 rounded-lg object-cover border border-slate-200" loading="lazy">{% endif %}
+          </td>
+          <td class="px-3 py-2.5 text-slate-700 whitespace-nowrap">{{ o['linea'] }}</td>
+          <td class="px-3 py-2.5 text-slate-900 max-w-[250px] truncate" title="{{ o['nombre'] }}">{{ o['nombre'] }}</td>
+          <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['costo']).replace(',', '.') }}</td>
+          <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['precio_retail']).replace(',', '.') }}</td>
+          <td class="px-3 py-2.5 text-right font-bold tabular-nums {{ 'text-emerald-600' if o['margen'] > 50 else 'text-indigo-600' }}">{{ o['margen'] }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Top wholesale cost -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+  <div class="px-6 py-4 border-b border-slate-200">
+    <h2 class="text-lg font-semibold text-slate-900">Mayor Inversión</h2>
+    <p class="text-xs text-slate-500 mt-1">Productos con mayor costo mayorista</p>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-slate-200 bg-slate-50">
+          <th class="w-14 px-2 py-3"></th>
+          <th class="text-left px-3 py-3 font-semibold text-slate-600">Marca</th>
+          <th class="text-left px-3 py-3 font-semibold text-slate-600">Producto</th>
+          <th class="text-right px-3 py-3 font-semibold text-slate-600">Costo</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for t in top_cost %}
+        <tr>
+          <td class="px-2 py-2.5">
+            {% if t['imagen'] %}<img src="{{ t['imagen'] }}" class="w-10 h-10 rounded-lg object-cover border border-slate-200" loading="lazy">{% endif %}
+          </td>
+          <td class="px-3 py-2.5 text-slate-700 whitespace-nowrap">{{ t['linea'] }}</td>
+          <td class="px-3 py-2.5 text-slate-900 max-w-[250px] truncate" title="{{ t['nombre'] }}">{{ t['nombre'] }}</td>
+          <td class="px-3 py-2.5 text-right font-bold text-slate-900 tabular-nums">${{ "{:,}".format(t['precio']).replace(',', '.') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+# Database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Uploads
+uploads/
+
+# Excel files
+*.xlsx
+*.xls
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Docker
+data/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

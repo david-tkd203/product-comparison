@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perfumería — Lista de Precios</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','system-ui','sans-serif']}}}}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; }
+  .flash-success { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+  .flash-error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+  tbody tr { transition: background 0.15s; }
+  tbody tr:hover { background: #f8fafc; }
+  input[type="checkbox"] { accent-color: #6366f1; width:16px; height:16px; cursor:pointer; }
+</style>
+</head>
+<body class="h-full bg-slate-50 text-slate-800 antialiased">
+<nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="flex items-center justify-between h-14">
+      <div class="flex items-center gap-1">
+        <span class="text-lg font-bold text-slate-900 tracking-tight mr-6">Perfumería</span>
+        <a href="/" class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ 'bg-slate-100 text-slate-900' if request.path == '/' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Precios</a>
+        <a href="/upload" class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ 'bg-slate-100 text-slate-900' if request.path == '/upload' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Subir Excel</a>
+        <a href="/compare" class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ 'bg-slate-100 text-slate-900' if request.path == '/compare' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comparar Meses</a>
+        <a href="/retail" class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ 'bg-slate-100 text-slate-900' if request.path == '/retail' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comparativa</a>
+        <a href="/estudio" class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ 'bg-slate-100 text-slate-900' if request.path == '/estudio' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Estudio</a>
+      </div>
+    </div>
+  </div>
+</nav>
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+    <div class="px-4 py-3 rounded-lg text-sm mb-4 {{ 'flash-success' if category == 'success' else 'flash-error' }}">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>
