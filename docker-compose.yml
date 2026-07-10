@@ -4,16 +4,40 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./data:/app/data
       - ./uploads:/app/uploads
       - ./tunnel_data:/app/tunnel
     environment:
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-cambiar-en-produccion}
-      - DB_PATH=/app/data/precios.db
+      - MYSQL_HOST=db
+      - MYSQL_USER=perfumes
+      - MYSQL_PASSWORD=perfumes
+      - MYSQL_DATABASE=perfumes
       - TUNNEL_URL_FILE=/app/tunnel/url.txt
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpass
+      - MYSQL_USER=perfumes
+      - MYSQL_PASSWORD=perfumes
+      - MYSQL_DATABASE=perfumes
+    volumes:
+      - mysqldata:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   tunnel:
     image: cloudflare/cloudflared:latest
     command: tunnel --url http://web:5000
     restart: unless-stopped
+
+volumes:
+  mysqldata:
