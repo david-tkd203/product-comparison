@@ -6,7 +6,14 @@ services:
     volumes:
       - ./data:/app/data
       - ./uploads:/app/uploads
+      - ./tunnel_data:/app/tunnel
     environment:
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-cambiar-en-produccion}
       - DB_PATH=/app/data/precios.db
+      - TUNNEL_URL_FILE=/app/tunnel/url.txt
+    restart: unless-stopped
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --url http://web:5000
     restart: unless-stopped

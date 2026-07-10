@@ -13,6 +13,21 @@ app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'cambiar-en-produccion')
 
 DB = os.environ.get('DB_PATH', 'precios.db')
 
+
+@app.context_processor
+def inject_tunnel_url():
+    url = ''
+    path = os.environ.get('TUNNEL_URL_FILE', '')
+    if path:
+        try:
+            with open(path) as f:
+                url = f.read().strip()
+        except (FileNotFoundError, OSError):
+            pass
+    if not url:
+        url = os.environ.get('TUNNEL_URL', '')
+    return dict(tunnel_url=url)
+
 HEADER_ROW = 6  # 0-indexed row where column headers are (after metadata rows)
 DATA_START = 7  # 0-indexed row where data begins
 COLUMNS = ['linea', 'nombre', 'sku', 'ean', 'genero', 'formato', 'precio']
