@@ -3,7 +3,7 @@
 <h1 class="text-2xl font-bold text-slate-900 mb-6">Estudio de Mercado</h1>
 
 <!-- Stats cards -->
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
     <div class="text-3xl font-bold text-slate-900">{{ "{:,}".format(total_wholesale).replace(',', '.') }}</div>
     <div class="text-sm text-slate-500 mt-1">Prod. mayorista</div>
@@ -17,15 +17,19 @@
     <div class="text-sm text-slate-500 mt-1">silkperfumes.cl</div>
   </div>
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+    <div class="text-3xl font-bold text-amber-600">{{ "{:,}".format(total_mm).replace(',', '.') }}</div>
+    <div class="text-sm text-slate-500 mt-1">multimarca</div>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
     <div class="text-3xl font-bold text-emerald-600">{{ avg_gap['avg_margin'] }}%</div>
-    <div class="text-sm text-slate-500 mt-1">Margen promedio</div>
+    <div class="text-sm text-slate-500 mt-1">Margen prom.</div>
   </div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
   <!-- SKU Matching -->
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-    <h2 class="text-lg font-semibold text-slate-900 mb-4">Coincidencia de SKU</h2>
+    <h2 class="text-lg font-semibold text-slate-900 mb-4">Coincidencia de Productos</h2>
     <div class="space-y-4">
       <div>
         <div class="flex justify-between text-sm mb-1"><span class="text-slate-600">cosmetic.cl (SKU directo)</span><span class="font-medium text-blue-600">{{ match_rate_cosmetic }}%</span></div>
@@ -41,32 +45,50 @@
         </div>
         <p class="text-xs text-slate-400 mt-1">{{ "{:,}".format(matched_silk).replace(',', '.') }} de {{ "{:,}".format(total_wholesale).replace(',', '.') }} productos</p>
       </div>
+      <div>
+        <div class="flex justify-between text-sm mb-1"><span class="text-slate-600">multimarcasperfumes.cl (nombre)</span><span class="font-medium text-amber-600">{{ match_rate_mm }}%</span></div>
+        <div class="w-full bg-slate-100 rounded-full h-2">
+          <div class="bg-amber-500 h-2 rounded-full" style="width:{{ match_rate_mm }}%"></div>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">{{ "{:,}".format(matched_mm).replace(',', '.') }} de {{ "{:,}".format(total_wholesale).replace(',', '.') }} productos</p>
+      </div>
     </div>
-    <p class="text-xs text-slate-400 mt-4">cosmetic.cl usa los mismos SKU (COSxxxx). silkperfumes.cl usa SKU propios — se matchea por nombre.</p>
+    <p class="text-xs text-slate-400 mt-4">cosmetic.cl usa los mismos SKU (COSxxxx). silkperfumes y multimarca usan SKU propios — se matchean por nombre.</p>
   </div>
 
   <!-- Price gap -->
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
     <h2 class="text-lg font-semibold text-slate-900 mb-4">Brecha de Precios (mayorista vs retail)</h2>
     <div class="grid grid-cols-2 gap-4">
-      <div class="bg-slate-50 rounded-lg p-4 text-center">
+      <div class="bg-blue-50 rounded-lg p-4 text-center">
+        <div class="text-xs text-blue-600 font-medium mb-1">cosmetic.cl</div>
         <div class="text-2xl font-bold text-slate-900">${{ "{:,}".format(avg_gap['avg_diff']).replace(',', '.') }}</div>
-        <div class="text-xs text-slate-500 mt-1">Diferencia promedio</div>
+        <div class="text-xs text-slate-500 mt-0.5">Dif. promedio</div>
+        <div class="text-lg font-bold text-emerald-600 mt-1">{{ avg_gap['avg_margin'] }}%</div>
+        <div class="text-xs text-emerald-600">Margen</div>
       </div>
-      <div class="bg-emerald-50 rounded-lg p-4 text-center">
-        <div class="text-2xl font-bold text-emerald-600">{{ avg_gap['avg_margin'] }}%</div>
-        <div class="text-xs text-emerald-600 mt-1">Margen promedio</div>
+      <div class="bg-amber-50 rounded-lg p-4 text-center">
+        <div class="text-xs text-amber-600 font-medium mb-1">multimarca</div>
+        {% if avg_gap_mm['avg_diff'] is not none %}
+        <div class="text-2xl font-bold text-slate-900">${{ "{:,}".format(avg_gap_mm['avg_diff']).replace(',', '.') }}</div>
+        <div class="text-xs text-slate-500 mt-0.5">Dif. promedio</div>
+        <div class="text-lg font-bold text-emerald-600 mt-1">{{ avg_gap_mm['avg_margin'] }}%</div>
+        <div class="text-xs text-emerald-600">Margen</div>
+        {% else %}
+        <div class="text-sm text-slate-400 mt-4">Sin datos</div>
+        <div class="text-xs text-slate-400 mt-1">Sincronizá multimarca primero</div>
+        {% endif %}
       </div>
     </div>
-    <p class="text-xs text-slate-400 mt-4">Basado en {{ "{:,}".format(matched_cosmetic).replace(',', '.') }} productos con precio en cosmetic.cl</p>
+    <p class="text-xs text-slate-400 mt-4">Basado en {{ "{:,}".format(matched_cosmetic).replace(',', '.') }} (cosmetic) y {{ "{:,}".format(matched_mm).replace(',', '.') }} (multimarca) productos matcheados</p>
   </div>
 </div>
 
-<!-- Brand performance -->
+<!-- Brand performance - cosmetic -->
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
   <div class="px-6 py-4 border-b border-slate-200">
-    <h2 class="text-lg font-semibold text-slate-900">Rendimiento por Marca</h2>
-    <p class="text-xs text-slate-500 mt-1">Marcas con 3+ productos — margen promedio cosmetic.cl</p>
+    <h2 class="text-lg font-semibold text-slate-900">Rendimiento por Marca — cosmetic.cl</h2>
+    <p class="text-xs text-slate-500 mt-1">Marcas con 3+ productos — margen promedio</p>
   </div>
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
@@ -94,11 +116,47 @@
   </div>
 </div>
 
-<!-- Top opportunities -->
+<!-- Brand performance - multimarca -->
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
   <div class="px-6 py-4 border-b border-slate-200">
-    <h2 class="text-lg font-semibold text-slate-900">Mayores Oportunidades</h2>
-    <p class="text-xs text-slate-500 mt-1">Productos con mejor margen en cosmetic.cl</p>
+    <h2 class="text-lg font-semibold text-slate-900">Rendimiento por Marca — multimarca</h2>
+    <p class="text-xs text-slate-500 mt-1">Marcas con 3+ productos — margen promedio</p>
+  </div>
+  {% if brand_stats_mm %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-slate-200 bg-slate-50">
+          <th class="text-left px-4 py-3 font-semibold text-slate-600">Marca</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Productos</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Costo prom.</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Retail prom.</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Margen prom.</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for b in brand_stats_mm %}
+        <tr>
+          <td class="px-4 py-2.5 text-slate-700 font-medium">{{ b['linea'] }}</td>
+          <td class="px-4 py-2.5 text-right text-slate-600">{{ b['n'] }}</td>
+          <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(b['avg_costo']).replace(',', '.') }}</td>
+          <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(b['avg_retail']).replace(',', '.') }}</td>
+          <td class="px-4 py-2.5 text-right font-medium tabular-nums {{ 'text-emerald-600' if b['avg_margin'] > 40 else 'text-indigo-600' if b['avg_margin'] > 25 else 'text-slate-600' }}">{{ b['avg_margin'] }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-center py-8 text-slate-400 text-sm">Sin datos. Sincronizá multimarcasperfumes.cl primero.</div>
+  {% endif %}
+</div>
+
+<!-- Top opportunities - cosmetic -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+  <div class="px-6 py-4 border-b border-slate-200">
+    <h2 class="text-lg font-semibold text-slate-900">Mayores Oportunidades — cosmetic.cl</h2>
+    <p class="text-xs text-slate-500 mt-1">Productos con mejor margen</p>
   </div>
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
@@ -128,6 +186,46 @@
       </tbody>
     </table>
   </div>
+</div>
+
+<!-- Top opportunities - multimarca -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+  <div class="px-6 py-4 border-b border-slate-200">
+    <h2 class="text-lg font-semibold text-slate-900">Mayores Oportunidades — multimarca</h2>
+    <p class="text-xs text-slate-500 mt-1">Productos con mejor margen</p>
+  </div>
+  {% if opportunities_mm %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-slate-200 bg-slate-50">
+          <th class="w-14 px-2 py-3"></th>
+          <th class="text-left px-3 py-3 font-semibold text-slate-600">Marca</th>
+          <th class="text-left px-3 py-3 font-semibold text-slate-600">Producto</th>
+          <th class="text-right px-3 py-3 font-semibold text-slate-600">Costo</th>
+          <th class="text-right px-3 py-3 font-semibold text-slate-600">Retail</th>
+          <th class="text-right px-3 py-3 font-semibold text-slate-600">Margen</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for o in opportunities_mm %}
+        <tr>
+          <td class="px-2 py-2.5">
+            {% if o['imagen'] %}<img src="{{ o['imagen'] }}" class="w-10 h-10 rounded-lg object-cover border border-slate-200" loading="lazy">{% endif %}
+          </td>
+          <td class="px-3 py-2.5 text-slate-700 whitespace-nowrap">{{ o['linea'] }}</td>
+          <td class="px-3 py-2.5 text-slate-900 max-w-[250px] truncate" title="{{ o['nombre'] }}">{{ o['nombre'] }}</td>
+          <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['costo']).replace(',', '.') }}</td>
+          <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['precio_retail']).replace(',', '.') }}</td>
+          <td class="px-3 py-2.5 text-right font-bold tabular-nums {{ 'text-emerald-600' if o['margen'] > 50 else 'text-indigo-600' }}">{{ o['margen'] }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-center py-8 text-slate-400 text-sm">Sin datos. Sincronizá multimarcasperfumes.cl primero.</div>
+  {% endif %}
 </div>
 
 <!-- Top wholesale cost -->

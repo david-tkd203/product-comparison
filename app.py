@@ -2,6 +2,7 @@ import os
 import json
 import re
 import urllib.request
+import urllib.error
 from datetime import datetime
 from difflib import SequenceMatcher
 
@@ -291,6 +292,7 @@ def compare():
 
 def _sync_shopify(db, table, base_url):
     added = 0
+    error = None
     page = 1
     while True:
         url = f'{base_url}/products.json?limit=250&page={page}'
@@ -298,8 +300,14 @@ def _sync_shopify(db, table, base_url):
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            error = f'HTTP {e.code}: {e.reason}'
+            break
+        except urllib.error.URLError as e:
+            error = f'Error de conexión: {e.reason}'
+            break
         except Exception as e:
-            print(f'[sync:{table}] page {page} error: {e}')
+            error = f'Error inesperado: {e}'
             break
         products = data.get('products', [])
         if not products:
@@ -322,35 +330,53 @@ def _sync_shopify(db, table, base_url):
                        [sku, nombre, precio, compare_at, imagen, url_slug])
                 added += 1
         page += 1
-    return added
+    return (added, error)
 
 
 @app.route('/sync-cosmetic')
 def sync_cosmetic():
     db = get_db()
-    added = _sync_shopify(db, 'cosmetic_products', 'https://cosmetic.cl')
+    added, error = _sync_shopify(db, 'cosmetic_products', 'https://cosmetic.cl')
     db.close()
-    flash(f'Sincronizados {added} productos de cosmetic.cl', 'success')
+    if error:
+        flash(f'Error sync cosmetic.cl: {error}', 'error')
+    elif added == 0:
+        flash('No se encontraron productos en cosmetic.cl', 'warning')
+    else:
+        flash(f'Sincronizados {added} productos de cosmetic.cl', 'success')
     return redirect(url_for('retail'))
 
 
 @app.route('/sync-silk')
 def sync_silk():
     db = get_db()
-    added = _sync_shopify(db, 'silk_products', 'https://silkperfumes.cl')
-    _match_silk_by_name(db)
+    added, error = _sync_shopify(db, 'silk_products', 'https://silkperfumes.cl')
+    if not error:
+        _match_silk_by_name(db)
     db.close()
-    flash(f'Sincronizados {added} productos de silkperfumes.cl', 'success')
+    if error:
+        flash(f'Error sync silkperfumes.cl: {error}', 'error')
+    elif added == 0:
+        flash('No se encontraron productos en silkperfumes.cl', 'warning')
+    else:
+        flash(f'Sincronizados {added} productos de silkperfumes.cl', 'success')
     return redirect(url_for('retail'))
 
 
 @app.route('/sync-multimarca')
 def sync_multimarca():
     db = get_db()
-    added = _sync_shopify(db, 'multimarca_products', 'https://multimarcasperfumes.cl')
-    _match_by_name(db, 'multimarca_matches', 'multimarca_products', 'sku_mm')
+    added, error = _sync_shopify(db, 'multimarca_products', 'https://multimarcasperfumes.cl')
+    matched = 0
+    if not error:
+        matched = _match_by_name(db, 'multimarca_matches', 'multimarca_products', 'sku_mm')
     db.close()
-    flash(f'Sincronizados {added} productos de multimarcasperfumes.cl', 'success')
+    if error:
+        flash(f'Error sync multimarcasperfumes.cl: {error}', 'error')
+    elif added == 0:
+        flash('No se encontraron productos en multimarcasperfumes.cl', 'warning')
+    else:
+        flash(f'Sincronizados {added} productos, {matched} matcheados de multimarcasperfumes.cl', 'success')
     return redirect(url_for('retail'))
 
 
@@ -550,10 +576,13 @@ def estudio():
     total_wholesale = _query(db, 'SELECT COUNT(*) as cnt FROM products').fetchone()['cnt']
     total_cosmetic = _query(db, 'SELECT COUNT(*) as cnt FROM cosmetic_products').fetchone()['cnt']
     total_silk = _query(db, 'SELECT COUNT(*) as cnt FROM silk_products').fetchone()['cnt']
+    total_mm = _query(db, 'SELECT COUNT(*) as cnt FROM multimarca_products').fetchone()['cnt']
     matched_cosmetic = _query(db, 'SELECT COUNT(*) as cnt FROM products p JOIN cosmetic_products cp ON p.sku = cp.sku').fetchone()['cnt']
     matched_silk = _query(db, 'SELECT COUNT(*) as cnt FROM silk_matches').fetchone()['cnt']
+    matched_mm = _query(db, 'SELECT COUNT(*) as cnt FROM multimarca_matches').fetchone()['cnt']
     match_rate_cosmetic = round(matched_cosmetic * 100.0 / total_wholesale, 1) if total_wholesale else 0
     match_rate_silk = round(matched_silk * 100.0 / total_wholesale, 1) if total_wholesale else 0
+    match_rate_mm = round(matched_mm * 100.0 / total_wholesale, 1) if total_wholesale else 0
 
     avg_gap = _query(db, '''
         SELECT ROUND(AVG(cp.precio_retail - pr.precio)) as avg_diff,
@@ -562,6 +591,16 @@ def estudio():
         JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
         JOIN cosmetic_products cp ON p.sku = cp.sku
         WHERE cp.precio_retail > 0
+    ''', [latest]).fetchone()
+
+    avg_gap_mm = _query(db, '''
+        SELECT ROUND(AVG(mp.precio_retail - pr.precio)) as avg_diff,
+               ROUND(AVG((mp.precio_retail - pr.precio) * 100.0 / mp.precio_retail), 1) as avg_margin
+        FROM products p
+        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        JOIN multimarca_matches mm ON p.sku = mm.sku_wholesale
+        JOIN multimarca_products mp ON mm.sku_mm = mp.sku
+        WHERE mp.precio_retail > 0
     ''', [latest]).fetchone()
 
     brand_stats = _query(db, '''
@@ -573,6 +612,20 @@ def estudio():
         JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
         JOIN cosmetic_products cp ON p.sku = cp.sku
         WHERE cp.precio_retail > 0
+        GROUP BY p.linea HAVING n >= 3
+        ORDER BY avg_margin DESC LIMIT 20
+    ''', [latest]).fetchall()
+
+    brand_stats_mm = _query(db, '''
+        SELECT p.linea, COUNT(*) as n,
+               ROUND(AVG(pr.precio)) as avg_costo,
+               ROUND(AVG(mp.precio_retail)) as avg_retail,
+               ROUND(AVG((mp.precio_retail - pr.precio) * 100.0 / mp.precio_retail), 1) as avg_margin
+        FROM products p
+        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        JOIN multimarca_matches mm ON p.sku = mm.sku_wholesale
+        JOIN multimarca_products mp ON mm.sku_mm = mp.sku
+        WHERE mp.precio_retail > 0
         GROUP BY p.linea HAVING n >= 3
         ORDER BY avg_margin DESC LIMIT 20
     ''', [latest]).fetchall()
@@ -589,6 +642,19 @@ def estudio():
         ORDER BY margen DESC LIMIT 30
     ''', [latest]).fetchall()
 
+    opportunities_mm = _query(db, '''
+        SELECT p.sku, p.nombre, p.linea, pr.precio as costo,
+               mp.precio_retail, mp.url, mp.imagen,
+               (mp.precio_retail - pr.precio) as diff,
+               ROUND((mp.precio_retail - pr.precio) * 100.0 / mp.precio_retail, 1) as margen
+        FROM products p
+        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        JOIN multimarca_matches mm ON p.sku = mm.sku_wholesale
+        JOIN multimarca_products mp ON mm.sku_mm = mp.sku
+        WHERE mp.precio_retail > 0
+        ORDER BY margen DESC LIMIT 30
+    ''', [latest]).fetchall()
+
     top_cost = _query(db, '''
         SELECT p.sku, p.nombre, p.linea, pr.precio, cp.imagen
         FROM products p
@@ -600,11 +666,14 @@ def estudio():
     db.close()
     return render_template('estudio.html',
                           total_wholesale=total_wholesale,
-                          total_cosmetic=total_cosmetic, total_silk=total_silk,
-                          matched_cosmetic=matched_cosmetic, matched_silk=matched_silk,
+                          total_cosmetic=total_cosmetic, total_silk=total_silk, total_mm=total_mm,
+                          matched_cosmetic=matched_cosmetic, matched_silk=matched_silk, matched_mm=matched_mm,
                           match_rate_cosmetic=match_rate_cosmetic, match_rate_silk=match_rate_silk,
-                           avg_gap=avg_gap, brand_stats=brand_stats,
-                           opportunities=opportunities, top_cost=top_cost, latest=latest)
+                          match_rate_mm=match_rate_mm,
+                          avg_gap=avg_gap, avg_gap_mm=avg_gap_mm,
+                          brand_stats=brand_stats, brand_stats_mm=brand_stats_mm,
+                          opportunities=opportunities, opportunities_mm=opportunities_mm,
+                          top_cost=top_cost, latest=latest)
 
 
 @app.route('/export/xlsx')

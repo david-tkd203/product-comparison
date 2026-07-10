@@ -21,6 +21,7 @@
   <span class="text-slate-400">| {{ synced['last'] or 'N/A' }}</span>
   <a href="/sync-cosmetic" class="text-blue-600 hover:text-blue-700 text-xs font-medium">Re-sync cosmetic</a>
   <a href="/sync-silk" class="text-purple-600 hover:text-purple-700 text-xs font-medium">Re-sync silk</a>
+  <a href="/sync-multimarca" class="text-amber-600 hover:text-amber-700 text-xs font-medium">Re-sync multimarca</a>
 </div>
 
 <form method="get" id="filters" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
@@ -89,7 +90,39 @@
           <td class="px-3 py-2.5 text-slate-700 whitespace-nowrap">{{ p['linea'] }}</td>
           <td class="px-3 py-2.5 text-slate-900 max-w-[220px] truncate" title="{{ p['nombre'] }}">{{ p['nombre'] }}</td>
           <td class="px-3 py-2.5 text-right font-medium text-slate-900 tabular-nums whitespace-nowrap">${{ "{:,}".format(p['precio_mayorista']).replace(',', '.') }}</td>
-          <td class="px-3 py-2.5 text-right font-semibold tabular-nums whitespace-nowrap text-indigo-600">${{ "{:,}".format((p['precio_mayorista'] / (1 - margen_pct/100)) | int).replace(',', '.') }}</td>
+          {% set ideal = (p['precio_mayorista'] / (1 - margen_pct/100)) | int %}
+          <td class="px-3 py-2.5 text-right whitespace-nowrap">
+            <div class="font-semibold tabular-nums text-indigo-600">${{ "{:,}".format(ideal).replace(',', '.') }}</div>
+            <div class="flex justify-end gap-1 mt-0.5">
+              {% if p['precio_cosmetic'] %}
+                {% if ideal < p['precio_cosmetic'] %}
+                <span class="text-[10px] px-1 rounded font-medium bg-emerald-50 text-emerald-700">C ${{ "{:,}".format(p['precio_cosmetic']).replace(',', '.') }}</span>
+                {% elif ideal == p['precio_cosmetic'] %}
+                <span class="text-[10px] px-1 rounded font-medium bg-slate-100 text-slate-500">C =</span>
+                {% else %}
+                <span class="text-[10px] px-1 rounded font-medium bg-red-50 text-red-700">C ${{ "{:,}".format(p['precio_cosmetic']).replace(',', '.') }}</span>
+                {% endif %}
+              {% endif %}
+              {% if p['precio_silk'] %}
+                {% if ideal < p['precio_silk'] %}
+                <span class="text-[10px] px-1 rounded font-medium bg-emerald-50 text-emerald-700">S ${{ "{:,}".format(p['precio_silk']).replace(',', '.') }}</span>
+                {% elif ideal == p['precio_silk'] %}
+                <span class="text-[10px] px-1 rounded font-medium bg-slate-100 text-slate-500">S =</span>
+                {% else %}
+                <span class="text-[10px] px-1 rounded font-medium bg-red-50 text-red-700">S ${{ "{:,}".format(p['precio_silk']).replace(',', '.') }}</span>
+                {% endif %}
+              {% endif %}
+              {% if p['precio_mm'] %}
+                {% if ideal < p['precio_mm'] %}
+                <span class="text-[10px] px-1 rounded font-medium bg-emerald-50 text-emerald-700">M ${{ "{:,}".format(p['precio_mm']).replace(',', '.') }}</span>
+                {% elif ideal == p['precio_mm'] %}
+                <span class="text-[10px] px-1 rounded font-medium bg-slate-100 text-slate-500">M =</span>
+                {% else %}
+                <span class="text-[10px] px-1 rounded font-medium bg-red-50 text-red-700">M ${{ "{:,}".format(p['precio_mm']).replace(',', '.') }}</span>
+                {% endif %}
+              {% endif %}
+            </div>
+          </td>
           <td class="px-3 py-2.5 text-right tabular-nums {{ 'text-emerald-600' if p['diff_cosmetic'] and p['diff_cosmetic'] > 0 else 'text-red-600' if p['diff_cosmetic'] and p['diff_cosmetic'] < 0 else 'text-slate-600' }}">
             <div>${{ "{:,}".format(p['precio_cosmetic']).replace(',', '.') }}</div>
             {% if p['margen_cosmetic'] is not none %}<div class="text-xs {{ 'text-emerald-500' if p['margen_cosmetic'] > 30 else 'text-indigo-500' if p['margen_cosmetic'] > 0 else 'text-red-500' }}">{{ p['margen_cosmetic'] }}%</div>{% endif %}
