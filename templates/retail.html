@@ -10,12 +10,14 @@
   <div class="mt-3 flex justify-center gap-4">
     <a href="/sync-cosmetic" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">Sincronizar cosmetic.cl</a>
     <a href="/sync-silk" class="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">Sincronizar silkperfumes.cl</a>
+    <a href="/sync-multimarca" class="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors">Sincronizar multimarca</a>
   </div>
 </div>
 {% else %}
 <div class="flex flex-wrap gap-3 items-center text-sm text-slate-500 mb-4">
   <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> cosmetic.cl: {{ con_cosmetic }} productos</span>
   <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> silkperfumes: {{ con_silk }} productos</span>
+  <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> multimarca: {{ con_mm }} productos</span>
   <span class="text-slate-400">| {{ synced['last'] or 'N/A' }}</span>
   <a href="/sync-cosmetic" class="text-blue-600 hover:text-blue-700 text-xs font-medium">Re-sync cosmetic</a>
   <a href="/sync-silk" class="text-purple-600 hover:text-purple-700 text-xs font-medium">Re-sync silk</a>
@@ -69,7 +71,8 @@
           <th class="text-right px-3 py-3 font-semibold text-slate-600">Precio Ideal ({{ margen_pct }}%)</th>
           <th class="text-right px-3 py-3 font-semibold text-slate-600">cosmetic.cl</th>
           <th class="text-right px-3 py-3 font-semibold text-slate-600">silkperfumes</th>
-          <th class="text-center px-3 py-3 font-semibold text-slate-600 w-28">Links</th>
+          <th class="text-right px-3 py-3 font-semibold text-slate-600">multimarca</th>
+          <th class="text-center px-3 py-3 font-semibold text-slate-600 w-32">Links</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100">
@@ -97,10 +100,17 @@
             {% if p['margen_silk'] is not none %}<div class="text-xs {{ 'text-emerald-500' if p['margen_silk'] > 30 else 'text-indigo-500' if p['margen_silk'] > 0 else 'text-red-500' }}">{{ p['margen_silk'] }}%</div>{% endif %}
             {% else %}&mdash;{% endif %}
           </td>
+          <td class="px-3 py-2.5 text-right tabular-nums {{ 'text-emerald-600' if p['diff_mm'] and p['diff_mm'] > 0 else 'text-red-600' if p['diff_mm'] and p['diff_mm'] < 0 else 'text-slate-400' }}">
+            {% if p['precio_mm'] %}
+            <div>${{ "{:,}".format(p['precio_mm']).replace(',', '.') }}</div>
+            {% if p['margen_mm'] is not none %}<div class="text-xs {{ 'text-emerald-500' if p['margen_mm'] > 30 else 'text-indigo-500' if p['margen_mm'] > 0 else 'text-red-500' }}">{{ p['margen_mm'] }}%</div>{% endif %}
+            {% else %}&mdash;{% endif %}
+          </td>
           <td class="px-3 py-2.5 text-center">
             <div class="flex items-center justify-center gap-2">
               <a href="{{ p['url_cosmetic'] }}" target="_blank" class="text-blue-600 hover:text-blue-800 text-xs font-medium" title="cosmetic.cl">C</a>
               {% if p['url_silk'] %}<a href="{{ p['url_silk'] }}" target="_blank" class="text-purple-600 hover:text-purple-800 text-xs font-medium" title="silkperfumes.cl">S</a>{% endif %}
+              {% if p['url_mm'] %}<a href="{{ p['url_mm'] }}" target="_blank" class="text-amber-600 hover:text-amber-800 text-xs font-medium" title="multimarcasperfumes.cl">M</a>{% endif %}
               {% if p['img_cosmetic'] %}<a href="{{ p['img_cosmetic'] }}" download title="Descargar imagen" class="text-slate-400 hover:text-slate-600 text-xs">
                 <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
               </a>{% endif %}

@@ -88,6 +88,24 @@ def init_db():
             confidence FLOAT
         ) ENGINE=InnoDB
     ''')
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS multimarca_products (
+            sku VARCHAR(50) PRIMARY KEY,
+            nombre TEXT,
+            precio_retail INT,
+            precio_ref INT,
+            imagen TEXT,
+            url TEXT,
+            last_synced TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ''')
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS multimarca_matches (
+            sku_wholesale VARCHAR(50) PRIMARY KEY,
+            sku_mm VARCHAR(50),
+            confidence FLOAT
+        ) ENGINE=InnoDB
+    ''')
     cur.close()
     db.close()
 
@@ -277,9 +295,11 @@ def _sync_shopify(db, table, base_url):
     while True:
         url = f'{base_url}/products.json?limit=250&page={page}'
         try:
-            with urllib.request.urlopen(url, timeout=30) as resp:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read())
-        except Exception:
+        except Exception as e:
+            print(f'[sync:{table}] page {page} error: {e}')
             break
         products = data.get('products', [])
         if not products:
@@ -324,26 +344,36 @@ def sync_silk():
     return redirect(url_for('retail'))
 
 
+@app.route('/sync-multimarca')
+def sync_multimarca():
+    db = get_db()
+    added = _sync_shopify(db, 'multimarca_products', 'https://multimarcasperfumes.cl')
+    _match_by_name(db, 'multimarca_matches', 'multimarca_products', 'sku_mm')
+    db.close()
+    flash(f'Sincronizados {added} productos de multimarcasperfumes.cl', 'success')
+    return redirect(url_for('retail'))
+
+
 def _normalize(n):
     return re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9 ]', '', n.lower().replace('á','a').replace('é','e').replace('í','i').replace('ó','o').replace('ú','u'))).strip()
 
 
-def _match_silk_by_name(db):
-    _query(db, 'DELETE FROM silk_matches')
+def _match_by_name(db, match_table, source_table, sku_col):
+    """Generic fuzzy name matching between wholesale products and a retail source."""
+    _query(db, f'DELETE FROM {match_table}')
     wholesale = _query(db, 'SELECT sku, nombre, linea FROM products').fetchall()
-    silk = _query(db, 'SELECT sku, nombre FROM silk_products').fetchall()
-    # Index silk by first 2 tokens (brand + first name word) for broader matching
-    silk_by_token = {}
-    for s in silk:
+    source = _query(db, f'SELECT sku, nombre FROM {source_table}').fetchall()
+
+    source_by_token = {}
+    for s in source:
         sn = _normalize(s['nombre'])
         tokens = sn.split()
-        # Index by first token (usually brand), and by first 2 tokens for better disambiguation
         if tokens:
             k1 = tokens[0]
-            silk_by_token.setdefault(k1, []).append((sn, s['sku']))
+            source_by_token.setdefault(k1, []).append((sn, s['sku']))
             if len(tokens) >= 2:
                 k2 = f'{tokens[0]} {tokens[1]}'
-                silk_by_token.setdefault(k2, []).append((sn, s['sku']))
+                source_by_token.setdefault(k2, []).append((sn, s['sku']))
 
     matched = 0
     for w in wholesale:
@@ -353,18 +383,16 @@ def _match_silk_by_name(db):
         w_key1 = tokens[0] if tokens else ''
         w_key2 = f'{tokens[0]} {tokens[1]}' if len(tokens) >= 2 else w_key1
 
-        # Gather candidates: by brand name, by first token, by first 2 tokens
         seen = set()
         candidates = []
         for key in [w_brand, w_key1, w_key2]:
-            for sn, ssku in silk_by_token.get(key, []):
+            for sn, ssku in source_by_token.get(key, []):
                 if ssku not in seen:
                     seen.add(ssku)
                     candidates.append((sn, ssku))
 
-        # Also try matching products where the normalized brand appears anywhere in the silk name
         if w_brand and len(w_brand) > 3:
-            for s in silk:
+            for s in source:
                 if s['sku'] in seen:
                     continue
                 sn = _normalize(s['nombre'])
@@ -388,10 +416,14 @@ def _match_silk_by_name(db):
                 best_sku = ssku
 
         if best_score >= 0.70:
-            _query(db, 'INSERT INTO silk_matches (sku_wholesale, sku_silk, confidence) VALUES (%s, %s, %s)',
+            _query(db, f'INSERT INTO {match_table} (sku_wholesale, {sku_col}, confidence) VALUES (%s, %s, %s)',
                    [w['sku'], best_sku, round(best_score, 3)])
             matched += 1
     return matched
+
+
+def _match_silk_by_name(db):
+    return _match_by_name(db, 'silk_matches', 'silk_products', 'sku_silk')
 
 
 @app.route('/retail')
@@ -415,15 +447,21 @@ def retail():
                     cp.imagen as img_cosmetic, cp.url as url_cosmetic,
                     sp.precio_retail as precio_silk, sp.precio_ref as ref_silk,
                     sp.imagen as img_silk, sp.url as url_silk,
+                    mp.precio_retail as precio_mm, mp.precio_ref as ref_mm,
+                    mp.imagen as img_mm, mp.url as url_mm,
                     (cp.precio_retail - pr.precio) as diff_cosmetic,
                     (sp.precio_retail - pr.precio) as diff_silk,
+                    (mp.precio_retail - pr.precio) as diff_mm,
                     CASE WHEN cp.precio_retail > 0 THEN ROUND((cp.precio_retail - pr.precio) * 100.0 / cp.precio_retail, 1) END as margen_cosmetic,
-                    CASE WHEN sp.precio_retail > 0 THEN ROUND((sp.precio_retail - pr.precio) * 100.0 / sp.precio_retail, 1) END as margen_silk
+                    CASE WHEN sp.precio_retail > 0 THEN ROUND((sp.precio_retail - pr.precio) * 100.0 / sp.precio_retail, 1) END as margen_silk,
+                    CASE WHEN mp.precio_retail > 0 THEN ROUND((mp.precio_retail - pr.precio) * 100.0 / mp.precio_retail, 1) END as margen_mm
              FROM products p
              JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
              JOIN cosmetic_products cp ON p.sku = cp.sku
              LEFT JOIN silk_matches sm ON p.sku = sm.sku_wholesale
-             LEFT JOIN silk_products sp ON sm.sku_silk = sp.sku'''
+             LEFT JOIN silk_products sp ON sm.sku_silk = sp.sku
+             LEFT JOIN multimarca_matches mm ON p.sku = mm.sku_wholesale
+             LEFT JOIN multimarca_products mp ON mm.sku_mm = mp.sku'''
     params = [latest] if latest else [None]
     conditions = []
     if query:
@@ -451,10 +489,11 @@ def retail():
     total = len(products)
     con_cosmetic = sum(1 for p in products if p['precio_cosmetic'] > 0)
     con_silk = sum(1 for p in products if p['precio_silk'] and p['precio_silk'] > 0)
+    con_mm = sum(1 for p in products if p['precio_mm'] and p['precio_mm'] > 0)
     return render_template('retail.html', products=products, query=query,
                           linea=linea, lineas=lineas, latest=latest,
                           synced=synced, total=total,
-                          con_cosmetic=con_cosmetic, con_silk=con_silk,
+                          con_cosmetic=con_cosmetic, con_silk=con_silk, con_mm=con_mm,
                           sort=sort, margen_obj=margen_obj, margen_pct=margen_pct)
 
 
