@@ -27,3 +27,10 @@ data/
 # OS
 .DS_Store
 Thumbs.db
+
+# Tunnel
+tunnel_url.txt
+tunnel_output.txt
+tunnel_error.txt
+tunnel_data/
+server.log
