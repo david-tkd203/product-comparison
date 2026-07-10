@@ -7,7 +7,7 @@
   </div>
 </div>
 
-<form method="get" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+<form method="get" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
   <div class="flex flex-wrap gap-3">
     <input name="q" value="{{ query }}" placeholder="Buscar nombre, SKU o marca..." class="flex-1 min-w-[200px] px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
     <select name="linea" class="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -23,11 +23,22 @@
 </form>
 
 {% if products %}
+<div class="flex flex-wrap gap-2 items-center mb-4">
+  <button onclick="checkAll()" class="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">Seleccionar todo</button>
+  <button onclick="uncheckAll()" class="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">Deseleccionar</button>
+  <button onclick="exportSelected()" class="px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors inline-flex items-center gap-1">
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+    Exportar XLSX
+  </button>
+  <span id="count" class="text-xs text-slate-400 ml-2">0 seleccionados</span>
+</div>
+
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-slate-200 bg-slate-50">
+          <th class="w-10 px-3 py-3"><input type="checkbox" onchange="toggleAll(this)" title="Todos"></th>
           <th class="text-left px-4 py-3 font-semibold text-slate-600">Marca</th>
           <th class="text-left px-4 py-3 font-semibold text-slate-600">Nombre</th>
           <th class="text-left px-4 py-3 font-semibold text-slate-600">SKU</th>
@@ -39,7 +50,8 @@
       </thead>
       <tbody class="divide-y divide-slate-100">
         {% for p in products %}
-        <tr>
+        <tr data-sku="{{ p['sku'] }}">
+          <td class="px-3 py-2.5"><input type="checkbox" class="row-check" onchange="updateCount()"></td>
           <td class="px-4 py-2.5 text-slate-700">{{ p['linea'] }}</td>
           <td class="px-4 py-2.5 text-slate-900 max-w-xs truncate" title="{{ p['nombre'] }}">{{ p['nombre'] }}</td>
           <td class="px-4 py-2.5 text-slate-500 font-mono text-xs">{{ p['sku'] }}</td>
@@ -56,4 +68,12 @@
 {% elif total == 0 %}
 <div class="text-center py-12 text-slate-400">Sin resultados. Probá con otros filtros.</div>
 {% endif %}
+
+<script>
+function updateCount(){var n=document.querySelectorAll('.row-check:checked').length;document.getElementById('count').textContent=n+' seleccionados'}
+function toggleAll(e){document.querySelectorAll('.row-check').forEach(c=>c.checked=e.checked);updateCount()}
+function checkAll(){document.querySelectorAll('.row-check').forEach(c=>c.checked=true);updateCount()}
+function uncheckAll(){document.querySelectorAll('.row-check').forEach(c=>c.checked=false);updateCount()}
+function exportSelected(){var s=[];document.querySelectorAll('.row-check:checked').forEach(c=>{s.push(c.closest('tr').dataset.sku)});if(!s.length){alert('Seleccioná al menos un producto');return}window.location='/export/xlsx?skus='+s.join(',')}
+</script>
 {% endblock %}

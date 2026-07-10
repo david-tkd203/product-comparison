@@ -332,30 +332,62 @@ def _match_silk_by_name(db):
     _query(db, 'DELETE FROM silk_matches')
     wholesale = _query(db, 'SELECT sku, nombre, linea FROM products').fetchall()
     silk = _query(db, 'SELECT sku, nombre FROM silk_products').fetchall()
-    silk_by_brand = {}
+    # Index silk by first 2 tokens (brand + first name word) for broader matching
+    silk_by_token = {}
     for s in silk:
         sn = _normalize(s['nombre'])
-        token = sn.split()[0] if sn.split() else sn
-        silk_by_brand.setdefault(token, []).append((sn, s['sku']))
+        tokens = sn.split()
+        # Index by first token (usually brand), and by first 2 tokens for better disambiguation
+        if tokens:
+            k1 = tokens[0]
+            silk_by_token.setdefault(k1, []).append((sn, s['sku']))
+            if len(tokens) >= 2:
+                k2 = f'{tokens[0]} {tokens[1]}'
+                silk_by_token.setdefault(k2, []).append((sn, s['sku']))
 
     matched = 0
     for w in wholesale:
         w_norm = _normalize(w['nombre'])
         w_brand = _normalize(w['linea'])
-        w_token = w_norm.split()[0] if w_norm.split() else w_norm
-        candidates = silk_by_brand.get(w_brand, []) + silk_by_brand.get(w_token, [])
+        tokens = w_norm.split()
+        w_key1 = tokens[0] if tokens else ''
+        w_key2 = f'{tokens[0]} {tokens[1]}' if len(tokens) >= 2 else w_key1
+
+        # Gather candidates: by brand name, by first token, by first 2 tokens
+        seen = set()
+        candidates = []
+        for key in [w_brand, w_key1, w_key2]:
+            for sn, ssku in silk_by_token.get(key, []):
+                if ssku not in seen:
+                    seen.add(ssku)
+                    candidates.append((sn, ssku))
+
+        # Also try matching products where the normalized brand appears anywhere in the silk name
+        if w_brand and len(w_brand) > 3:
+            for s in silk:
+                if s['sku'] in seen:
+                    continue
+                sn = _normalize(s['nombre'])
+                if w_brand in sn:
+                    seen.add(s['sku'])
+                    candidates.append((sn, s['sku']))
+                    if len(candidates) > 200:
+                        break
+
         if not candidates:
             continue
+
         best_score = 0
         best_sku = None
         for sn, ssku in candidates:
-            if abs(len(w_norm) - len(sn)) > len(w_norm) * 0.5:
+            if abs(len(w_norm) - len(sn)) > len(w_norm) * 0.6:
                 continue
             score = SequenceMatcher(None, w_norm, sn).ratio()
             if score > best_score:
                 best_score = score
                 best_sku = ssku
-        if best_score >= 0.72:
+
+        if best_score >= 0.70:
             _query(db, 'INSERT INTO silk_matches (sku_wholesale, sku_silk, confidence) VALUES (%s, %s, %s)',
                    [w['sku'], best_sku, round(best_score, 3)])
             matched += 1
@@ -367,6 +399,11 @@ def retail():
     query = request.args.get('q', '').strip()
     linea = request.args.get('linea', '').strip()
     sort = request.args.get('sort', 'diff_cosmetic_desc')
+    margen_obj = request.args.get('margen', '30')
+    try:
+        margen_pct = float(margen_obj)
+    except ValueError:
+        margen_pct = 30
     db = get_db()
     latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
     lineas = [r['linea'] for r in _query(db, 'SELECT DISTINCT linea FROM products ORDER BY linea')]
@@ -417,7 +454,8 @@ def retail():
     return render_template('retail.html', products=products, query=query,
                           linea=linea, lineas=lineas, latest=latest,
                           synced=synced, total=total,
-                          con_cosmetic=con_cosmetic, con_silk=con_silk, sort=sort)
+                          con_cosmetic=con_cosmetic, con_silk=con_silk,
+                          sort=sort, margen_obj=margen_obj, margen_pct=margen_pct)
 
 
 @app.route('/retail/export')
@@ -526,8 +564,82 @@ def estudio():
                           total_cosmetic=total_cosmetic, total_silk=total_silk,
                           matched_cosmetic=matched_cosmetic, matched_silk=matched_silk,
                           match_rate_cosmetic=match_rate_cosmetic, match_rate_silk=match_rate_silk,
-                          avg_gap=avg_gap, brand_stats=brand_stats,
-                          opportunities=opportunities, top_cost=top_cost, latest=latest)
+                           avg_gap=avg_gap, brand_stats=brand_stats,
+                           opportunities=opportunities, top_cost=top_cost, latest=latest)
+
+
+@app.route('/export/xlsx')
+def export_xlsx():
+    """Export selected products as XLSX."""
+    skus = request.args.get('skus', '').split(',')
+    if not skus or skus == ['']:
+        flash('Seleccioná al menos un producto', 'error')
+        return redirect(url_for('index'))
+
+    db = get_db()
+    latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
+    placeholders = ','.join(['%s'] * len(skus))
+    rows = _query(db, f'''
+        SELECT p.sku, p.nombre, p.linea, p.ean, p.genero, p.formato, pr.precio
+        FROM products p
+        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        WHERE p.sku IN ({placeholders})
+        ORDER BY p.linea, p.nombre
+    ''', [latest] + skus).fetchall()
+    db.close()
+
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Lista de Precios'
+
+    header_font = Font(bold=True, color='FFFFFF')
+    header_fill = PatternFill('solid', fgColor='4F46E5')
+    header_align = Alignment(horizontal='center')
+    thin_border = Border(
+        left=Side(style='thin', color='D1D5DB'),
+        right=Side(style='thin', color='D1D5DB'),
+        top=Side(style='thin', color='D1D5DB'),
+        bottom=Side(style='thin', color='D1D5DB')
+    )
+    price_font = Font(bold=True)
+
+    headers = ['SKU', 'Marca', 'Nombre', 'EAN', 'Género', 'Formato', 'Precio']
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+
+    for i, r in enumerate(rows, 2):
+        vals = [r['sku'], r['linea'], r['nombre'], r['ean'], r['genero'], r['formato'], r['precio']]
+        for col, v in enumerate(vals, 1):
+            cell = ws.cell(row=i, column=col, value=v)
+            cell.border = thin_border
+            if col == 7:
+                cell.font = price_font
+                cell.number_format = '$#,##0'
+
+    ws.column_dimensions['A'].width = 14
+    ws.column_dimensions['B'].width = 20
+    ws.column_dimensions['C'].width = 60
+    ws.column_dimensions['D'].width = 18
+    ws.column_dimensions['E'].width = 16
+    ws.column_dimensions['F'].width = 12
+    ws.column_dimensions['G'].width = 14
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    resp = make_response(output.getvalue())
+    resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    resp.headers['Content-Disposition'] = 'attachment; filename=lista_precios.xlsx'
+    return resp
 
 
 if __name__ == '__main__':
