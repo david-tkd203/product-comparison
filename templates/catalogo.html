@@ -89,17 +89,97 @@
 
 {% if products %}
 <div class="flex justify-center mt-8 mb-4">
-  <button onclick="exportPDF()" class="px-6 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors inline-flex items-center gap-2 shadow-sm">
+  <button onclick="exportPDF()" id="pdf-btn-bottom" class="px-6 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors inline-flex items-center gap-2 shadow-sm">
     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
     Exportar PDF
   </button>
 </div>
 {% endif %}
 
+<!-- Spinner Overlay -->
+<div id="pdf-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+    <div class="relative mx-auto w-16 h-16 mb-4">
+      <div class="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
+      <div class="absolute inset-0 border-4 border-transparent border-t-indigo-600 rounded-full animate-spin"></div>
+    </div>
+    <h3 class="text-lg font-semibold text-slate-900 mb-1">Generando PDF...</h3>
+    <p id="pdf-status" class="text-sm text-slate-500">Descargando imágenes y armando el catálogo</p>
+    <p id="pdf-timer" class="text-xs text-slate-400 mt-2"></p>
+  </div>
+</div>
+
 <script>
+var _pdfStart = 0;
+var _pdfTimer = null;
+
 function updateCount(){var n=document.querySelectorAll('.row-check:checked').length;document.getElementById('count').textContent=n+' seleccionados'}
 function checkAll(){document.querySelectorAll('.row-check').forEach(c=>c.checked=true);updateCount()}
 function uncheckAll(){document.querySelectorAll('.row-check').forEach(c=>c.checked=false);updateCount()}
-function exportPDF(){var s=[];document.querySelectorAll('.row-check:checked').forEach(c=>{s.push(c.dataset.sku)});if(!s.length){alert('Seleccioná al menos un producto');return}window.location='/catalogo/pdf?skus='+s.join(',')}
+
+function exportPDF(){
+  var s=[];
+  document.querySelectorAll('.row-check:checked').forEach(function(c){s.push(c.dataset.sku)});
+  if(!s.length){alert('Seleccioná al menos un producto');return}
+
+  var overlay = document.getElementById('pdf-overlay');
+  var status = document.getElementById('pdf-status');
+  var timer = document.getElementById('pdf-timer');
+  var btnTop = document.querySelector('button[onclick="exportPDF()"]');
+  var btnBottom = document.getElementById('pdf-btn-bottom');
+
+  // Show overlay
+  overlay.classList.remove('hidden');
+  status.textContent = 'Descargando imágenes y armando el catálogo';
+  timer.textContent = '';
+  _pdfStart = Date.now();
+  _pdfTimer = setInterval(function(){
+    var elapsed = Math.round((Date.now() - _pdfStart) / 1000);
+    timer.textContent = 'Transcurrido: ' + elapsed + 's — ' + s.length + ' productos';
+  }, 500);
+
+  // Disable buttons
+  if(btnTop) btnTop.disabled = true;
+  if(btnBottom) btnBottom.disabled = true;
+
+  // Fetch PDF
+  fetch('/catalogo/pdf?skus=' + s.join(','))
+    .then(function(resp){
+      if(!resp.ok) throw new Error('Error ' + resp.status);
+      status.textContent = 'Armando archivo...';
+      return resp.blob();
+    })
+    .then(function(blob){
+      var elapsed = Math.round((Date.now() - _pdfStart) / 1000);
+      clearInterval(_pdfTimer);
+      overlay.classList.add('hidden');
+
+      // Trigger download
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'catalogo_perfumes.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    })
+    .catch(function(err){
+      clearInterval(_pdfTimer);
+      status.textContent = 'Error: ' + err.message;
+      status.className = 'text-sm text-red-600 mb-2';
+      timer.textContent = 'Reintentá con menos productos o verificá la conexión';
+      // Keep overlay visible so user can read error, add close button
+      var closeBtn = document.createElement('button');
+      closeBtn.textContent = 'Cerrar';
+      closeBtn.className = 'mt-3 px-4 py-1.5 bg-slate-200 text-slate-700 text-sm rounded-lg hover:bg-slate-300 transition-colors';
+      closeBtn.onclick = function(){ overlay.classList.add('hidden'); status.className = 'text-sm text-slate-500'; };
+      overlay.querySelector('.bg-white').appendChild(closeBtn);
+    })
+    .finally(function(){
+      if(btnTop) btnTop.disabled = false;
+      if(btnBottom) btnBottom.disabled = false;
+    });
+}
 </script>
 {% endblock %}

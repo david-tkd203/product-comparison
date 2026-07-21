@@ -693,8 +693,7 @@ def catalogo():
 def catalogo_pdf():
     skus = request.args.get('skus', '').split(',')
     if not skus or skus == ['']:
-        flash('Seleccioná al menos un producto', 'error')
-        return redirect(url_for('catalogo'))
+        return 'Seleccioná al menos un producto', 400
 
     db = get_db()
     placeholders = ','.join(['%s'] * len(skus))
@@ -707,6 +706,9 @@ def catalogo_pdf():
         ORDER BY p.linea, p.nombre
     ''', skus).fetchall()
     db.close()
+
+    if not rows:
+        return 'No se encontraron productos con esos SKU', 404
 
     # Parse aromas
     for p in rows:
@@ -726,82 +728,145 @@ def catalogo_pdf():
 
 def _generate_catalogo_pdf(products):
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
+    from reportlab.lib.units import mm, cm
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.colors import HexColor
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                     Table, TableStyle, Image as RLImage,
+                                     KeepTogether)
+    import urllib.request as req
 
     buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=15*mm, rightMargin=15*mm,
-                           topMargin=15*mm, bottomMargin=15*mm)
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=12*mm, rightMargin=12*mm,
+                           topMargin=12*mm, bottomMargin=12*mm)
     styles = getSampleStyleSheet()
 
     style_title = ParagraphStyle('CatTitle', parent=styles['Heading1'],
-                                 fontSize=18, spaceAfter=6*mm, textColor=HexColor('#1e293b'))
+                                 fontSize=16, spaceAfter=5*mm, textColor=HexColor('#1e293b'))
     style_brand = ParagraphStyle('CatBrand', parent=styles['Heading2'],
-                                 fontSize=12, spaceAfter=2*mm, spaceBefore=4*mm,
+                                 fontSize=11, spaceAfter=2*mm, spaceBefore=5*mm,
                                  textColor=HexColor('#6366f1'))
     style_name = ParagraphStyle('CatName', parent=styles['Normal'],
-                                fontSize=10, spaceAfter=1*mm, textColor=HexColor('#334155'))
+                                fontSize=9, leading=11, spaceAfter=1*mm,
+                                textColor=HexColor('#1e293b'))
+    style_price = ParagraphStyle('CatPrice', parent=styles['Normal'],
+                                 fontSize=10, spaceAfter=2*mm,
+                                 textColor=HexColor('#059669'))
     style_notes = ParagraphStyle('CatNotes', parent=styles['Normal'],
-                                 fontSize=8, spaceAfter=0.5*mm, textColor=HexColor('#64748b'))
-    style_label = ParagraphStyle('CatLabel', parent=styles['Normal'],
-                                 fontSize=7, textColor=HexColor('#94a3b8'))
+                                 fontSize=7, leading=9, spaceAfter=0.3*mm,
+                                 textColor=HexColor('#64748b'))
 
     story = [Paragraph('Catálogo de Perfumes — cosmetic.cl', style_title),
-             Paragraph(f'{len(products)} productos seleccionados', styles['Normal']),
-             Spacer(1, 4*mm)]
+             Paragraph(f'{len(products)} productos', styles['Normal']),
+             Spacer(1, 5*mm)]
+
+    # Download helpers
+    _image_cache = {}
+
+    def _fetch_image(url):
+        if not url:
+            return None
+        if url in _image_cache:
+            return _image_cache[url]
+        try:
+            r = req.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with req.urlopen(r, timeout=10) as resp:
+                img_data = resp.read()
+                _image_cache[url] = img_data
+                return img_data
+        except Exception:
+            _image_cache[url] = None
+            return None
 
     # Group by brand
     from itertools import groupby
     products_sorted = sorted(products, key=lambda p: (p['linea'] or '', p['nombre'] or ''))
+
+    img_size = 38*mm  # square image
+    card_padding = 1.5*mm
 
     for brand, group in groupby(products_sorted, key=lambda p: p['linea'] or 'Sin marca'):
         items = list(group)
         story.append(Paragraph(brand, style_brand))
         story.append(Spacer(1, 1*mm))
 
-        # Build a table with 2 columns per page
-        rows_data = []
+        # Build rows: 2 cards per row
         for i in range(0, len(items), 2):
-            row = []
+            row_cards = []
             for j in range(2):
                 if i + j < len(items):
                     p = items[i + j]
-                    cell_content = []
-                    cell_content.append(Paragraph(f"<b>{p['nombre']}</b>", style_name))
-                    # Price
+
+                    # Fetch image
+                    img_data = _fetch_image(p.get('imagen'))
+                    card_parts = []
+
+                    if img_data:
+                        try:
+                            img = RLImage(BytesIO(img_data), width=img_size, height=img_size)
+                            img.hAlign = 'LEFT'
+                        except Exception:
+                            img = None
+                    else:
+                        img = None
+
+                    # Build text block
+                    text_parts = [Paragraph(f"<b>{p['nombre']}</b>", style_name)]
                     if p['precio_retail']:
-                        cell_content.append(Paragraph(f"${'{:,}'.format(p['precio_retail']).replace(',', '.')}",
-                                           styles['Normal']))
+                        text_parts.append(Paragraph(
+                            f"${'{:,}'.format(p['precio_retail']).replace(',', '.')}",
+                            style_price))
+
                     # Aromas
                     notas = p.get('notas', {})
-                    if notas:
-                        for key, label in [('salida', 'Salida'), ('corazon', 'Corazón'), ('fondo', 'Fondo')]:
-                            if notas.get(key):
-                                aromas_str = ', '.join(a.capitalize() for a in notas[key])
-                                cell_content.append(Paragraph(f"<font color='#64748b' size='7'>{label}:</font> "
-                                                              f"<font size='8'>{aromas_str}</font>", style_notes))
-                    cell_content.append(Spacer(1, 2*mm))
-                    row.append(cell_content)
+                    for key, label in [('salida', 'Salida'), ('corazon', 'Corazón'), ('fondo', 'Fondo')]:
+                        if notas.get(key):
+                            aromas_str = ', '.join(a.capitalize() for a in notas[key])
+                            text_parts.append(Paragraph(
+                                f"<b>{label}:</b> {aromas_str}", style_notes))
+
+                    # Arrange image + text side by side
+                    text_col = text_parts
+                    if img:
+                        card_table = Table([[img, text_col]],
+                                          colWidths=[img_size + 2*mm, None])
+                        card_table.setStyle(TableStyle([
+                            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                            ('LEFTPADDING', (0, 0), (0, 0), 0),
+                            ('RIGHTPADDING', (0, 0), (0, 0), card_padding),
+                            ('TOPPADDING', (0, 0), (-1, -1), 0),
+                            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                        ]))
+                        row_cards.append(card_table)
+                    else:
+                        # No image: just text in a cell
+                        card_table = Table([[text_col]], colWidths=[None])
+                        card_table.setStyle(TableStyle([
+                            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                            ('TOPPADDING', (0, 0), (-1, -1), 0),
+                            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                        ]))
+                        row_cards.append(card_table)
                 else:
-                    row.append([])
-            rows_data.append(row)
+                    row_cards.append(Paragraph('', styles['Normal']))
 
-        if rows_data:
-            # Calculate column widths (roughly half page minus margins)
-            col_w = (doc.width) / 2
-            t = Table(rows_data, colWidths=[col_w, col_w])
-            t.setStyle(TableStyle([
+            # Create outer table with 2 cards
+            col_w = (doc.width - 6*mm) / 2
+            outer = Table([row_cards], colWidths=[col_w, col_w])
+            outer.setStyle(TableStyle([
                 ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 2*mm),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 4*mm),
+                ('LEFTPADDING', (0, 0), (0, 0), 0),
+                ('RIGHTPADDING', (0, 0), (0, 0), 3*mm),
+                ('LEFTPADDING', (1, 0), (1, 0), 3*mm),
+                ('RIGHTPADDING', (1, 0), (1, 0), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5*mm),
             ]))
-            story.append(t)
-            story.append(Spacer(1, 2*mm))
+            story.append(outer)
+            story.append(Spacer(1, 1*mm))
 
-    story.append(Spacer(1, 5*mm))
+    story.append(Spacer(1, 4*mm))
     story.append(Paragraph(f'Generado el {datetime.now().strftime("%d/%m/%Y %H:%M")}',
                            styles['Normal']))
 
