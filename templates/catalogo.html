@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-2">Catálogo de Perfumes</h1>
+<p class="text-sm text-slate-500 mb-6">cosmetic.cl — {{ total }} productos</p>
+
+<!-- Filters -->
+<form method="get" id="filters" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+  <div class="flex flex-wrap gap-3 items-end">
+    <input name="q" value="{{ query }}" placeholder="Buscar perfume o marca..." class="flex-1 min-w-[180px] px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    <select name="linea" class="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <option value="">Todas las marcas</option>
+      {% for l in lineas %}<option value="{{ l }}" {{ 'selected' if linea == l }}>{{ l }}</option>{% endfor %}
+    </select>
+    <select name="aroma" class="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <option value="">Todos los aromas</option>
+      {% for a in aromas %}<option value="{{ a }}" {{ 'selected' if aroma == a }}>{{ a.capitalize() }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">Filtrar</button>
+    <a href="/catalogo" class="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors">Limpiar</a>
+  </div>
+</form>
+
+{% if products %}
+<div class="flex flex-wrap gap-2 items-center mb-4">
+  <button onclick="checkAll()" class="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">Seleccionar todo</button>
+  <button onclick="uncheckAll()" class="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">Deseleccionar</button>
+  <button onclick="exportPDF()" class="px-3 py-1.5 text-xs font-medium rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors inline-flex items-center gap-1">
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+    Exportar PDF
+  </button>
+  <span id="count" class="text-xs text-slate-400 ml-2">0 seleccionados</span>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  {% for p in products %}
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group">
+    <!-- Image -->
+    <div class="aspect-square bg-slate-50 relative overflow-hidden">
+      {% if p['imagen'] %}
+      <img src="{{ p['imagen'] }}" alt="{{ p['nombre'] }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
+      {% else %}
+      <div class="w-full h-full flex items-center justify-center text-slate-300">
+        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      </div>
+      {% endif %}
+      <!-- Checkbox overlay -->
+      <div class="absolute top-2 left-2">
+        <input type="checkbox" class="row-check w-4 h-4 rounded border-slate-300 accent-indigo-600 shadow-sm" data-sku="{{ p['sku'] }}" onchange="updateCount()">
+      </div>
+      {% if p['precio_retail'] %}
+      <div class="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-md text-xs font-bold text-slate-900 shadow-sm">${{ "{:,}".format(p['precio_retail']).replace(',', '.') }}</div>
+      {% endif %}
+    </div>
+
+    <!-- Info -->
+    <div class="p-3">
+      <div class="text-[11px] font-medium text-indigo-600 mb-0.5 uppercase tracking-wide">{{ p['linea'] }}</div>
+      <h3 class="text-sm font-semibold text-slate-900 leading-tight mb-2 line-clamp-2" title="{{ p['nombre'] }}">{{ p['nombre'] }}</h3>
+
+      <!-- Aroma notes -->
+      {% if p['notas'] %}
+      <div class="space-y-1">
+        {% for key, label in [('salida', 'Salida'), ('corazon', 'Corazón'), ('fondo', 'Fondo')] %}
+        {% if p['notas'].get(key) %}
+        <div class="text-[11px] leading-relaxed">
+          <span class="font-medium text-slate-500">{{ label }}:</span>
+          <span class="text-slate-600">{{ p['notas'][key] | map('capitalize') | join(', ') }}</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-[11px] text-slate-400 italic">Aromas no disponibles</div>
+      {% endif %}
+
+      {% if p['url'] %}
+      <a href="{{ p['url'] }}" target="_blank" class="inline-block mt-2 text-[11px] text-indigo-500 hover:text-indigo-700">Ver en cosmetic.cl →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-16 text-slate-400">
+  <p class="text-lg font-medium mb-1">No se encontraron productos</p>
+  <p class="text-sm">Probá sincronizando cosmetic.cl o ajustando los filtros.</p>
+</div>
+{% endif %}
+
+{% if products %}
+<div class="flex justify-center mt-8 mb-4">
+  <button onclick="exportPDF()" class="px-6 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors inline-flex items-center gap-2 shadow-sm">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+    Exportar PDF
+  </button>
+</div>
+{% endif %}
+
+<script>
+function updateCount(){var n=document.querySelectorAll('.row-check:checked').length;document.getElementById('count').textContent=n+' seleccionados'}
+function checkAll(){document.querySelectorAll('.row-check').forEach(c=>c.checked=true);updateCount()}
+function uncheckAll(){document.querySelectorAll('.row-check').forEach(c=>c.checked=false);updateCount()}
+function exportPDF(){var s=[];document.querySelectorAll('.row-check:checked').forEach(c=>{s.push(c.dataset.sku)});if(!s.length){alert('Seleccioná al menos un producto');return}window.location='/catalogo/pdf?skus='+s.join(',')}
+</script>
+{% endblock %}

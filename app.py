@@ -5,6 +5,7 @@ import urllib.request
 import urllib.error
 from datetime import datetime
 from difflib import SequenceMatcher
+from io import BytesIO
 
 import mysql.connector
 from flask import Flask, render_template, request, redirect, url_for, flash, make_response
@@ -28,6 +29,14 @@ DATA_START = 7
 
 def get_db():
     return mysql.connector.connect(**DB_CONFIG)
+
+
+def _add_column_if_missing(cur, table, column, col_type):
+    """Add a column if it doesn't exist in the table."""
+    try:
+        cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+    except mysql.connector.Error:
+        pass  # column already exists
 
 
 def init_db():
@@ -68,9 +77,13 @@ def init_db():
             precio_ref INT,
             imagen TEXT,
             url TEXT,
+            body_html LONGTEXT,
+            aromas TEXT,
             last_synced TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
+    _add_column_if_missing(cur, 'cosmetic_products', 'body_html', 'LONGTEXT')
+    _add_column_if_missing(cur, 'cosmetic_products', 'aromas', 'TEXT')
     cur.execute('''
         CREATE TABLE IF NOT EXISTS silk_products (
             sku VARCHAR(50) PRIMARY KEY,
@@ -79,9 +92,11 @@ def init_db():
             precio_ref INT,
             imagen TEXT,
             url TEXT,
+            body_html LONGTEXT,
             last_synced TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
+    _add_column_if_missing(cur, 'silk_products', 'body_html', 'LONGTEXT')
     cur.execute('''
         CREATE TABLE IF NOT EXISTS silk_matches (
             sku_wholesale VARCHAR(50) PRIMARY KEY,
@@ -97,9 +112,11 @@ def init_db():
             precio_ref INT,
             imagen TEXT,
             url TEXT,
+            body_html LONGTEXT,
             last_synced TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
+    _add_column_if_missing(cur, 'multimarca_products', 'body_html', 'LONGTEXT')
     cur.execute('''
         CREATE TABLE IF NOT EXISTS multimarca_matches (
             sku_wholesale VARCHAR(50) PRIMARY KEY,
@@ -322,28 +339,68 @@ def _sync_shopify(db, table, base_url):
                 nombre = p.get('title', '')
                 url_slug = f'{base_url}/products/{p.get("handle", "")}'
                 imagen = (p.get('images') or [{}])[0].get('src', '') if p.get('images') else ''
-                _query(db, f'''INSERT INTO {table} (sku, nombre, precio_retail, precio_ref, imagen, url)
-                               VALUES (%s, %s, %s, %s, %s, %s)
+                body_html = p.get('body_html', '')
+                _query(db, f'''INSERT INTO {table} (sku, nombre, precio_retail, precio_ref, imagen, url, body_html)
+                               VALUES (%s, %s, %s, %s, %s, %s, %s)
                                ON DUPLICATE KEY UPDATE nombre=VALUES(nombre),
                                precio_retail=VALUES(precio_retail), precio_ref=VALUES(precio_ref),
-                               imagen=VALUES(imagen), url=VALUES(url), last_synced=CURRENT_TIMESTAMP''',
-                       [sku, nombre, precio, compare_at, imagen, url_slug])
+                               imagen=VALUES(imagen), url=VALUES(url), body_html=VALUES(body_html),
+                               last_synced=CURRENT_TIMESTAMP''',
+                       [sku, nombre, precio, compare_at, imagen, url_slug, body_html])
                 added += 1
         page += 1
     return (added, error)
+
+
+def _extract_aromas(db):
+    """Parse body_html of cosmetic_products to extract fragrance notes."""
+    rows = _query(db, "SELECT sku, body_html FROM cosmetic_products WHERE body_html IS NOT NULL AND body_html != '' AND aromas IS NULL").fetchall()
+    extracted = 0
+    for r in rows:
+        html = r['body_html']
+        text = re.sub(r'<[^>]+>', ' ', html)
+        text = re.sub(r'\s+', ' ', text).strip()
+
+        notas = {'salida': [], 'corazon': [], 'fondo': []}
+
+        # Match "Notas de Salida son X; Notas de Corazón son Y; Notas de Fondo son Z"
+        # Also handle "Notas de Salida: X. Notas de Corazón: Y. Notas de Fondo: Z"
+        patterns = [
+            (r'(?:las\s+)?notas?\s+de\s+salida\s*(?:son|:)\s*([^.;]+?)(?:\s*[.;]\s*(?:las\s+)?notas?\s+de\s+coraz[oó]n|\s*$)', 'salida'),
+            (r'(?:las\s+)?notas?\s+de\s+coraz[oó]n\s*(?:son|:)\s*([^.;]+?)(?:\s*[.;]\s*(?:las\s+)?notas?\s+de\s+fondo|\s*$)', 'corazon'),
+            (r'(?:las\s+)?notas?\s+de\s+fondo\s*(?:son|:)\s*([^.;]+)', 'fondo'),
+        ]
+
+        for pattern, key in patterns:
+            m = re.search(pattern, text, re.IGNORECASE)
+            if m:
+                raw = m.group(1).strip().rstrip('.')
+                # Split by commas and "y" but keep "y" as separate
+                items = [x.strip().lower() for x in re.split(r'\s*,\s*|\s+y\s+', raw) if x.strip()]
+                notas[key] = items
+
+        if any(notas.values()):
+            _query(db, 'UPDATE cosmetic_products SET aromas = %s WHERE sku = %s',
+                   [json.dumps(notas, ensure_ascii=False), r['sku']])
+            extracted += 1
+
+    return extracted
 
 
 @app.route('/sync-cosmetic')
 def sync_cosmetic():
     db = get_db()
     added, error = _sync_shopify(db, 'cosmetic_products', 'https://cosmetic.cl')
+    extracted = 0
+    if not error:
+        extracted = _extract_aromas(db)
     db.close()
     if error:
         flash(f'Error sync cosmetic.cl: {error}', 'error')
     elif added == 0:
         flash('No se encontraron productos en cosmetic.cl', 'warning')
     else:
-        flash(f'Sincronizados {added} productos de cosmetic.cl', 'success')
+        flash(f'Sincronizados {added} productos, {extracted} con aromas de cosmetic.cl', 'success')
     return redirect(url_for('retail'))
 
 
@@ -567,6 +624,189 @@ def retail_export():
     resp.headers['Content-Type'] = 'text/csv; charset=utf-8'
     resp.headers['Content-Disposition'] = 'attachment; filename=comparativa.csv'
     return resp
+
+
+@app.route('/catalogo')
+def catalogo():
+    query = request.args.get('q', '').strip()
+    linea = request.args.get('linea', '').strip()
+    aroma = request.args.get('aroma', '').strip()
+
+    db = get_db()
+    # Get all distinct brands from cosmetic_products (via the match table)
+    lineas = [r['linea'] for r in _query(db, '''
+        SELECT DISTINCT p.linea FROM products p
+        JOIN cosmetic_products cp ON p.sku = cp.sku
+        ORDER BY p.linea
+    ''').fetchall()]
+
+    # Get all distinct aroma keywords
+    aroma_rows = _query(db, "SELECT aromas FROM cosmetic_products WHERE aromas IS NOT NULL AND aromas != '{}'").fetchall()
+    all_aromas = set()
+    for r in aroma_rows:
+        try:
+            notas = json.loads(r['aromas'])
+            for key in ('salida', 'corazon', 'fondo'):
+                for a in notas.get(key, []):
+                    all_aromas.add(a)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    sql = '''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
+                    cp.precio_retail, cp.imagen, cp.url, cp.aromas
+             FROM products p
+             JOIN cosmetic_products cp ON p.sku = cp.sku'''
+    params = []
+    conditions = []
+    if query:
+        conditions.append('(p.nombre LIKE %s OR p.linea LIKE %s)')
+        like = f'%{query}%'
+        params.extend([like, like])
+    if linea:
+        conditions.append('p.linea = %s')
+        params.append(linea)
+    if aroma:
+        conditions.append('cp.aromas LIKE %s')
+        params.append(f'%"{aroma.lower()}"%')
+    if conditions:
+        sql += ' WHERE ' + ' AND '.join(conditions)
+    sql += ' ORDER BY p.linea, p.nombre LIMIT 500'
+
+    products = _query(db, sql, params).fetchall()
+
+    # Parse aromas JSON for each product
+    for p in products:
+        p['notas'] = {}
+        if p['aromas']:
+            try:
+                p['notas'] = json.loads(p['aromas'])
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    db.close()
+    return render_template('catalogo.html', products=products, query=query,
+                          linea=linea, aroma=aroma, lineas=lineas,
+                          aromas=sorted(all_aromas), total=len(products))
+
+
+@app.route('/catalogo/pdf')
+def catalogo_pdf():
+    skus = request.args.get('skus', '').split(',')
+    if not skus or skus == ['']:
+        flash('Seleccioná al menos un producto', 'error')
+        return redirect(url_for('catalogo'))
+
+    db = get_db()
+    placeholders = ','.join(['%s'] * len(skus))
+    rows = _query(db, f'''
+        SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
+               cp.precio_retail, cp.imagen, cp.url, cp.aromas
+        FROM products p
+        JOIN cosmetic_products cp ON p.sku = cp.sku
+        WHERE p.sku IN ({placeholders})
+        ORDER BY p.linea, p.nombre
+    ''', skus).fetchall()
+    db.close()
+
+    # Parse aromas
+    for p in rows:
+        p['notas'] = {}
+        if p['aromas']:
+            try:
+                p['notas'] = json.loads(p['aromas'])
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    pdf_bytes = _generate_catalogo_pdf(rows)
+    resp = make_response(pdf_bytes)
+    resp.headers['Content-Type'] = 'application/pdf'
+    resp.headers['Content-Disposition'] = 'attachment; filename=catalogo_perfumes.pdf'
+    return resp
+
+
+def _generate_catalogo_pdf(products):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.colors import HexColor
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=15*mm, rightMargin=15*mm,
+                           topMargin=15*mm, bottomMargin=15*mm)
+    styles = getSampleStyleSheet()
+
+    style_title = ParagraphStyle('CatTitle', parent=styles['Heading1'],
+                                 fontSize=18, spaceAfter=6*mm, textColor=HexColor('#1e293b'))
+    style_brand = ParagraphStyle('CatBrand', parent=styles['Heading2'],
+                                 fontSize=12, spaceAfter=2*mm, spaceBefore=4*mm,
+                                 textColor=HexColor('#6366f1'))
+    style_name = ParagraphStyle('CatName', parent=styles['Normal'],
+                                fontSize=10, spaceAfter=1*mm, textColor=HexColor('#334155'))
+    style_notes = ParagraphStyle('CatNotes', parent=styles['Normal'],
+                                 fontSize=8, spaceAfter=0.5*mm, textColor=HexColor('#64748b'))
+    style_label = ParagraphStyle('CatLabel', parent=styles['Normal'],
+                                 fontSize=7, textColor=HexColor('#94a3b8'))
+
+    story = [Paragraph('Catálogo de Perfumes — cosmetic.cl', style_title),
+             Paragraph(f'{len(products)} productos seleccionados', styles['Normal']),
+             Spacer(1, 4*mm)]
+
+    # Group by brand
+    from itertools import groupby
+    products_sorted = sorted(products, key=lambda p: (p['linea'] or '', p['nombre'] or ''))
+
+    for brand, group in groupby(products_sorted, key=lambda p: p['linea'] or 'Sin marca'):
+        items = list(group)
+        story.append(Paragraph(brand, style_brand))
+        story.append(Spacer(1, 1*mm))
+
+        # Build a table with 2 columns per page
+        rows_data = []
+        for i in range(0, len(items), 2):
+            row = []
+            for j in range(2):
+                if i + j < len(items):
+                    p = items[i + j]
+                    cell_content = []
+                    cell_content.append(Paragraph(f"<b>{p['nombre']}</b>", style_name))
+                    # Price
+                    if p['precio_retail']:
+                        cell_content.append(Paragraph(f"${'{:,}'.format(p['precio_retail']).replace(',', '.')}",
+                                           styles['Normal']))
+                    # Aromas
+                    notas = p.get('notas', {})
+                    if notas:
+                        for key, label in [('salida', 'Salida'), ('corazon', 'Corazón'), ('fondo', 'Fondo')]:
+                            if notas.get(key):
+                                aromas_str = ', '.join(a.capitalize() for a in notas[key])
+                                cell_content.append(Paragraph(f"<font color='#64748b' size='7'>{label}:</font> "
+                                                              f"<font size='8'>{aromas_str}</font>", style_notes))
+                    cell_content.append(Spacer(1, 2*mm))
+                    row.append(cell_content)
+                else:
+                    row.append([])
+            rows_data.append(row)
+
+        if rows_data:
+            # Calculate column widths (roughly half page minus margins)
+            col_w = (doc.width) / 2
+            t = Table(rows_data, colWidths=[col_w, col_w])
+            t.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 2*mm),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4*mm),
+            ]))
+            story.append(t)
+            story.append(Spacer(1, 2*mm))
+
+    story.append(Spacer(1, 5*mm))
+    story.append(Paragraph(f'Generado el {datetime.now().strftime("%d/%m/%Y %H:%M")}',
+                           styles['Normal']))
+
+    doc.build(story)
+    return buf.getvalue()
 
 
 @app.route('/estudio')

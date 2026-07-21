@@ -3,3 +3,4 @@ pandas
 openpyxl
 gunicorn
 mysql-connector-python
+reportlab
