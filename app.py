@@ -366,7 +366,13 @@ def _sync_shopify(db, table, base_url):
 
 
 def _extract_aromas(db):
-    """Parse body_html of cosmetic_products to extract fragrance notes."""
+    """Parse body_html of cosmetic_products to extract fragrance notes.
+    Handles multiple formats:
+      - "Las Notas de Salida son X; las Notas de Corazón son Y; las Notas de Fondo son Z"
+      - "contiene notas de salida de X; con notas de corazón de Y; con notas de fondo de Z"
+      - "notas de salida: X. notas de corazón: Y. notas de fondo: Z"
+      - "la nota de corazón es X" (singular)
+    """
     rows = _query(db, "SELECT sku, body_html FROM cosmetic_products WHERE body_html IS NOT NULL AND body_html != '' AND aromas IS NULL").fetchall()
     extracted = 0
     for r in rows:
@@ -376,21 +382,37 @@ def _extract_aromas(db):
 
         notas = {'salida': [], 'corazon': [], 'fondo': []}
 
-        # Match "Notas de Salida son X; Notas de Corazón son Y; Notas de Fondo son Z"
-        # Also handle "Notas de Salida: X. Notas de Corazón: Y. Notas de Fondo: Z"
-        patterns = [
-            (r'(?:las\s+)?notas?\s+de\s+salida\s*(?:son|:)\s*([^.;]+?)(?:\s*[.;]\s*(?:las\s+)?notas?\s+de\s+coraz[oó]n|\s*$)', 'salida'),
-            (r'(?:las\s+)?notas?\s+de\s+coraz[oó]n\s*(?:son|:)\s*([^.;]+?)(?:\s*[.;]\s*(?:las\s+)?notas?\s+de\s+fondo|\s*$)', 'corazon'),
-            (r'(?:las\s+)?notas?\s+de\s+fondo\s*(?:son|:)\s*([^.;]+)', 'fondo'),
-        ]
+        # Step 1: find the section that starts with perfume notes
+        # Look for various "notas de salida" introductions
+        block_start = re.search(
+            r'(?:las?\s+)?(?:contiene\s+)?(?:con\s+)?notas?\s+de\s+salida',
+            text, re.IGNORECASE)
+        if not block_start:
+            continue
 
-        for pattern, key in patterns:
-            m = re.search(pattern, text, re.IGNORECASE)
-            if m:
-                raw = m.group(1).strip().rstrip('.')
-                # Split by commas and "y" but keep "y" as separate
-                items = [x.strip().lower() for x in re.split(r'\s*,\s*|\s+y\s+', raw) if x.strip()]
-                notas[key] = items
+        block = text[block_start.start():]
+
+        # Step 2: extract each note layer from the block
+        # salida: from "salida" keyword to the start of "corazón" section
+        m_salida = re.search(
+            r'notas?\s+de\s+salida\s*(?:son|de|:)?\s*(.+?)(?=\s*(?:las?\s+)?(?:la\s+)?(?:con\s+)?(?:y\s+)?notas?\s+d[ee]l?\s+coraz|\s*(?:las?\s+)?(?:con\s+)?(?:y\s+)?notas?\s+de\s+fondo|\s*$)',
+            block, re.IGNORECASE)
+        if m_salida:
+            notas['salida'] = _parse_notas_list(m_salida.group(1))
+
+        # corazon: from "corazón" keyword to the start of "fondo" section
+        m_corazon = re.search(
+            r'notas?\s+d[ee]l?\s+coraz[oó]n\s*(?:son|de|:|es)?\s*(.+?)(?=\s*(?:las?\s+)?(?:con\s+)?(?:y\s+)?notas?\s+de\s+fondo|\s*$)',
+            block, re.IGNORECASE)
+        if m_corazon:
+            notas['corazon'] = _parse_notas_list(m_corazon.group(1))
+
+        # fondo: from "fondo" keyword to end of notes section
+        m_fondo = re.search(
+            r'notas?\s+de\s+fondo\s*(?:son|de|:)?\s*(.+?)(?=\s*(?:<|\.\s*[A-ZÁÉÍÓÚ]|\s*\n\s*\n|\s*$))',
+            block, re.IGNORECASE)
+        if m_fondo:
+            notas['fondo'] = _parse_notas_list(m_fondo.group(1))
 
         if any(notas.values()):
             _query(db, 'UPDATE cosmetic_products SET aromas = %s WHERE sku = %s',
@@ -398,6 +420,16 @@ def _extract_aromas(db):
             extracted += 1
 
     return extracted
+
+
+def _parse_notas_list(raw):
+    """Parse a raw notes string like 'bergamota, piña y ámbar' into a list."""
+    raw = raw.strip().rstrip('.,;:')
+    # Remove trailing connectors
+    raw = re.sub(r'\s+(?:y|e)\s*$', '', raw)
+    items = [x.strip().lower() for x in re.split(r'\s*,\s*|\s+y\s+|\s+e\s+', raw) if x.strip()]
+    # Filter out noise
+    return [i for i in items if len(i) > 2 and not i.startswith('nota')]
 
 
 @app.route('/sync-cosmetic')
