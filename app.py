@@ -311,6 +311,22 @@ def _sync_shopify(db, table, base_url):
     added = 0
     error = None
     page = 1
+    batch = []
+    sql = f'''INSERT INTO {table} (sku, nombre, precio_retail, precio_ref, imagen, url, body_html)
+              VALUES (%s, %s, %s, %s, %s, %s, %s)
+              ON DUPLICATE KEY UPDATE nombre=VALUES(nombre),
+              precio_retail=VALUES(precio_retail), precio_ref=VALUES(precio_ref),
+              imagen=VALUES(imagen), url=VALUES(url), body_html=VALUES(body_html),
+              last_synced=CURRENT_TIMESTAMP'''
+
+    def _flush():
+        nonlocal batch
+        if batch:
+            cur = db.cursor()
+            cur.executemany(sql, batch)
+            cur.close()
+            batch = []
+
     while True:
         url = f'{base_url}/products.json?limit=250&page={page}'
         try:
@@ -340,15 +356,12 @@ def _sync_shopify(db, table, base_url):
                 url_slug = f'{base_url}/products/{p.get("handle", "")}'
                 imagen = (p.get('images') or [{}])[0].get('src', '') if p.get('images') else ''
                 body_html = p.get('body_html', '')
-                _query(db, f'''INSERT INTO {table} (sku, nombre, precio_retail, precio_ref, imagen, url, body_html)
-                               VALUES (%s, %s, %s, %s, %s, %s, %s)
-                               ON DUPLICATE KEY UPDATE nombre=VALUES(nombre),
-                               precio_retail=VALUES(precio_retail), precio_ref=VALUES(precio_ref),
-                               imagen=VALUES(imagen), url=VALUES(url), body_html=VALUES(body_html),
-                               last_synced=CURRENT_TIMESTAMP''',
-                       [sku, nombre, precio, compare_at, imagen, url_slug, body_html])
+                batch.append([sku, nombre, precio, compare_at, imagen, url_slug, body_html])
                 added += 1
+                if len(batch) >= 100:
+                    _flush()
         page += 1
+    _flush()
     return (added, error)
 
 
