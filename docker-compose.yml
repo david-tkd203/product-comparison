@@ -36,18 +36,7 @@ services:
 
   tunnel:
     image: cloudflare/cloudflared:latest
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        cloudflared tunnel --url http://web:5000 2>&1 | while IFS= read -r line; do
-          echo "$$line"
-          url=$$(echo "$$line" | grep -oE 'https://[^ ]*trycloudflare\.com')
-          if [ -n "$$url" ]; then
-            echo "$$url" > /app/tunnel/url.txt
-          fi
-        done
-    volumes:
-      - ./tunnel_data:/app/tunnel
+    command: tunnel --url http://web:5000
     restart: unless-stopped
 
 volumes:

@@ -727,40 +727,42 @@ def catalogo_pdf():
 
 
 def _generate_catalogo_pdf(products):
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm, cm
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import mm
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.colors import HexColor
+    from reportlab.lib.colors import HexColor, Color
     from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
-                                     Table, TableStyle, Image as RLImage,
-                                     KeepTogether)
+                                     Table, TableStyle, Image as RLImage)
     import urllib.request as req
 
     buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=12*mm, rightMargin=12*mm,
-                           topMargin=12*mm, bottomMargin=12*mm)
-    styles = getSampleStyleSheet()
+    # Landscape for wide table
+    page_w, page_h = landscape(A4)
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4),
+                           leftMargin=10*mm, rightMargin=10*mm,
+                           topMargin=10*mm, bottomMargin=10*mm)
 
+    styles = getSampleStyleSheet()
     style_title = ParagraphStyle('CatTitle', parent=styles['Heading1'],
-                                 fontSize=16, spaceAfter=5*mm, textColor=HexColor('#1e293b'))
-    style_brand = ParagraphStyle('CatBrand', parent=styles['Heading2'],
-                                 fontSize=11, spaceAfter=2*mm, spaceBefore=5*mm,
-                                 textColor=HexColor('#6366f1'))
-    style_name = ParagraphStyle('CatName', parent=styles['Normal'],
-                                fontSize=9, leading=11, spaceAfter=1*mm,
-                                textColor=HexColor('#1e293b'))
-    style_price = ParagraphStyle('CatPrice', parent=styles['Normal'],
-                                 fontSize=10, spaceAfter=2*mm,
-                                 textColor=HexColor('#059669'))
-    style_notes = ParagraphStyle('CatNotes', parent=styles['Normal'],
-                                 fontSize=7, leading=9, spaceAfter=0.3*mm,
-                                 textColor=HexColor('#64748b'))
+                                 fontSize=14, spaceAfter=4*mm, textColor=HexColor('#1e293b'))
+    style_cell = ParagraphStyle('CatCell', parent=styles['Normal'],
+                                fontSize=8, leading=10, textColor=HexColor('#334155'))
+    style_cell_bold = ParagraphStyle('CatCellBold', parent=style_cell,
+                                     fontSize=8, leading=10, textColor=HexColor('#1e293b'))
+    style_header = ParagraphStyle('CatHeader', parent=styles['Normal'],
+                                  fontSize=8, leading=10, textColor=HexColor('#ffffff'))
+
+    # Colors
+    header_bg = HexColor('#6366f1')
+    row_even = HexColor('#f8fafc')
+    row_odd = HexColor('#ffffff')
+    border_color = HexColor('#e2e8f0')
 
     story = [Paragraph('Catálogo de Perfumes — cosmetic.cl', style_title),
              Paragraph(f'{len(products)} productos', styles['Normal']),
-             Spacer(1, 5*mm)]
+             Spacer(1, 4*mm)]
 
-    # Download helpers
+    # Image cache
     _image_cache = {}
 
     def _fetch_image(url):
@@ -778,93 +780,76 @@ def _generate_catalogo_pdf(products):
             _image_cache[url] = None
             return None
 
-    # Group by brand
-    from itertools import groupby
+    img_size = 18*mm  # small thumbnail
+
+    # Build table data
+    header = [
+        Paragraph('<b>Imagen</b>', style_header),
+        Paragraph('<b>Marca</b>', style_header),
+        Paragraph('<b>Nombre</b>', style_header),
+        Paragraph('<b>Salida</b>', style_header),
+        Paragraph('<b>Corazón</b>', style_header),
+        Paragraph('<b>Fondo</b>', style_header),
+    ]
+
+    # Column widths
+    col_widths = [img_size + 4*mm, 28*mm, 65*mm, 62*mm, 62*mm, 62*mm]
+
+    rows = [header]
     products_sorted = sorted(products, key=lambda p: (p['linea'] or '', p['nombre'] or ''))
 
-    img_size = 38*mm  # square image
-    card_padding = 1.5*mm
+    for i, p in enumerate(products_sorted):
+        # Image
+        img_data = _fetch_image(p.get('imagen'))
+        if img_data:
+            try:
+                img = RLImage(BytesIO(img_data), width=img_size, height=img_size)
+            except Exception:
+                img = Paragraph('—', style_cell)
+        else:
+            img = Paragraph('—', style_cell)
 
-    for brand, group in groupby(products_sorted, key=lambda p: p['linea'] or 'Sin marca'):
-        items = list(group)
-        story.append(Paragraph(brand, style_brand))
-        story.append(Spacer(1, 1*mm))
+        # Brand
+        brand = Paragraph(p['linea'] or '', style_cell_bold)
 
-        # Build rows: 2 cards per row
-        for i in range(0, len(items), 2):
-            row_cards = []
-            for j in range(2):
-                if i + j < len(items):
-                    p = items[i + j]
+        # Name
+        name = Paragraph(p['nombre'] or '', style_cell)
 
-                    # Fetch image
-                    img_data = _fetch_image(p.get('imagen'))
-                    card_parts = []
+        # Aromas
+        notas = p.get('notas', {})
+        salida = Paragraph(', '.join(a.capitalize() for a in notas.get('salida', [])) or '—', style_cell)
+        corazon = Paragraph(', '.join(a.capitalize() for a in notas.get('corazon', [])) or '—', style_cell)
+        fondo = Paragraph(', '.join(a.capitalize() for a in notas.get('fondo', [])) or '—', style_cell)
 
-                    if img_data:
-                        try:
-                            img = RLImage(BytesIO(img_data), width=img_size, height=img_size)
-                            img.hAlign = 'LEFT'
-                        except Exception:
-                            img = None
-                    else:
-                        img = None
+        rows.append([img, brand, name, salida, corazon, fondo])
 
-                    # Build text block
-                    text_parts = [Paragraph(f"<b>{p['nombre']}</b>", style_name)]
-                    if p['precio_retail']:
-                        text_parts.append(Paragraph(
-                            f"${'{:,}'.format(p['precio_retail']).replace(',', '.')}",
-                            style_price))
+    # Build table
+    t = Table(rows, colWidths=col_widths, repeatRows=1)
+    style_cmds = [
+        # Header
+        ('BACKGROUND', (0, 0), (-1, 0), header_bg),
+        ('TEXTCOLOR', (0, 0), (-1, 0), HexColor('#ffffff')),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        # Grid lines
+        ('GRID', (0, 0), (-1, -1), 0.3, border_color),
+        ('LINEBELOW', (0, 0), (-1, 0), 0.6, HexColor('#4f46e5')),
+        # Alignment
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (0, -1), 'CENTER'),  # image centered
+        # Padding
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('LEFTPADDING', (0, 0), (-1, -1), 3),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+    ]
 
-                    # Aromas
-                    notas = p.get('notas', {})
-                    for key, label in [('salida', 'Salida'), ('corazon', 'Corazón'), ('fondo', 'Fondo')]:
-                        if notas.get(key):
-                            aromas_str = ', '.join(a.capitalize() for a in notas[key])
-                            text_parts.append(Paragraph(
-                                f"<b>{label}:</b> {aromas_str}", style_notes))
+    # Alternating row colors (skip header row 0)
+    for i in range(1, len(rows)):
+        bg = row_even if i % 2 == 0 else row_odd
+        style_cmds.append(('BACKGROUND', (0, i), (-1, i), bg))
 
-                    # Arrange image + text side by side
-                    text_col = text_parts
-                    if img:
-                        card_table = Table([[img, text_col]],
-                                          colWidths=[img_size + 2*mm, None])
-                        card_table.setStyle(TableStyle([
-                            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                            ('LEFTPADDING', (0, 0), (0, 0), 0),
-                            ('RIGHTPADDING', (0, 0), (0, 0), card_padding),
-                            ('TOPPADDING', (0, 0), (-1, -1), 0),
-                            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-                        ]))
-                        row_cards.append(card_table)
-                    else:
-                        # No image: just text in a cell
-                        card_table = Table([[text_col]], colWidths=[None])
-                        card_table.setStyle(TableStyle([
-                            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                            ('TOPPADDING', (0, 0), (-1, -1), 0),
-                            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-                        ]))
-                        row_cards.append(card_table)
-                else:
-                    row_cards.append(Paragraph('', styles['Normal']))
-
-            # Create outer table with 2 cards
-            col_w = (doc.width - 6*mm) / 2
-            outer = Table([row_cards], colWidths=[col_w, col_w])
-            outer.setStyle(TableStyle([
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('LEFTPADDING', (0, 0), (0, 0), 0),
-                ('RIGHTPADDING', (0, 0), (0, 0), 3*mm),
-                ('LEFTPADDING', (1, 0), (1, 0), 3*mm),
-                ('RIGHTPADDING', (1, 0), (1, 0), 0),
-                ('TOPPADDING', (0, 0), (-1, -1), 0),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 5*mm),
-            ]))
-            story.append(outer)
-            story.append(Spacer(1, 1*mm))
+    t.setStyle(TableStyle(style_cmds))
+    story.append(t)
 
     story.append(Spacer(1, 4*mm))
     story.append(Paragraph(f'Generado el {datetime.now().strftime("%d/%m/%Y %H:%M")}',
