@@ -676,8 +676,13 @@ def catalogo():
     query = request.args.get('q', '').strip()
     linea = request.args.get('linea', '').strip()
     aroma = request.args.get('aroma', '').strip()
+    try:
+        margen_pct = float(request.args.get('margen', '30'))
+    except ValueError:
+        margen_pct = 30
 
     db = get_db()
+    latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
     # Get all distinct brands from cosmetic_products (via the match table)
     lineas = [r['linea'] for r in _query(db, '''
         SELECT DISTINCT p.linea FROM products p
@@ -698,11 +703,16 @@ def catalogo():
             pass
 
     sql = '''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
-                    cp.precio_retail, cp.imagen, cp.url, cp.aromas
+                    cp.precio_retail, cp.imagen, cp.url, cp.aromas,
+                    pr.precio as precio_mayorista
              FROM products p
-             JOIN cosmetic_products cp ON p.sku = cp.sku'''
+             JOIN cosmetic_products cp ON p.sku = cp.sku
+             LEFT JOIN prices pr ON p.sku = pr.sku'''
     params = []
     conditions = []
+    if latest:
+        conditions.append('(pr.import_date = %s OR pr.import_date IS NULL)')
+        params.append(latest)
     if query:
         conditions.append('(p.nombre LIKE %s OR p.linea LIKE %s)')
         like = f'%{query}%'
@@ -731,7 +741,8 @@ def catalogo():
     db.close()
     return render_template('catalogo.html', products=products, query=query,
                           linea=linea, aroma=aroma, lineas=lineas,
-                          aromas=sorted(all_aromas), total=len(products))
+                          aromas=sorted(all_aromas), total=len(products),
+                          margen_pct=margen_pct)
 
 
 @app.route('/catalogo/pdf')
@@ -740,16 +751,25 @@ def catalogo_pdf():
     if not skus or skus == ['']:
         return 'Seleccioná al menos un producto', 400
 
+    try:
+        margen_pct = float(request.args.get('margen', '30'))
+    except ValueError:
+        margen_pct = 30
+    show_price = request.args.get('precio', '0') == '1'
+
     db = get_db()
+    latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
     placeholders = ','.join(['%s'] * len(skus))
     rows = _query(db, f'''
         SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
-               cp.precio_retail, cp.imagen, cp.url, cp.aromas
+               cp.precio_retail, cp.imagen, cp.url, cp.aromas,
+               pr.precio as precio_mayorista
         FROM products p
         JOIN cosmetic_products cp ON p.sku = cp.sku
+        LEFT JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
         WHERE p.sku IN ({placeholders})
         ORDER BY p.linea, p.nombre
-    ''', skus).fetchall()
+    ''', [latest] + skus).fetchall()
     db.close()
 
     if not rows:
@@ -764,14 +784,14 @@ def catalogo_pdf():
             except (json.JSONDecodeError, TypeError):
                 pass
 
-    pdf_bytes = _generate_catalogo_pdf(rows)
+    pdf_bytes = _generate_catalogo_pdf(rows, margen_pct, show_price)
     resp = make_response(pdf_bytes)
     resp.headers['Content-Type'] = 'application/pdf'
     resp.headers['Content-Disposition'] = 'attachment; filename=catalogo_perfumes.pdf'
     return resp
 
 
-def _generate_catalogo_pdf(products):
+def _generate_catalogo_pdf(products, margen_pct=30, show_price=False):
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import mm
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -803,7 +823,7 @@ def _generate_catalogo_pdf(products):
     row_odd = HexColor('#ffffff')
     border_color = HexColor('#e2e8f0')
 
-    story = [Paragraph('Catálogo de Perfumes — cosmetic.cl', style_title),
+    story = [Paragraph('Catálogo de Perfumes', style_title),
              Paragraph(f'{len(products)} productos', styles['Normal']),
              Spacer(1, 4*mm)]
 
@@ -836,9 +856,14 @@ def _generate_catalogo_pdf(products):
         Paragraph('<b>Corazón</b>', style_header),
         Paragraph('<b>Fondo</b>', style_header),
     ]
+    if show_price:
+        header.append(Paragraph(f'<b>Precio ({margen_pct:.0f}%)</b>', style_header))
 
     # Column widths
-    col_widths = [img_size + 4*mm, 28*mm, 65*mm, 62*mm, 62*mm, 62*mm]
+    aroma_w = 55*mm if show_price else 62*mm
+    col_widths = [img_size + 4*mm, 26*mm, 60*mm, aroma_w, aroma_w, aroma_w]
+    if show_price:
+        col_widths.append(22*mm)
 
     rows = [header]
     products_sorted = sorted(products, key=lambda p: (p['linea'] or '', p['nombre'] or ''))
@@ -866,7 +891,16 @@ def _generate_catalogo_pdf(products):
         corazon = Paragraph(', '.join(a.capitalize() for a in notas.get('corazon', [])) or '—', style_cell)
         fondo = Paragraph(', '.join(a.capitalize() for a in notas.get('fondo', [])) or '—', style_cell)
 
-        rows.append([img, brand, name, salida, corazon, fondo])
+        row = [img, brand, name, salida, corazon, fondo]
+        if show_price:
+            mayorista = p.get('precio_mayorista')
+            if mayorista and mayorista > 0 and margen_pct < 100:
+                ideal = int(mayorista / (1 - margen_pct / 100))
+                precio_str = f"${'{:,}'.format(ideal).replace(',', '.')}"
+            else:
+                precio_str = '—'
+            row.append(Paragraph(precio_str, style_cell_bold))
+        rows.append(row)
 
     # Build table
     t = Table(rows, colWidths=col_widths, repeatRows=1)
