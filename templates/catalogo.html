@@ -106,7 +106,22 @@
 </div>
 {% endif %}
 
-<!-- Spinner Overlay -->
+<!-- Brand selection modal -->
+<div id="brand-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+  <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4 max-h-[80vh] flex flex-col">
+    <h3 class="text-lg font-semibold text-slate-900 mb-1">Seleccionar marcas</h3>
+    <p class="text-xs text-slate-500 mb-4">Elegí qué marcas incluir en el PDF</p>
+    <div class="flex gap-2 mb-3">
+      <button onclick="brandModalCheckAll()" class="px-3 py-1 text-xs font-medium rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors">Todas</button>
+      <button onclick="brandModalCheckNone()" class="px-3 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">Ninguna</button>
+    </div>
+    <div id="brand-list" class="overflow-y-auto flex-1 space-y-1 mb-4"></div>
+    <div class="flex gap-2 justify-end pt-2 border-t border-slate-100">
+      <button onclick="closeBrandModal()" class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">Cancelar</button>
+      <button onclick="confirmBrandSelection()" class="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">Descargar</button>
+    </div>
+  </div>
+</div>
 <div id="pdf-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
   <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
     <div class="relative mx-auto w-16 h-16 mb-4">
@@ -127,54 +142,103 @@ function updateCount(){var n=document.querySelectorAll('.row-check:checked').len
 function checkAll(){document.querySelectorAll('.row-check').forEach(c=>c.checked=true);updateCount()}
 function uncheckAll(){document.querySelectorAll('.row-check').forEach(c=>c.checked=false);updateCount()}
 
+// --- Brand modal ---
 function exportPDF(){
-  var s=[];
-  document.querySelectorAll('.row-check:checked').forEach(function(c){s.push(c.dataset.sku)});
-  if(!s.length){alert('Seleccioná al menos un producto');return}
+  // Collect unique brands from the brand filter dropdown
+  var brandSelect = document.querySelector('select[name="linea"]');
+  var options = brandSelect ? brandSelect.querySelectorAll('option') : [];
+  var list = document.getElementById('brand-list');
+  list.innerHTML = '';
 
+  options.forEach(function(opt){
+    if(!opt.value) return;
+    var label = document.createElement('label');
+    label.className = 'flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 cursor-pointer text-sm';
+    var cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'brand-cb w-3.5 h-3.5 rounded accent-indigo-600';
+    cb.value = opt.value;
+    cb.checked = true;
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(opt.value));
+    list.appendChild(label);
+  });
+
+  document.getElementById('brand-modal').classList.remove('hidden');
+}
+
+function brandModalCheckAll(){
+  document.querySelectorAll('.brand-cb').forEach(function(c){c.checked=true});
+}
+function brandModalCheckNone(){
+  document.querySelectorAll('.brand-cb').forEach(function(c){c.checked=false});
+}
+function closeBrandModal(){
+  document.getElementById('brand-modal').classList.add('hidden');
+}
+
+function confirmBrandSelection(){
+  var selectedBrands = [];
+  document.querySelectorAll('.brand-cb:checked').forEach(function(c){selectedBrands.push(c.value)});
+  if(!selectedBrands.length){alert('Seleccioná al menos una marca');return}
+  closeBrandModal();
+
+  // Filter checked products by selected brands
+  var skus = [];
+  document.querySelectorAll('.row-check:checked').forEach(function(c){
+    // Find the card containing this checkbox
+    var card = c.closest('.bg-white');
+    if(!card) return;
+    // Brand is the first .text-indigo-600 element inside the card
+    var brandEl = card.querySelector('.text-indigo-600');
+    if(!brandEl) return;
+    var brand = brandEl.textContent.trim();
+    if(selectedBrands.indexOf(brand) !== -1){
+      skus.push(c.dataset.sku);
+    }
+  });
+
+  if(!skus.length){alert('No hay productos seleccionados de esas marcas');return}
+  _doExport(skus);
+}
+
+// --- Actual PDF export ---
+function _doExport(skus){
   var overlay = document.getElementById('pdf-overlay');
   var status = document.getElementById('pdf-status');
   var timer = document.getElementById('pdf-timer');
-  var btnTop = document.querySelector('button[onclick="exportPDF()"]');
+  var btnTop = document.querySelector('.flex-wrap button[onclick="exportPDF()"]');
   var btnBottom = document.getElementById('pdf-btn-bottom');
 
-  // Show overlay
   overlay.classList.remove('hidden');
   status.textContent = 'Descargando imágenes y armando el catálogo';
+  status.className = 'text-sm text-slate-500';
   timer.textContent = '';
   _pdfStart = Date.now();
   _pdfTimer = setInterval(function(){
     var elapsed = Math.round((Date.now() - _pdfStart) / 1000);
-    timer.textContent = 'Transcurrido: ' + elapsed + 's — ' + s.length + ' productos';
+    timer.textContent = 'Transcurrido: ' + elapsed + 's — ' + skus.length + ' productos';
   }, 500);
 
-  // Disable buttons
   if(btnTop) btnTop.disabled = true;
   if(btnBottom) btnBottom.disabled = true;
 
   var margen = document.getElementById('margin-pct').value || '30';
   var precio = document.getElementById('include-price').checked ? '1' : '0';
 
-  // Fetch PDF
-  fetch('/catalogo/pdf?skus=' + s.join(',') + '&margen=' + margen + '&precio=' + precio)
+  fetch('/catalogo/pdf?skus=' + skus.join(',') + '&margen=' + margen + '&precio=' + precio)
     .then(function(resp){
       if(!resp.ok) throw new Error('Error ' + resp.status);
       status.textContent = 'Armando archivo...';
       return resp.blob();
     })
     .then(function(blob){
-      var elapsed = Math.round((Date.now() - _pdfStart) / 1000);
       clearInterval(_pdfTimer);
       overlay.classList.add('hidden');
-
-      // Trigger download
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
-      a.href = url;
-      a.download = 'catalogo_perfumes.pdf';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      a.href = url; a.download = 'catalogo_perfumes.pdf';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
     })
     .catch(function(err){
@@ -182,11 +246,10 @@ function exportPDF(){
       status.textContent = 'Error: ' + err.message;
       status.className = 'text-sm text-red-600 mb-2';
       timer.textContent = 'Reintentá con menos productos o verificá la conexión';
-      // Keep overlay visible so user can read error, add close button
       var closeBtn = document.createElement('button');
       closeBtn.textContent = 'Cerrar';
       closeBtn.className = 'mt-3 px-4 py-1.5 bg-slate-200 text-slate-700 text-sm rounded-lg hover:bg-slate-300 transition-colors';
-      closeBtn.onclick = function(){ overlay.classList.add('hidden'); status.className = 'text-sm text-slate-500'; };
+      closeBtn.onclick = function(){ overlay.classList.add('hidden'); };
       overlay.querySelector('.bg-white').appendChild(closeBtn);
     })
     .finally(function(){
