@@ -702,12 +702,9 @@ def catalogo():
                     pr.precio as precio_mayorista
              FROM products p
              JOIN cosmetic_products cp ON p.sku = cp.sku
-             LEFT JOIN prices pr ON p.sku = pr.sku'''
-    params = []
+             LEFT JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s'''
+    params = [latest] if latest else [None]
     conditions = []
-    if latest:
-        conditions.append('(pr.import_date = %s OR pr.import_date IS NULL)')
-        params.append(latest)
     if query:
         conditions.append('(p.nombre LIKE %s OR p.linea LIKE %s)')
         like = f'%{query}%'
