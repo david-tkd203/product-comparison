@@ -11,9 +11,9 @@
       <option value="">Todas las marcas</option>
       {% for l in lineas %}<option value="{{ l }}" {{ 'selected' if linea == l }}>{{ l }}</option>{% endfor %}
     </select>
-    <select name="aroma" class="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-      <option value="">Todos los aromas</option>
-      {% for a in aromas %}<option value="{{ a }}" {{ 'selected' if aroma == a }}>{{ a.capitalize() }}</option>{% endfor %}
+    <select name="familia" class="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <option value="">Todas las familias</option>
+      {% for f in familias %}<option value="{{ f }}" {{ 'selected' if familia == f }}>{{ f }}</option>{% endfor %}
     </select>
     <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">Filtrar</button>
     <a href="/catalogo" class="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors">Limpiar</a>
@@ -66,7 +66,24 @@
     </div>
     <div class="p-3">
       <div class="text-[11px] font-medium text-indigo-600 mb-0.5 uppercase tracking-wide">{{ p['linea'] }}</div>
-      <h3 class="text-sm font-semibold text-slate-900 leading-tight mb-2 line-clamp-2" title="{{ p['nombre'] }}">{{ p['nombre'] }}</h3>
+      <h3 class="text-sm font-semibold text-slate-900 leading-tight mb-1.5 line-clamp-2" title="{{ p['nombre'] }}">{{ p['nombre'] }}</h3>
+
+      <!-- Family badges -->
+      {% if p['familias'] %}
+      <div class="flex flex-wrap gap-1 mb-2">
+        {% for f in p['familias'] %}
+        <span class="text-[9px] px-1.5 py-0.5 rounded-full font-medium
+          {{ 'bg-amber-50 text-amber-700' if f == 'Cítrica' else
+             'bg-pink-50 text-pink-700' if f == 'Floral' else
+             'bg-amber-100 text-amber-800' if f == 'Amaderada' else
+             'bg-purple-50 text-purple-700' if f == 'Oriental' else
+             'bg-green-50 text-green-700' if f == 'Fougère' else
+             'bg-slate-100 text-slate-700' if f == 'Chipre' else
+             'bg-rose-50 text-rose-700' if f == 'Gourmand' else
+             'bg-slate-50 text-slate-500' }}">{{ f }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
       {% if p['notas'] %}
       <div class="space-y-1">
         {% for key, label in [('salida', 'Salida'), ('corazon', 'Corazón'), ('fondo', 'Fondo')] %}

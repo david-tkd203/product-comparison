@@ -370,6 +370,57 @@ def _sync_shopify(db, table, base_url):
     return (added, error)
 
 
+# --- Olfactory family classifier ---
+AROMA_FAMILIES = {
+    'Cítrica': ['limón', 'lima', 'naranja', 'pomelo', 'bergamota', 'mandarina', 'toronja',
+                'cítrico', 'citrus', 'cidra', 'yuzu', 'neroli', 'petitgrain', 'verbena',
+                'tangerina', 'clementina', 'kumquat'],
+    'Floral': ['rosa', 'jazmín', 'violeta', 'lirio', 'flor', 'gardenia', 'magnolia',
+               'peonía', 'peonia', 'azahar', 'geranio', 'ylang', 'azucena', 'fresia',
+               'narciso', 'jacinto', 'mimosa', 'camelia', 'loto', 'orquídea', 'tuberosa',
+               'lavanda', 'madreselva', 'iris', 'clavel', 'crisantemo', 'dalia',
+               'floral', 'azahar', 'neroli', 'caléndula', 'margarita'],
+    'Amaderada': ['cedro', 'sándalo', 'pino', 'pachulí', 'patchouli', 'madera', 'vetiver',
+                  'roble', 'abedul', 'caoba', 'secuoya', 'palo', 'sándal', 'guayaco',
+                  'ébano', 'nogal', 'teca', 'cachemira', 'oud', 'agarwood', 'akigalawood',
+                  'abeto', 'cálamo', 'ciprés'],
+    'Oriental': ['vainilla', 'ámbar', 'incienso', 'mirra', 'benjuí', 'canela', 'clavo',
+                 'nuez moscada', 'cardamomo', 'pimienta', 'almizcle', 'resina', 'opoponax',
+                 'bálsamo', 'tolú', 'estoraque', 'azafrán', 'comino', 'cúrcuma',
+                 'especia', 'especiado', 'ambarado', 'oriental', 'almizcl', 'ambreta',
+                 'anís', 'regaliz', 'inciens', 'tabaco', 'cumarina', 'haba tonka',
+                 'pachul', 'pachuli', 'cachemir'],
+    'Fougère': ['fougère', 'fougere', 'helecho', 'musgo de roble', 'lavanda', 'salvia',
+                'geranio', 'hierba', 'herbal', 'tomillo', 'romero', 'albahaca',
+                'artemisa', 'abrótano', 'ajenjo', 'absenta'],
+    'Chipre': ['chipre', 'chypre', 'musgo', 'cuero', 'gamuz', 'gamuza', 'brea', 'alquitrán',
+               'ahumado', 'phenol', 'castóreo', 'civet', 'algalia', 'coriáceo',
+               'bergamota', 'pachulí', 'labdanum', 'jara', 'musgo de encina'],
+    'Gourmand': ['caramelo', 'chocolate', 'café', 'miel', 'azúcar', 'praliné', 'avellana',
+                 'cacao', 'dulce', 'goloso', 'gourmand', 'almendra', 'coco', 'leche',
+                 'nata', 'crema', 'caramel', 'toffee', 'mazapán', 'turrón', 'chicle',
+                 'algodón de azúcar', 'galleta', 'vainilla', 'ron', 'whisky', 'licor',
+                 'cereza', 'frutilla', 'fresa', 'frambuesa', 'arándano', 'mora',
+                 'manzana', 'pera', 'melocotón', 'durazno', 'ciruela', 'cassis',
+                 'grosella', 'piña', 'coco', 'maracuyá', 'mango', 'higo'],
+}
+
+
+def _classify_family(notas_dict):
+    """Classify a perfume's notes into olfactory families."""
+    families = set()
+    all_notes = []
+    for key in ('salida', 'corazon', 'fondo'):
+        all_notes.extend(notas_dict.get(key, []))
+    all_text = ' '.join(all_notes).lower()
+    for family, keywords in AROMA_FAMILIES.items():
+        for kw in keywords:
+            if kw in all_text:
+                families.add(family)
+                break  # one keyword match is enough per family
+    return sorted(families)
+
+
 def _extract_aromas(db, table='cosmetic_products'):
     """Parse body_html to extract fragrance notes. Works for any retail product table."""
     rows = _query(db, f"SELECT sku, body_html FROM {table} WHERE body_html IS NOT NULL AND body_html != '' AND aromas IS NULL").fetchall()
@@ -670,7 +721,7 @@ def retail_export():
 def catalogo():
     query = request.args.get('q', '').strip()
     linea = request.args.get('linea', '').strip()
-    aroma = request.args.get('aroma', '').strip()
+    familia = request.args.get('familia', '').strip()
     try:
         margen_pct = float(request.args.get('margen', '30'))
     except ValueError:
@@ -678,24 +729,14 @@ def catalogo():
 
     db = get_db()
     latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
-    # Get all distinct brands from cosmetic_products (via the match table)
     lineas = [r['linea'] for r in _query(db, '''
         SELECT DISTINCT p.linea FROM products p
         JOIN cosmetic_products cp ON p.sku = cp.sku
         ORDER BY p.linea
     ''').fetchall()]
 
-    # Get all distinct aroma keywords
-    aroma_rows = _query(db, "SELECT aromas FROM cosmetic_products WHERE aromas IS NOT NULL AND aromas != '{}'").fetchall()
-    all_aromas = set()
-    for r in aroma_rows:
-        try:
-            notas = json.loads(r['aromas'])
-            for key in ('salida', 'corazon', 'fondo'):
-                for a in notas.get(key, []):
-                    all_aromas.add(a)
-        except (json.JSONDecodeError, TypeError):
-            pass
+    # Available families
+    all_familias = sorted(AROMA_FAMILIES.keys())
 
     sql = '''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
                     cp.precio_retail, cp.imagen, cp.url, cp.aromas,
@@ -712,9 +753,14 @@ def catalogo():
     if linea:
         conditions.append('p.linea = %s')
         params.append(linea)
-    if aroma:
-        conditions.append('cp.aromas LIKE %s')
-        params.append(f'%"{aroma.lower()}"%')
+    # Filter by family: search for any keyword from that family in aromas JSON
+    if familia and familia in AROMA_FAMILIES:
+        family_conditions = []
+        for kw in AROMA_FAMILIES[familia]:
+            family_conditions.append('cp.aromas LIKE %s')
+            params.append(f'%"{kw}%')
+        if family_conditions:
+            conditions.append('(' + ' OR '.join(family_conditions) + ')')
     if conditions:
         sql += ' WHERE ' + ' AND '.join(conditions)
     sql += ' GROUP BY p.sku, p.nombre, p.linea, p.genero, p.formato, cp.precio_retail, cp.imagen, cp.url, cp.aromas'
@@ -722,19 +768,21 @@ def catalogo():
 
     products = _query(db, sql, params).fetchall()
 
-    # Parse aromas JSON for each product
     for p in products:
         p['notas'] = {}
         if p['aromas']:
             try:
                 p['notas'] = json.loads(p['aromas'])
+                p['familias'] = _classify_family(p['notas'])
             except (json.JSONDecodeError, TypeError):
-                pass
+                p['familias'] = []
+        else:
+            p['familias'] = []
 
     db.close()
     return render_template('catalogo.html', products=products, query=query,
-                          linea=linea, aroma=aroma, lineas=lineas,
-                          aromas=sorted(all_aromas), total=len(products),
+                          linea=linea, familia=familia, lineas=lineas,
+                          familias=all_familias, total=len(products),
                           margen_pct=margen_pct)
 
 
