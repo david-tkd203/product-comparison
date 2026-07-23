@@ -699,7 +699,7 @@ def catalogo():
 
     sql = '''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
                     cp.precio_retail, cp.imagen, cp.url, cp.aromas,
-                    pr.precio as precio_mayorista
+                    MAX(pr.precio) as precio_mayorista
              FROM products p
              JOIN cosmetic_products cp ON p.sku = cp.sku
              LEFT JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s'''
@@ -717,6 +717,7 @@ def catalogo():
         params.append(f'%"{aroma.lower()}"%')
     if conditions:
         sql += ' WHERE ' + ' AND '.join(conditions)
+    sql += ' GROUP BY p.sku, p.nombre, p.linea, p.genero, p.formato, cp.precio_retail, cp.imagen, cp.url, cp.aromas'
     sql += ' ORDER BY p.linea, p.nombre LIMIT 500'
 
     products = _query(db, sql, params).fetchall()
@@ -755,11 +756,13 @@ def catalogo_pdf():
     rows = _query(db, f'''
         SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
                cp.precio_retail, cp.imagen, cp.url, cp.aromas,
-               pr.precio as precio_mayorista
+               MAX(pr.precio) as precio_mayorista
         FROM products p
         JOIN cosmetic_products cp ON p.sku = cp.sku
         LEFT JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
         WHERE p.sku IN ({placeholders})
+        GROUP BY p.sku, p.nombre, p.linea, p.genero, p.formato,
+                 cp.precio_retail, cp.imagen, cp.url, cp.aromas
         ORDER BY p.linea, p.nombre
     ''', [latest] + skus).fetchall()
     db.close()
