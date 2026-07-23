@@ -192,11 +192,16 @@ function exportByBrand(){
   document.querySelectorAll('.brand-cb:checked').forEach(function(c){brands.push(c.value)});
   if(!brands.length){alert('Seleccioná al menos una marca');return}
   closeBrandModal();
+
+  // If no individual products are checked, grab all visible ones
+  var checked = document.querySelectorAll('.row-check:checked');
+  var source = checked.length ? checked : document.querySelectorAll('.row-check');
+
   var skus = [];
-  document.querySelectorAll('.row-check:checked').forEach(function(c){
+  source.forEach(function(c){
     if(brands.indexOf(c.dataset.brand) !== -1) skus.push(c.dataset.sku);
   });
-  if(!skus.length){alert('No hay productos seleccionados de esas marcas');return}
+  if(!skus.length){alert('No hay productos de esas marcas en los resultados actuales');return}
   _doExport(skus);
 }
 
