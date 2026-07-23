@@ -117,6 +117,7 @@ def init_db():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
     _add_column_if_missing(cur, 'multimarca_products', 'body_html', 'LONGTEXT')
+    _add_column_if_missing(cur, 'multimarca_products', 'aromas', 'TEXT')
     cur.execute('''
         CREATE TABLE IF NOT EXISTS multimarca_matches (
             sku_wholesale VARCHAR(50) PRIMARY KEY,
@@ -330,7 +331,11 @@ def _sync_shopify(db, table, base_url):
     while True:
         url = f'{base_url}/products.json?limit=250&page={page}'
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            req = urllib.request.Request(url, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'es-CL,es;q=0.9',
+            })
             with urllib.request.urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read())
         except urllib.error.HTTPError as e:
@@ -365,15 +370,9 @@ def _sync_shopify(db, table, base_url):
     return (added, error)
 
 
-def _extract_aromas(db):
-    """Parse body_html of cosmetic_products to extract fragrance notes.
-    Handles multiple formats:
-      - "Las Notas de Salida son X; las Notas de Corazón son Y; las Notas de Fondo son Z"
-      - "contiene notas de salida de X; con notas de corazón de Y; con notas de fondo de Z"
-      - "notas de salida: X. notas de corazón: Y. notas de fondo: Z"
-      - "la nota de corazón es X" (singular)
-    """
-    rows = _query(db, "SELECT sku, body_html FROM cosmetic_products WHERE body_html IS NOT NULL AND body_html != '' AND aromas IS NULL").fetchall()
+def _extract_aromas(db, table='cosmetic_products'):
+    """Parse body_html to extract fragrance notes. Works for any retail product table."""
+    rows = _query(db, f"SELECT sku, body_html FROM {table} WHERE body_html IS NOT NULL AND body_html != '' AND aromas IS NULL").fetchall()
     extracted = 0
     for r in rows:
         html = r['body_html']
@@ -382,8 +381,6 @@ def _extract_aromas(db):
 
         notas = {'salida': [], 'corazon': [], 'fondo': []}
 
-        # Step 1: find the section that starts with perfume notes
-        # Look for various "notas de salida" introductions
         block_start = re.search(
             r'(?:las?\s+)?(?:contiene\s+)?(?:con\s+)?notas?\s+de\s+salida',
             text, re.IGNORECASE)
@@ -392,22 +389,18 @@ def _extract_aromas(db):
 
         block = text[block_start.start():]
 
-        # Step 2: extract each note layer from the block
-        # salida: from "salida" keyword to the start of "corazón" section
         m_salida = re.search(
             r'notas?\s+de\s+salida\s*(?:son|de|:)?\s*(.+?)(?=\s*(?:las?\s+)?(?:la\s+)?(?:con\s+)?(?:y\s+)?notas?\s+d[ee]l?\s+coraz|\s*(?:las?\s+)?(?:con\s+)?(?:y\s+)?notas?\s+de\s+fondo|\s*$)',
             block, re.IGNORECASE)
         if m_salida:
             notas['salida'] = _parse_notas_list(m_salida.group(1))
 
-        # corazon: from "corazón" keyword to the start of "fondo" section
         m_corazon = re.search(
             r'notas?\s+d[ee]l?\s+coraz[oó]n\s*(?:son|de|:|es)?\s*(.+?)(?=\s*(?:las?\s+)?(?:con\s+)?(?:y\s+)?notas?\s+de\s+fondo|\s*$)',
             block, re.IGNORECASE)
         if m_corazon:
             notas['corazon'] = _parse_notas_list(m_corazon.group(1))
 
-        # fondo: from "fondo" keyword to end of notes section
         m_fondo = re.search(
             r'notas?\s+de\s+fondo\s*(?:son|de|:)?\s*(.+?)(?=\s*(?:<|\.\s*[A-ZÁÉÍÓÚ]|\s*\n\s*\n|\s*$))',
             block, re.IGNORECASE)
@@ -415,7 +408,7 @@ def _extract_aromas(db):
             notas['fondo'] = _parse_notas_list(m_fondo.group(1))
 
         if any(notas.values()):
-            _query(db, 'UPDATE cosmetic_products SET aromas = %s WHERE sku = %s',
+            _query(db, f'UPDATE {table} SET aromas = %s WHERE sku = %s',
                    [json.dumps(notas, ensure_ascii=False), r['sku']])
             extracted += 1
 
@@ -470,15 +463,17 @@ def sync_multimarca():
     db = get_db()
     added, error = _sync_shopify(db, 'multimarca_products', 'https://multimarcasperfumes.cl')
     matched = 0
+    extracted = 0
     if not error:
         matched = _match_by_name(db, 'multimarca_matches', 'multimarca_products', 'sku_mm')
+        extracted = _extract_aromas(db, 'multimarca_products')
     db.close()
     if error:
         flash(f'Error sync multimarcasperfumes.cl: {error}', 'error')
     elif added == 0:
         flash('No se encontraron productos en multimarcasperfumes.cl', 'warning')
     else:
-        flash(f'Sincronizados {added} productos, {matched} matcheados de multimarcasperfumes.cl', 'success')
+        flash(f'Sincronizados {added} productos, {matched} matcheados, {extracted} aromas de multimarcasperfumes.cl', 'success')
     return redirect(url_for('retail'))
 
 
