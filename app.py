@@ -24,7 +24,6 @@ DB_CONFIG = {
 }
 
 HEADER_ROW = 6
-DATA_START = 7
 
 
 def get_db():
@@ -129,27 +128,73 @@ def init_db():
     db.close()
 
 
-def parse_excel(filepath, filename):
+def parse_excel(filepath):
     df = pd.read_excel(filepath, engine='openpyxl', header=None)
-    headers = df.iloc[HEADER_ROW].tolist()
-    data = df.iloc[DATA_START:].copy()
+
+    # Detect the header row — look for the row that has the most expected keywords
+    TARGET_KEYWORDS = ['sku', 'nombre', 'precio', 'linea']
+    best_row = HEADER_ROW
+    best_score = 0
+    for r in range(min(12, len(df))):
+        row_vals = [str(v).strip().lower().replace('\ufffd', '') for v in df.iloc[r].tolist() if isinstance(v, str) or not pd.isna(v)]
+        row_text = ' '.join(row_vals)
+        score = sum(1 for kw in TARGET_KEYWORDS if kw in row_text)
+        if score > best_score:
+            best_score = score
+            best_row = r
+
+    headers = [str(h).strip() for h in df.iloc[best_row].tolist()]
+    data = df.iloc[best_row + 1:].copy()
     data.columns = headers
-    col_map = {
-        'Linea': 'linea', 'Nombre': 'nombre', 'SKU': 'sku',
-        'EAN': 'ean', 'GÉNERO': 'genero', 'G�NERO': 'genero',
-        'Formato': 'formato', 'FORMATO': 'formato',
-        'Precio': 'precio', 'PRECIO': 'precio'
+
+    # Normalize: NFC normalize, lowercase, strip accents, replace encoding artifacts
+    import unicodedata
+    def _norm(s):
+        s = str(s).strip()
+        s = unicodedata.normalize('NFKD', s)          # decompose accents
+        s = s.lower()
+        s = ''.join(c for c in s if not unicodedata.combining(c))  # strip combining marks
+        s = s.replace('\ufffd', '')                    # strip replacement chars
+        return re.sub(r'[^a-z0-9 ]', '', s)            # keep only alphanumeric
+    data.columns = [_norm(c) for c in data.columns]
+
+    # Robust column mapping: match normalized names to target columns
+    COLUMN_ALIASES = {
+        'linea':   ['linea', 'marca', 'brand', 'marcas', 'line'],
+        'nombre':  ['nombre', 'name', 'producto', 'product', 'descripcion', 'description', 'desc', 'titulo', 'title', 'item'],
+        'sku':     ['sku', 'codigo', 'code', 'cod', 'id', 'referencia', 'ref', 'reference'],
+        'ean':     ['ean', 'upc', 'barcode', 'codigo de barras', 'codbarra', 'cod barras', 'gtin', 'codigobarras'],
+        'genero':  ['genero', 'gender', 'sexo', 'gener', 'gnero'],
+        'formato': ['formato', 'format', 'presentacion', 'tamano', 'tamanio', 'tam', 'tipo', 'talla', 'size', 'volumen', 'ml'],
+        'precio':  ['precio', 'price', 'precio mayorista', 'costo', 'cost', 'valor', 'precio unitario',
+                     'p mayorista', 'precio_mayorista', 'p unitario', 'p neto', 'neto', 'importe',
+                     'total', 'valorneto', 'precioneto'],
     }
-    data = data.rename(columns=col_map)
+
+    rename_map = {}
+    found = set()
+    for target, aliases in COLUMN_ALIASES.items():
+        for col in data.columns:
+            if col in aliases or any(a in col for a in aliases):
+                rename_map[col] = target
+                found.add(target)
+                break
+
+    missing = set(COLUMN_ALIASES.keys()) - found
+    if missing:
+        raise ValueError(
+            f'No se encontraron las columnas: {", ".join(missing)}. '
+            f'Columnas detectadas: {", ".join(data.columns.tolist())}. '
+            f'El archivo debe tener columnas como: SKU, Nombre, Precio, Linea.'
+        )
+
+    data = data.rename(columns=rename_map)
     data = data[['linea', 'nombre', 'sku', 'ean', 'genero', 'formato', 'precio']]
     data = data.dropna(subset=['sku'])
     data['sku'] = data['sku'].astype(str).str.strip()
     data['precio'] = pd.to_numeric(data['precio'], errors='coerce').fillna(0).astype(int)
-    data['nombre'] = data['nombre'].astype(str).str.strip()
-    data['linea'] = data['linea'].astype(str).str.strip()
-    data['ean'] = data['ean'].astype(str).str.strip()
-    data['genero'] = data['genero'].astype(str).str.strip()
-    data['formato'] = data['formato'].astype(str).str.strip()
+    for col in ['nombre', 'linea', 'ean', 'genero', 'formato']:
+        data[col] = data[col].astype(str).str.strip()
     return data
 
 
@@ -234,7 +279,7 @@ def upload():
         file.save(filepath)
 
         try:
-            data = parse_excel(filepath, file.filename)
+            data = parse_excel(filepath)
         except Exception as e:
             flash(f'Error al leer el Excel: {e}', 'error')
             return render_template('upload.html')
@@ -838,7 +883,7 @@ def _generate_catalogo_pdf(products, margen_pct=30, show_price=False):
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import mm
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.colors import HexColor, Color
+    from reportlab.lib.colors import HexColor
     from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
                                      Table, TableStyle, Image as RLImage)
     import urllib.request as req
