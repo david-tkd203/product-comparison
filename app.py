@@ -848,14 +848,14 @@ def catalogo_pdf():
     placeholders = ','.join(['%s'] * len(skus))
     rows = _query(db, f'''
         SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
-               cp.imagen, cp.url, cp.aromas,
+               cp.imagen, cp.url, cp.aromas, cp.precio_retail,
                MAX(pr.precio) as precio_mayorista
         FROM products p
         JOIN cosmetic_products cp ON p.sku = cp.sku
         LEFT JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
         WHERE p.sku IN ({placeholders})
         GROUP BY p.sku, p.nombre, p.linea, p.genero, p.formato,
-                 cp.imagen, cp.url, cp.aromas
+                 cp.imagen, cp.url, cp.aromas, cp.precio_retail
         ORDER BY p.linea, p.nombre
     ''', [latest] + skus).fetchall()
     db.close()
@@ -967,10 +967,9 @@ def _generate_catalogo_pdf(products, margen_pct=30):
         corazon = Paragraph(', '.join(a.capitalize() for a in notas.get('corazon', [])) or '—', style_cell)
         fondo = Paragraph(', '.join(a.capitalize() for a in notas.get('fondo', [])) or '—', style_cell)
 
-        mayorista = p.get('precio_mayorista')
-        if mayorista and mayorista > 0 and margen_pct < 100:
-            ideal = int(mayorista / (1 - margen_pct / 100))
-            precio_str = f"${'{:,}'.format(ideal).replace(',', '.')}"
+        retail = p.get('precio_retail')
+        if retail and retail > 0:
+            precio_str = f"${'{:,}'.format(retail).replace(',', '.')}"
         else:
             precio_str = '—'
         precio = Paragraph(precio_str, style_cell_bold)
