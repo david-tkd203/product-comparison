@@ -5,6 +5,7 @@ import urllib.request
 import urllib.error
 from datetime import datetime
 from difflib import SequenceMatcher
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
 
 import mysql.connector
@@ -841,21 +842,20 @@ def catalogo_pdf():
         margen_pct = float(request.args.get('margen', '30'))
     except ValueError:
         margen_pct = 30
-    show_price = request.args.get('precio', '0') == '1'
 
     db = get_db()
     latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
     placeholders = ','.join(['%s'] * len(skus))
     rows = _query(db, f'''
         SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
-               cp.precio_retail, cp.imagen, cp.url, cp.aromas,
+               cp.imagen, cp.url, cp.aromas,
                MAX(pr.precio) as precio_mayorista
         FROM products p
         JOIN cosmetic_products cp ON p.sku = cp.sku
         LEFT JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
         WHERE p.sku IN ({placeholders})
         GROUP BY p.sku, p.nombre, p.linea, p.genero, p.formato,
-                 cp.precio_retail, cp.imagen, cp.url, cp.aromas
+                 cp.imagen, cp.url, cp.aromas
         ORDER BY p.linea, p.nombre
     ''', [latest] + skus).fetchall()
     db.close()
@@ -863,7 +863,6 @@ def catalogo_pdf():
     if not rows:
         return 'No se encontraron productos con esos SKU', 404
 
-    # Parse aromas
     for p in rows:
         p['notas'] = {}
         if p['aromas']:
@@ -872,14 +871,14 @@ def catalogo_pdf():
             except (json.JSONDecodeError, TypeError):
                 pass
 
-    pdf_bytes = _generate_catalogo_pdf(rows, margen_pct, show_price)
+    pdf_bytes = _generate_catalogo_pdf(rows, margen_pct)
     resp = make_response(pdf_bytes)
     resp.headers['Content-Type'] = 'application/pdf'
     resp.headers['Content-Disposition'] = 'attachment; filename=catalogo_perfumes.pdf'
     return resp
 
 
-def _generate_catalogo_pdf(products, margen_pct=30, show_price=False):
+def _generate_catalogo_pdf(products, margen_pct=30):
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import mm
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -889,7 +888,6 @@ def _generate_catalogo_pdf(products, margen_pct=30, show_price=False):
     import urllib.request as req
 
     buf = BytesIO()
-    # Landscape for wide table
     page_w, page_h = landscape(A4)
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4),
                            leftMargin=10*mm, rightMargin=10*mm,
@@ -905,7 +903,6 @@ def _generate_catalogo_pdf(products, margen_pct=30, show_price=False):
     style_header = ParagraphStyle('CatHeader', parent=styles['Normal'],
                                   fontSize=8, leading=10, textColor=HexColor('#ffffff'))
 
-    # Colors
     header_bg = HexColor('#6366f1')
     row_even = HexColor('#f8fafc')
     row_odd = HexColor('#ffffff')
@@ -915,27 +912,33 @@ def _generate_catalogo_pdf(products, margen_pct=30, show_price=False):
              Paragraph(f'{len(products)} productos', styles['Normal']),
              Spacer(1, 4*mm)]
 
-    # Image cache
+    # ponytail: parallel pre-fetch — secuencial era O(n × timeout)
+    img_size = 18*mm
+    products_sorted = sorted(products, key=lambda p: (p['linea'] or '', p['nombre'] or ''))
+
+    # --- parallel image fetch ---
+    unique_urls = {p.get('imagen') for p in products_sorted if p.get('imagen')}
     _image_cache = {}
 
-    def _fetch_image(url):
-        if not url:
-            return None
-        if url in _image_cache:
-            return _image_cache[url]
+    def _fetch_one(url):
         try:
             r = req.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with req.urlopen(r, timeout=10) as resp:
-                img_data = resp.read()
-                _image_cache[url] = img_data
-                return img_data
+            with req.urlopen(r, timeout=3) as resp:
+                return url, resp.read()
         except Exception:
-            _image_cache[url] = None
-            return None
+            return url, None
 
-    img_size = 18*mm  # small thumbnail
+    with ThreadPoolExecutor(max_workers=20) as ex:
+        futures = {ex.submit(_fetch_one, url): url for url in unique_urls}
+        for f in as_completed(futures):
+            url, data = f.result()
+            _image_cache[url] = data
+    # --- end parallel fetch ---
 
-    # Build table data
+    # 7 columns: Imagen, Marca, Nombre, Salida, Corazón, Fondo, Precio
+    aroma_w = 50*mm
+    col_widths = [img_size + 4*mm, 24*mm, 52*mm, aroma_w, aroma_w, aroma_w, 22*mm]
+
     header = [
         Paragraph('<b>Imagen</b>', style_header),
         Paragraph('<b>Marca</b>', style_header),
@@ -943,22 +946,12 @@ def _generate_catalogo_pdf(products, margen_pct=30, show_price=False):
         Paragraph('<b>Salida</b>', style_header),
         Paragraph('<b>Corazón</b>', style_header),
         Paragraph('<b>Fondo</b>', style_header),
+        Paragraph('<b>Precio</b>', style_header),
     ]
-    if show_price:
-        header.append(Paragraph(f'<b>Precio ({margen_pct:.0f}%)</b>', style_header))
-
-    # Column widths
-    aroma_w = 55*mm if show_price else 62*mm
-    col_widths = [img_size + 4*mm, 26*mm, 60*mm, aroma_w, aroma_w, aroma_w]
-    if show_price:
-        col_widths.append(22*mm)
 
     rows = [header]
-    products_sorted = sorted(products, key=lambda p: (p['linea'] or '', p['nombre'] or ''))
-
     for i, p in enumerate(products_sorted):
-        # Image
-        img_data = _fetch_image(p.get('imagen'))
+        img_data = _image_cache.get(p.get('imagen'))
         if img_data:
             try:
                 img = RLImage(BytesIO(img_data), width=img_size, height=img_size)
@@ -967,27 +960,22 @@ def _generate_catalogo_pdf(products, margen_pct=30, show_price=False):
         else:
             img = Paragraph('—', style_cell)
 
-        # Brand
         brand = Paragraph(p['linea'] or '', style_cell_bold)
-
-        # Name
         name = Paragraph(p['nombre'] or '', style_cell)
-
-        # Aromas
         notas = p.get('notas', {})
         salida = Paragraph(', '.join(a.capitalize() for a in notas.get('salida', [])) or '—', style_cell)
         corazon = Paragraph(', '.join(a.capitalize() for a in notas.get('corazon', [])) or '—', style_cell)
         fondo = Paragraph(', '.join(a.capitalize() for a in notas.get('fondo', [])) or '—', style_cell)
 
-        row = [img, brand, name, salida, corazon, fondo]
-        if show_price:
-            mayorista = p.get('precio_mayorista')
-            if mayorista and mayorista > 0 and margen_pct < 100:
-                ideal = int(mayorista / (1 - margen_pct / 100))
-                precio_str = f"${'{:,}'.format(ideal).replace(',', '.')}"
-            else:
-                precio_str = '—'
-            row.append(Paragraph(precio_str, style_cell_bold))
+        mayorista = p.get('precio_mayorista')
+        if mayorista and mayorista > 0 and margen_pct < 100:
+            ideal = int(mayorista / (1 - margen_pct / 100))
+            precio_str = f"${'{:,}'.format(ideal).replace(',', '.')}"
+        else:
+            precio_str = '—'
+        precio = Paragraph(precio_str, style_cell_bold)
+
+        row = [img, brand, name, salida, corazon, fondo, precio]
         rows.append(row)
 
     # Build table
@@ -1153,7 +1141,6 @@ def export_xlsx():
     ''', [latest] + skus).fetchall()
     db.close()
 
-    from io import BytesIO
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 

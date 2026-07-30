@@ -15,6 +15,8 @@ App at `http://localhost:5000`. MySQL takes ~10s to become healthy on first star
 
 Single-file Flask app (`app.py`, ~1200 lines). No blueprints, no ORM. Raw SQL via `mysql.connector`. Jinja2 + Tailwind CDN templates in `templates/`.
 
+Gunicorn: 1 worker, 4 threads, 300s timeout. The long timeout is intentional — Shopify syncs can take minutes. Don't lower it.
+
 ### Important: no test suite exists. Verify changes manually via the browser or `curl`.
 
 ## Database
@@ -57,5 +59,7 @@ Sync scrapes 250 products/page. The fuzzy matcher (`_match_by_name`) uses token-
 | `/retail` | Side-by-side wholesale vs 3 retailers, margin calc |
 | `/catalogo` | Retail catalog with olfactory family filter |
 | `/estudio` | Market study dashboard (brand stats, opportunities) |
+| `/retail/export` | Export retail comparison to XLSX |
+| `/catalogo/pdf` | Export catalog page as PDF |
 | `/export/xlsx` | Export selected SKUs to formatted XLSX |
 | `/sync-cosmetic`, `/sync-silk`, `/sync-multimarca` | Trigger Shopify sync |
