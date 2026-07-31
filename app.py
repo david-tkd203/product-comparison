@@ -125,6 +125,32 @@ def init_db():
             confidence FLOAT
         ) ENGINE=InnoDB
     ''')
+
+    # ponytail: dedup + UNIQUE on (sku, import_date). Without it, re-uploads
+    # create duplicate price rows and every JOIN multiplies rows Nx.
+    try:
+        cur.execute('''SELECT COUNT(*) FROM (
+            SELECT sku, import_date, COUNT(*) as cnt FROM prices
+            GROUP BY sku, import_date HAVING cnt > 1
+        ) dupes''')
+        dupes = cur.fetchone()[0]
+    except Exception:
+        dupes = 0
+
+    if dupes > 0:
+        cur.execute('''CREATE TABLE prices_dedup LIKE prices''')
+        cur.execute('''ALTER TABLE prices_dedup ADD UNIQUE INDEX unique_sku_date (sku, import_date)''')
+        cur.execute('''INSERT IGNORE INTO prices_dedup (sku, import_date, precio)
+                       SELECT sku, import_date, MAX(precio) FROM prices
+                       GROUP BY sku, import_date''')
+        cur.execute('''RENAME TABLE prices TO prices_old, prices_dedup TO prices''')
+        cur.execute('''DROP TABLE prices_old''')
+    else:
+        try:
+            cur.execute('''ALTER TABLE prices ADD UNIQUE INDEX unique_sku_date (sku, import_date)''')
+        except Exception:
+            pass  # index already exists
+
     cur.close()
     db.close()
 
@@ -300,7 +326,7 @@ def upload():
                               ON DUPLICATE KEY UPDATE nombre=VALUES(nombre), linea=VALUES(linea),
                               ean=VALUES(ean), genero=VALUES(genero), formato=VALUES(formato)''',
                        [row['sku'], row['nombre'], row['linea'], row['ean'], row['genero'], row['formato']])
-                _query(db, 'INSERT INTO prices (sku, import_date, precio) VALUES (%s, %s, %s)',
+                _query(db, 'INSERT INTO prices (sku, import_date, precio) VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE precio = VALUES(precio)',
                        [row['sku'], import_date, row['precio']])
                 count += 1
 
