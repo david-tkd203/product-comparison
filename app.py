@@ -138,13 +138,22 @@ def init_db():
         dupes = 0
 
     if dupes > 0:
-        cur.execute('''CREATE TABLE prices_dedup LIKE prices''')
-        cur.execute('''ALTER TABLE prices_dedup ADD UNIQUE INDEX unique_sku_date (sku, import_date)''')
-        cur.execute('''INSERT IGNORE INTO prices_dedup (sku, import_date, precio)
-                       SELECT sku, import_date, MAX(precio) FROM prices
-                       GROUP BY sku, import_date''')
-        cur.execute('''RENAME TABLE prices TO prices_old, prices_dedup TO prices''')
-        cur.execute('''DROP TABLE prices_old''')
+        autocommit = db.autocommit
+        db.autocommit = False
+        try:
+            cur.execute('''CREATE TABLE prices_dedup LIKE prices''')
+            cur.execute('''ALTER TABLE prices_dedup ADD UNIQUE INDEX unique_sku_date (sku, import_date)''')
+            cur.execute('''INSERT IGNORE INTO prices_dedup (sku, import_date, precio)
+                           SELECT sku, import_date, MAX(precio) FROM prices
+                           GROUP BY sku, import_date''')
+            cur.execute('''RENAME TABLE prices TO prices_old, prices_dedup TO prices''')
+            cur.execute('''DROP TABLE prices_old''')
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.autocommit = autocommit
     else:
         try:
             cur.execute('''ALTER TABLE prices ADD UNIQUE INDEX unique_sku_date (sku, import_date)''')
@@ -551,11 +560,13 @@ def _parse_notas_list(raw):
 @app.route('/sync-cosmetic')
 def sync_cosmetic():
     db = get_db()
-    added, error = _sync_shopify(db, 'cosmetic_products', 'https://cosmetic.cl')
-    extracted = 0
-    if not error:
-        extracted = _extract_aromas(db)
-    db.close()
+    try:
+        added, error = _sync_shopify(db, 'cosmetic_products', 'https://cosmetic.cl')
+        extracted = 0
+        if not error:
+            extracted = _extract_aromas(db, 'multimarca_products')
+    finally:
+        db.close()
     if error:
         flash(f'Error sync cosmetic.cl: {error}', 'error')
     elif added == 0:
@@ -568,10 +579,12 @@ def sync_cosmetic():
 @app.route('/sync-silk')
 def sync_silk():
     db = get_db()
-    added, error = _sync_shopify(db, 'silk_products', 'https://silkperfumes.cl')
-    if not error:
-        _match_silk_by_name(db)
-    db.close()
+    try:
+        added, error = _sync_shopify(db, 'silk_products', 'https://silkperfumes.cl')
+        if not error:
+            _match_silk_by_name(db)
+    finally:
+        db.close()
     if error:
         flash(f'Error sync silkperfumes.cl: {error}', 'error')
     elif added == 0:
@@ -584,13 +597,15 @@ def sync_silk():
 @app.route('/sync-multimarca')
 def sync_multimarca():
     db = get_db()
-    added, error = _sync_shopify(db, 'multimarca_products', 'https://multimarcasperfumes.cl')
-    matched = 0
-    extracted = 0
-    if not error:
-        matched = _match_by_name(db, 'multimarca_matches', 'multimarca_products', 'sku_mm')
-        extracted = _extract_aromas(db, 'multimarca_products')
-    db.close()
+    try:
+        added, error = _sync_shopify(db, 'multimarca_products', 'https://multimarcasperfumes.cl')
+        matched = 0
+        extracted = 0
+        if not error:
+            matched = _match_by_name(db, 'multimarca_matches', 'multimarca_products', 'sku_mm')
+            extracted = _extract_aromas(db, 'multimarca_products')
+    finally:
+        db.close()
     if error:
         flash(f'Error sync multimarcasperfumes.cl: {error}', 'error')
     elif added == 0:
@@ -606,66 +621,76 @@ def _normalize(n):
 
 def _match_by_name(db, match_table, source_table, sku_col):
     """Generic fuzzy name matching between wholesale products and a retail source."""
-    _query(db, f'DELETE FROM {match_table}')
-    wholesale = _query(db, 'SELECT sku, nombre, linea FROM products').fetchall()
-    source = _query(db, f'SELECT sku, nombre FROM {source_table}').fetchall()
+    autocommit = db.autocommit
+    db.autocommit = False
+    try:
+        _query(db, f'DELETE FROM {match_table}')
+        wholesale = _query(db, 'SELECT sku, nombre, linea FROM products').fetchall()
+        source = _query(db, f'SELECT sku, nombre FROM {source_table}').fetchall()
 
-    source_by_token = {}
-    for s in source:
-        sn = _normalize(s['nombre'])
-        tokens = sn.split()
-        if tokens:
-            k1 = tokens[0]
-            source_by_token.setdefault(k1, []).append((sn, s['sku']))
-            if len(tokens) >= 2:
-                k2 = f'{tokens[0]} {tokens[1]}'
-                source_by_token.setdefault(k2, []).append((sn, s['sku']))
+        source_by_token = {}
+        for s in source:
+            sn = _normalize(s['nombre'])
+            tokens = sn.split()
+            if tokens:
+                k1 = tokens[0]
+                source_by_token.setdefault(k1, []).append((sn, s['sku']))
+                if len(tokens) >= 2:
+                    k2 = f'{tokens[0]} {tokens[1]}'
+                    source_by_token.setdefault(k2, []).append((sn, s['sku']))
 
-    matched = 0
-    for w in wholesale:
-        w_norm = _normalize(w['nombre'])
-        w_brand = _normalize(w['linea'])
-        tokens = w_norm.split()
-        w_key1 = tokens[0] if tokens else ''
-        w_key2 = f'{tokens[0]} {tokens[1]}' if len(tokens) >= 2 else w_key1
+        matched = 0
+        for w in wholesale:
+            w_norm = _normalize(w['nombre'])
+            w_brand = _normalize(w['linea'])
+            tokens = w_norm.split()
+            w_key1 = tokens[0] if tokens else ''
+            w_key2 = f'{tokens[0]} {tokens[1]}' if len(tokens) >= 2 else w_key1
 
-        seen = set()
-        candidates = []
-        for key in [w_brand, w_key1, w_key2]:
-            for sn, ssku in source_by_token.get(key, []):
-                if ssku not in seen:
-                    seen.add(ssku)
-                    candidates.append((sn, ssku))
+            seen = set()
+            candidates = []
+            for key in [w_brand, w_key1, w_key2]:
+                for sn, ssku in source_by_token.get(key, []):
+                    if ssku not in seen:
+                        seen.add(ssku)
+                        candidates.append((sn, ssku))
 
-        if w_brand and len(w_brand) > 3:
-            for s in source:
-                if s['sku'] in seen:
-                    continue
-                sn = _normalize(s['nombre'])
-                if w_brand in sn:
-                    seen.add(s['sku'])
-                    candidates.append((sn, s['sku']))
-                    if len(candidates) > 200:
-                        break
+            if w_brand and len(w_brand) > 3:
+                for s in source:
+                    if s['sku'] in seen:
+                        continue
+                    sn = _normalize(s['nombre'])
+                    if w_brand in sn:
+                        seen.add(s['sku'])
+                        candidates.append((sn, s['sku']))
+                        if len(candidates) > 200:
+                            break
 
-        if not candidates:
-            continue
-
-        best_score = 0
-        best_sku = None
-        for sn, ssku in candidates:
-            if abs(len(w_norm) - len(sn)) > len(w_norm) * 0.6:
+            if not candidates:
                 continue
-            score = SequenceMatcher(None, w_norm, sn).ratio()
-            if score > best_score:
-                best_score = score
-                best_sku = ssku
 
-        if best_score >= 0.70:
-            _query(db, f'INSERT INTO {match_table} (sku_wholesale, {sku_col}, confidence) VALUES (%s, %s, %s)',
-                   [w['sku'], best_sku, round(best_score, 3)])
-            matched += 1
-    return matched
+            best_score = 0
+            best_sku = None
+            for sn, ssku in candidates:
+                if abs(len(w_norm) - len(sn)) > len(w_norm) * 0.6:
+                    continue
+                score = SequenceMatcher(None, w_norm, sn).ratio()
+                if score > best_score:
+                    best_score = score
+                    best_sku = ssku
+
+            if best_score >= 0.70:
+                _query(db, f'INSERT INTO {match_table} (sku_wholesale, {sku_col}, confidence) VALUES (%s, %s, %s)',
+                       [w['sku'], best_sku, round(best_score, 3)])
+                matched += 1
+
+        db.commit()
+        return matched
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.autocommit = autocommit
 
 
 def _match_silk_by_name(db):
