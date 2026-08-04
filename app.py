@@ -288,15 +288,7 @@ def require_login(f):
 
 @app.context_processor
 def inject_tunnel_url():
-    url = ''
-    path = os.environ.get('TUNNEL_URL_FILE', '')
-    if path:
-        try:
-            with open(path) as f:
-                url = f.read().strip()
-        except (FileNotFoundError, OSError):
-            pass
-    return dict(tunnel_url=url)
+    return dict(tunnel_url='')
 
 
 def _query(db, sql, params=None):
