@@ -45,6 +45,12 @@
 
       <!-- Right side -->
       <div class="flex items-center gap-2">
+        {% if session.get('username') %}
+        <div class="hidden md:flex items-center gap-2">
+          <span class="text-xs text-slate-500">{{ session['username'] }}</span>
+          <a href="/logout" class="text-xs text-slate-500 hover:text-red-600 font-medium">Salir</a>
+        </div>
+        {% endif %}
         {% if tunnel_url %}
         <input type="text" readonly value="{{ tunnel_url }}" class="hidden lg:block text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 w-60 cursor-pointer shrink-0" onclick="this.select();navigator.clipboard.writeText(this.value)" title="Click para copiar">
         {% endif %}
@@ -67,6 +73,12 @@
         <a href="/catalogo/config" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/catalogo/config' else 'text-slate-600 hover:bg-slate-50' }}">Link</a>
         <a href="/pedidos" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/pedidos' else 'text-slate-600 hover:bg-slate-50' }}">Pedidos</a>
         <a href="/estudio" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/estudio' else 'text-slate-600 hover:bg-slate-50' }}">Estudio</a>
+        {% if session.get('username') %}
+        <div class="border-t border-slate-100 pt-2 mt-1 px-3">
+          <p class="text-xs text-slate-500 mb-1">{{ session['username'] }}</p>
+          <a href="/logout" class="block text-sm text-red-600 hover:bg-red-50 rounded-md px-3 py-2 font-medium">Cerrar sesión</a>
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>

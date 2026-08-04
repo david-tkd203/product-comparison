@@ -7,10 +7,12 @@ import urllib.error
 from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import wraps
 from io import BytesIO
 
 import mysql.connector
-from flask import Flask, render_template, request, redirect, url_for, flash, make_response, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, make_response, jsonify, session
+from werkzeug.security import generate_password_hash, check_password_hash
 import pandas as pd
 
 app = Flask(__name__)
@@ -185,11 +187,36 @@ def init_db():
         except Exception:
             pass  # index already exists
 
+    # Users table for admin login
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ''')
+
+    # Create default admin if no users exist
+    admin_pass = os.environ.get('ADMIN_PASSWORD', 'admin123')
+    cur.execute('SELECT COUNT(*) as cnt FROM users')
+    if cur.fetchone()[0] == 0:
+        cur.execute('INSERT INTO users (username, password_hash) VALUES (%s, %s)',
+                    ['admin', generate_password_hash(admin_pass)])
+
     cur.close()
     db.close()
 
 
-def parse_excel(filepath):
+def require_login(f):
+    """Decorator to protect admin routes."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Iniciá sesión para continuar', 'error')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated
     df = pd.read_excel(filepath, engine='openpyxl', header=None)
 
     # Detect the header row — look for the row that has the most expected keywords
@@ -279,6 +306,7 @@ def _query(db, sql, params=None):
 
 
 @app.route('/')
+@require_login
 def index():
     query = request.args.get('q', '').strip()
     linea = request.args.get('linea', '').strip()
@@ -319,6 +347,7 @@ def index():
 
 
 @app.route('/upload', methods=['GET', 'POST'])
+@require_login
 def upload():
     if request.method == 'POST':
         file = request.files.get('file')
@@ -376,6 +405,7 @@ def upload():
 
 
 @app.route('/compare')
+@require_login
 def compare():
     db = get_db()
     imports = _query(db, 'SELECT import_date, filename, product_count FROM imports ORDER BY import_date DESC').fetchall()
@@ -583,6 +613,7 @@ def _parse_notas_list(raw):
 
 
 @app.route('/sync-cosmetic')
+@require_login
 def sync_cosmetic():
     db = get_db()
     try:
@@ -602,6 +633,7 @@ def sync_cosmetic():
 
 
 @app.route('/sync-silk')
+@require_login
 def sync_silk():
     db = get_db()
     try:
@@ -620,6 +652,7 @@ def sync_silk():
 
 
 @app.route('/sync-multimarca')
+@require_login
 def sync_multimarca():
     db = get_db()
     try:
@@ -723,6 +756,7 @@ def _match_silk_by_name(db):
 
 
 @app.route('/retail')
+@require_login
 def retail():
     query = request.args.get('q', '').strip()
     linea = request.args.get('linea', '').strip()
@@ -794,6 +828,7 @@ def retail():
 
 
 @app.route('/retail/export')
+@require_login
 def retail_export():
     skus = request.args.get('skus', '').split(',')
     if not skus or skus == ['']:
@@ -840,6 +875,7 @@ def retail_export():
 
 
 @app.route('/catalogo')
+@require_login
 def catalogo():
     query = request.args.get('q', '').strip()
     linea = request.args.get('linea', '').strip()
@@ -1090,6 +1126,7 @@ def _generate_catalogo_pdf(products, margen_pct=30):
 
 
 @app.route('/estudio')
+@require_login
 def estudio():
     db = get_db()
     latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
@@ -1197,6 +1234,7 @@ def estudio():
 
 
 @app.route('/export/xlsx')
+@require_login
 def export_xlsx():
     """Export selected products as XLSX."""
     skus = request.args.get('skus', '').split(',')
@@ -1270,6 +1308,7 @@ def export_xlsx():
 
 
 @app.route('/catalogo/config', methods=['GET', 'POST'])
+@require_login
 def catalogo_config():
     if request.method == 'POST':
         margen_str = request.form.get('margen', '30').strip()
@@ -1400,6 +1439,7 @@ def recibir_pedido(token):
 
 
 @app.route('/pedidos')
+@require_login
 def pedidos():
     db = get_db()
     status_filter = request.args.get('status', '').strip()
@@ -1427,6 +1467,7 @@ def pedidos():
 
 
 @app.route('/pedidos/<int:order_id>/status', methods=['POST'])
+@require_login
 def pedido_status(order_id):
     nuevo_status = request.form.get('status', '').strip()
     if nuevo_status not in ('nuevo', 'procesando', 'completado', 'cancelado'):
@@ -1437,6 +1478,31 @@ def pedido_status(order_id):
     db.close()
     flash('Estado actualizado', 'success')
     return redirect(url_for('pedidos'))
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        db = get_db()
+        user = _query(db, 'SELECT * FROM users WHERE username = %s', [username]).fetchone()
+        db.close()
+        if user and check_password_hash(user['password_hash'], password):
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            flash(f'Bienvenido, {user["username"]}', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Usuario o contraseña incorrectos', 'error')
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Sesión cerrada', 'success')
+    return redirect(url_for('login'))
 
 
 if __name__ == '__main__':
