@@ -19,10 +19,10 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'cambiar-en-produccion')
 
 DB_CONFIG = {
-    'host': os.environ.get('MYSQL_HOST', 'localhost'),
-    'user': os.environ.get('MYSQL_USER', 'perfumes'),
-    'password': os.environ.get('MYSQL_PASSWORD', 'perfumes'),
-    'database': os.environ.get('MYSQL_DATABASE', 'perfumes'),
+    'host': os.environ.get('MYSQL_HOST', 'db'),
+    'user': 'perfumes',
+    'password': 'perfumes',
+    'database': 'perfumes',
     'charset': 'utf8mb4',
     'autocommit': True,
 }

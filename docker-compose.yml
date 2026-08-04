@@ -10,12 +10,12 @@ services:
       - tunnel_data:/app/tunnel
     environment:
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-cambiar-en-produccion}
-      - MYSQL_HOST=${MYSQL_HOST:-db}
-      - MYSQL_USER=${MYSQL_USER:-perfumes}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-perfumes}
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-perfumes}
+      - MYSQL_HOST=db
+      - MYSQL_USER=perfumes
+      - MYSQL_PASSWORD=perfumes
+      - MYSQL_DATABASE=perfumes
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
-      - TUNNEL_URL_FILE=${TUNNEL_URL_FILE:-/app/tunnel/url.txt}
+      - TUNNEL_URL_FILE=/app/tunnel/url.txt
     restart: always
     depends_on:
       db:
@@ -38,16 +38,16 @@ services:
   db:
     image: mysql:8.0
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpass}
-      - MYSQL_USER=${MYSQL_USER:-perfumes}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-perfumes}
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-perfumes}
+      - MYSQL_ROOT_PASSWORD=rootpass
+      - MYSQL_USER=perfumes
+      - MYSQL_PASSWORD=perfumes
+      - MYSQL_DATABASE=perfumes
     volumes:
       - mysqldata:/var/lib/mysql
       - ./backups:/backups
     restart: always
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpass}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
       interval: 10s
       timeout: 5s
       retries: 5
