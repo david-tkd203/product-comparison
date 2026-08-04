@@ -1,48 +1,85 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     volumes:
-      - ./uploads:/app/uploads
-      - ./tunnel_data:/app/tunnel
+      - uploads:/app/uploads
+      - tunnel_data:/app/tunnel
     environment:
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-cambiar-en-produccion}
-      - MYSQL_HOST=db
-      - MYSQL_USER=perfumes
-      - MYSQL_PASSWORD=perfumes
-      - MYSQL_DATABASE=perfumes
-      - TUNNEL_URL_FILE=/app/tunnel/url.txt
-    restart: unless-stopped
+      - MYSQL_HOST=${MYSQL_HOST:-db}
+      - MYSQL_USER=${MYSQL_USER:-perfumes}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-perfumes}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-perfumes}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - TUNNEL_URL_FILE=${TUNNEL_URL_FILE:-/app/tunnel/url.txt}
+    restart: always
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
   db:
     image: mysql:8.0
     environment:
-      - MYSQL_ROOT_PASSWORD=rootpass
-      - MYSQL_USER=perfumes
-      - MYSQL_PASSWORD=perfumes
-      - MYSQL_DATABASE=perfumes
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpass}
+      - MYSQL_USER=${MYSQL_USER:-perfumes}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-perfumes}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-perfumes}
     volumes:
       - mysqldata:/var/lib/mysql
-    restart: unless-stopped
+      - ./backups:/backups
+    restart: always
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpass}"]
+      interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   tunnel:
     image: debian:bookworm-slim
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     volumes:
-      - ./tunnel_data:/tmp/tunnel
+      - tunnel_data:/tmp/tunnel
       - ./tunnel-entrypoint.sh:/entrypoint.sh:ro
     depends_on:
       - web
-    restart: unless-stopped
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
 
 volumes:
   mysqldata:
+    driver: local
+  uploads:
+    driver: local
+  tunnel_data:
+    driver: local

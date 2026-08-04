@@ -2,7 +2,7 @@
 
 Flask + MySQL app for wholesale vs retail perfume price comparison. Docker Compose stack: `web`, `db` (MySQL 8), `tunnel` (Cloudflare).
 
-## Run
+## Run (local development)
 
 ```bash
 docker compose up --build -d       # all services
@@ -10,10 +10,6 @@ docker compose up -d --no-deps web # web only after code changes
 ```
 
 App at `http://localhost:5000`. MySQL takes ~10s to become healthy on first start.
-
-## Architecture
-
-Single-file Flask app (`app.py`, ~1400 lines). No blueprints, no ORM. Raw SQL via `mysql.connector`. Jinja2 + Tailwind CDN templates in `templates/`.
 
 ## Production Deploy
 
@@ -27,6 +23,7 @@ nano .env.production.local
 
 **Cambiar obligatorio:**
 - `FLASK_SECRET_KEY` — generar nueva: `python3 -c "import secrets; print(secrets.token_hex(32))"`
+- `ADMIN_PASSWORD` — contraseña fuerte para el panel
 - `MYSQL_PASSWORD` — contraseña fuerte para la DB
 - `MYSQL_ROOT_PASSWORD` — contraseña fuerte para root
 
@@ -38,21 +35,16 @@ nano .env.production.local
 
 El script hace backup automático de la DB antes de deployear.
 
-### 3. Reverse proxy (recomendado)
+### 3. Dokploy
 
-El contenedor `web` expone `127.0.0.1:5000` (solo localhost). En producción usá **Nginx** o **Caddy** como reverse proxy con HTTPS:
+El `docker-compose.yml` principal ya tiene todo configurado para producción (healthchecks, límites de recursos, volumes nombrados). En Dokploy:
 
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name tu-dominio.com;
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
+| Campo | Valor |
+|-------|-------|
+| Service Name | `web` |
+| Host | `siyash.cl` (o `www.siyash.cl`) |
+| Container Port | `5000` |
+| HTTPS | ✅ Activado |
 
 ### 4. Cloudflare Tunnel (opcional)
 

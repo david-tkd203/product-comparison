@@ -7,7 +7,7 @@
 set -e
 
 PROJECT_NAME="perfumeria"
-COMPOSE_FILE="docker-compose.prod.yml"
+COMPOSE_FILE="docker-compose.yml"
 ENV_FILE=".env.production"
 BACKUP_DIR="./backups"
 
