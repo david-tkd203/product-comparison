@@ -2,7 +2,7 @@
 <html lang="es" class="h-full">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Perfumería — Lista de Precios</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','system-ui','sans-serif']}}}}</script>
@@ -17,14 +17,22 @@
   input[type="checkbox"] { accent-color: #6366f1; width:16px; height:16px; cursor:pointer; }
   .scrollbar-none { -ms-overflow-style:none; scrollbar-width:none; }
   .scrollbar-none::-webkit-scrollbar { display:none; }
+  /* Mobile menu animation */
+  #mobile-menu { transition: max-height 0.3s ease, opacity 0.3s ease; }
+  #mobile-menu.hidden { max-height:0; opacity:0; overflow:hidden; }
+  #mobile-menu:not(.hidden) { max-height:400px; opacity:1; }
 </style>
 </head>
 <body class="h-full bg-slate-50 text-slate-800 antialiased">
+
 <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
   <div class="max-w-7xl mx-auto px-3 sm:px-6">
-    <div class="flex items-center justify-between h-14 gap-2">
+    <div class="flex items-center justify-between h-14">
+      <!-- Logo -->
       <span class="text-base sm:text-lg font-bold text-slate-900 tracking-tight shrink-0">Perfumería</span>
-      <div class="flex items-center gap-0.5 overflow-x-auto scrollbar-none">
+
+      <!-- Desktop nav -->
+      <div class="hidden md:flex items-center gap-0.5">
         <a href="/" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Precios</a>
         <a href="/upload" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/upload' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Subir</a>
         <a href="/compare" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/compare' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comparar</a>
@@ -34,12 +42,36 @@
         <a href="/pedidos" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/pedidos' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Pedidos</a>
         <a href="/estudio" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/estudio' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Estudio</a>
       </div>
-      {% if tunnel_url %}
-      <input type="text" readonly value="{{ tunnel_url }}" class="hidden lg:block text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 w-60 cursor-pointer shrink-0" onclick="this.select();navigator.clipboard.writeText(this.value)" title="Click para copiar">
-      {% endif %}
+
+      <!-- Right side -->
+      <div class="flex items-center gap-2">
+        {% if tunnel_url %}
+        <input type="text" readonly value="{{ tunnel_url }}" class="hidden lg:block text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 w-60 cursor-pointer shrink-0" onclick="this.select();navigator.clipboard.writeText(this.value)" title="Click para copiar">
+        {% endif %}
+        <!-- Mobile hamburger -->
+        <button id="menu-btn" class="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100" onclick="toggleMenu()">
+          <svg id="menu-icon-open" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <svg id="menu-icon-close" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile menu -->
+    <div id="mobile-menu" class="hidden md:hidden border-t border-slate-100 pb-3">
+      <div class="flex flex-col gap-1 pt-2">
+        <a href="/" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/' else 'text-slate-600 hover:bg-slate-50' }}">Precios</a>
+        <a href="/upload" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/upload' else 'text-slate-600 hover:bg-slate-50' }}">Subir</a>
+        <a href="/compare" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/compare' else 'text-slate-600 hover:bg-slate-50' }}">Comparar</a>
+        <a href="/retail" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/retail' else 'text-slate-600 hover:bg-slate-50' }}">Comparativa</a>
+        <a href="/catalogo" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/catalogo' else 'text-slate-600 hover:bg-slate-50' }}">Catálogo</a>
+        <a href="/catalogo/config" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/catalogo/config' else 'text-slate-600 hover:bg-slate-50' }}">Link</a>
+        <a href="/pedidos" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/pedidos' else 'text-slate-600 hover:bg-slate-50' }}">Pedidos</a>
+        <a href="/estudio" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/estudio' else 'text-slate-600 hover:bg-slate-50' }}">Estudio</a>
+      </div>
     </div>
   </div>
 </nav>
+
 <main class="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
@@ -48,5 +80,30 @@
 {% endwith %}
 {% block content %}{% endblock %}
 </main>
+
+<script>
+function toggleMenu() {
+  var menu = document.getElementById('mobile-menu');
+  var openIcon = document.getElementById('menu-icon-open');
+  var closeIcon = document.getElementById('menu-icon-close');
+  if (menu.classList.contains('hidden')) {
+    menu.classList.remove('hidden');
+    openIcon.classList.add('hidden');
+    closeIcon.classList.remove('hidden');
+  } else {
+    menu.classList.add('hidden');
+    openIcon.classList.remove('hidden');
+    closeIcon.classList.add('hidden');
+  }
+}
+// Close menu on resize to desktop
+window.addEventListener('resize', function() {
+  if (window.innerWidth >= 768) {
+    document.getElementById('mobile-menu').classList.add('hidden');
+    document.getElementById('menu-icon-open').classList.remove('hidden');
+    document.getElementById('menu-icon-close').classList.add('hidden');
+  }
+});
+</script>
 </body>
 </html>

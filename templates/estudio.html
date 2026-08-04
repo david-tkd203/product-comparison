@@ -1,35 +1,35 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 class="text-2xl font-bold text-slate-900 mb-6">Estudio de Mercado</h1>
+<h1 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4 sm:mb-6">Estudio de Mercado</h1>
 
 <!-- Stats cards -->
-<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-    <div class="text-3xl font-bold text-slate-900">{{ "{:,}".format(total_wholesale).replace(',', '.') }}</div>
-    <div class="text-sm text-slate-500 mt-1">Prod. mayorista</div>
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5">
+    <div class="text-2xl sm:text-3xl font-bold text-slate-900">{{ "{:,}".format(total_wholesale).replace(',', '.') }}</div>
+    <div class="text-xs sm:text-sm text-slate-500 mt-1">Prod. mayorista</div>
   </div>
-  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-    <div class="text-3xl font-bold text-blue-600">{{ "{:,}".format(total_cosmetic).replace(',', '.') }}</div>
-    <div class="text-sm text-slate-500 mt-1">cosmetic.cl</div>
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5">
+    <div class="text-2xl sm:text-3xl font-bold text-blue-600">{{ "{:,}".format(total_cosmetic).replace(',', '.') }}</div>
+    <div class="text-xs sm:text-sm text-slate-500 mt-1">cosmetic.cl</div>
   </div>
-  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-    <div class="text-3xl font-bold text-purple-600">{{ "{:,}".format(total_silk).replace(',', '.') }}</div>
-    <div class="text-sm text-slate-500 mt-1">silkperfumes.cl</div>
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5">
+    <div class="text-2xl sm:text-3xl font-bold text-purple-600">{{ "{:,}".format(total_silk).replace(',', '.') }}</div>
+    <div class="text-xs sm:text-sm text-slate-500 mt-1">silkperfumes.cl</div>
   </div>
-  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-    <div class="text-3xl font-bold text-amber-600">{{ "{:,}".format(total_mm).replace(',', '.') }}</div>
-    <div class="text-sm text-slate-500 mt-1">multimarca</div>
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5">
+    <div class="text-2xl sm:text-3xl font-bold text-amber-600">{{ "{:,}".format(total_mm).replace(',', '.') }}</div>
+    <div class="text-xs sm:text-sm text-slate-500 mt-1">multimarca</div>
   </div>
-  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-    <div class="text-3xl font-bold text-emerald-600">{{ avg_gap['avg_margin']|default(0, true) }}%</div>
-    <div class="text-sm text-slate-500 mt-1">Margen prom.</div>
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5 col-span-2 sm:col-span-1">
+    <div class="text-2xl sm:text-3xl font-bold text-emerald-600">{{ avg_gap['avg_margin']|default(0, true) }}%</div>
+    <div class="text-xs sm:text-sm text-slate-500 mt-1">Margen prom.</div>
   </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
   <!-- SKU Matching -->
-  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-    <h2 class="text-lg font-semibold text-slate-900 mb-4">Coincidencia de Productos</h2>
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+    <h2 class="text-base sm:text-lg font-semibold text-slate-900 mb-4">Coincidencia de Productos</h2>
     <div class="space-y-4">
       <div>
         <div class="flex justify-between text-sm mb-1"><span class="text-slate-600">cosmetic.cl (SKU directo)</span><span class="font-medium text-blue-600">{{ match_rate_cosmetic }}%</span></div>
@@ -57,27 +57,27 @@
   </div>
 
   <!-- Price gap -->
-  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-    <h2 class="text-lg font-semibold text-slate-900 mb-4">Brecha de Precios (mayorista vs retail)</h2>
-    <div class="grid grid-cols-2 gap-4">
-      <div class="bg-blue-50 rounded-lg p-4 text-center">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+    <h2 class="text-base sm:text-lg font-semibold text-slate-900 mb-4">Brecha de Precios (mayorista vs retail)</h2>
+    <div class="grid grid-cols-2 gap-3 sm:gap-4">
+      <div class="bg-blue-50 rounded-lg p-3 sm:p-4 text-center">
         <div class="text-xs text-blue-600 font-medium mb-1">cosmetic.cl</div>
         {% if avg_gap['avg_diff'] is not none %}
-        <div class="text-2xl font-bold text-slate-900">${{ "{:,}".format(avg_gap['avg_diff']|default(0, true)|int).replace(',', '.') }}</div>
+        <div class="text-xl sm:text-2xl font-bold text-slate-900">${{ "{:,}".format(avg_gap['avg_diff']|default(0, true)|int).replace(',', '.') }}</div>
         <div class="text-xs text-slate-500 mt-0.5">Dif. promedio</div>
-        <div class="text-lg font-bold text-emerald-600 mt-1">{{ avg_gap['avg_margin']|default(0, true) }}%</div>
+        <div class="text-base sm:text-lg font-bold text-emerald-600 mt-1">{{ avg_gap['avg_margin']|default(0, true) }}%</div>
         <div class="text-xs text-emerald-600">Margen</div>
         {% else %}
         <div class="text-sm text-slate-400 mt-4">Sin datos</div>
         <div class="text-xs text-slate-400 mt-1">Sincronizá cosmetic.cl primero</div>
         {% endif %}
       </div>
-      <div class="bg-amber-50 rounded-lg p-4 text-center">
+      <div class="bg-amber-50 rounded-lg p-3 sm:p-4 text-center">
         <div class="text-xs text-amber-600 font-medium mb-1">multimarca</div>
         {% if avg_gap_mm['avg_diff'] is not none %}
-        <div class="text-2xl font-bold text-slate-900">${{ "{:,}".format(avg_gap_mm['avg_diff']).replace(',', '.') }}</div>
+        <div class="text-xl sm:text-2xl font-bold text-slate-900">${{ "{:,}".format(avg_gap_mm['avg_diff']|default(0, true)|int).replace(',', '.') }}</div>
         <div class="text-xs text-slate-500 mt-0.5">Dif. promedio</div>
-        <div class="text-lg font-bold text-emerald-600 mt-1">{{ avg_gap_mm['avg_margin'] }}%</div>
+        <div class="text-base sm:text-lg font-bold text-emerald-600 mt-1">{{ avg_gap_mm['avg_margin']|default(0, true) }}%</div>
         <div class="text-xs text-emerald-600">Margen</div>
         {% else %}
         <div class="text-sm text-slate-400 mt-4">Sin datos</div>
@@ -90,20 +90,20 @@
 </div>
 
 <!-- Brand performance - cosmetic -->
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-  <div class="px-6 py-4 border-b border-slate-200">
-    <h2 class="text-lg font-semibold text-slate-900">Rendimiento por Marca — cosmetic.cl</h2>
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6 sm:mb-8">
+  <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200">
+    <h2 class="text-base sm:text-lg font-semibold text-slate-900">Rendimiento por Marca — cosmetic.cl</h2>
     <p class="text-xs text-slate-500 mt-1">Marcas con 3+ productos — margen promedio</p>
   </div>
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm">
+  <div class="overflow-x-auto -mx-px">
+    <table class="w-full text-sm min-w-[500px]">
       <thead>
         <tr class="border-b border-slate-200 bg-slate-50">
           <th class="text-left px-4 py-3 font-semibold text-slate-600">Marca</th>
-          <th class="text-right px-4 py-3 font-semibold text-slate-600">Productos</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Prod.</th>
           <th class="text-right px-4 py-3 font-semibold text-slate-600">Costo prom.</th>
           <th class="text-right px-4 py-3 font-semibold text-slate-600">Retail prom.</th>
-          <th class="text-right px-4 py-3 font-semibold text-slate-600">Margen prom.</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Margen</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100">
@@ -122,21 +122,21 @@
 </div>
 
 <!-- Brand performance - multimarca -->
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-  <div class="px-6 py-4 border-b border-slate-200">
-    <h2 class="text-lg font-semibold text-slate-900">Rendimiento por Marca — multimarca</h2>
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6 sm:mb-8">
+  <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200">
+    <h2 class="text-base sm:text-lg font-semibold text-slate-900">Rendimiento por Marca — multimarca</h2>
     <p class="text-xs text-slate-500 mt-1">Marcas con 3+ productos — margen promedio</p>
   </div>
   {% if brand_stats_mm %}
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm">
+  <div class="overflow-x-auto -mx-px">
+    <table class="w-full text-sm min-w-[500px]">
       <thead>
         <tr class="border-b border-slate-200 bg-slate-50">
           <th class="text-left px-4 py-3 font-semibold text-slate-600">Marca</th>
-          <th class="text-right px-4 py-3 font-semibold text-slate-600">Productos</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Prod.</th>
           <th class="text-right px-4 py-3 font-semibold text-slate-600">Costo prom.</th>
           <th class="text-right px-4 py-3 font-semibold text-slate-600">Retail prom.</th>
-          <th class="text-right px-4 py-3 font-semibold text-slate-600">Margen prom.</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Margen</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100">
@@ -158,13 +158,13 @@
 </div>
 
 <!-- Top opportunities - cosmetic -->
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-  <div class="px-6 py-4 border-b border-slate-200">
-    <h2 class="text-lg font-semibold text-slate-900">Mayores Oportunidades — cosmetic.cl</h2>
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6 sm:mb-8">
+  <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200">
+    <h2 class="text-base sm:text-lg font-semibold text-slate-900">Mayores Oportunidades — cosmetic.cl</h2>
     <p class="text-xs text-slate-500 mt-1">Productos con mejor margen</p>
   </div>
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm">
+  <div class="overflow-x-auto -mx-px">
+    <table class="w-full text-sm min-w-[500px]">
       <thead>
         <tr class="border-b border-slate-200 bg-slate-50">
           <th class="w-14 px-2 py-3"></th>
@@ -182,7 +182,7 @@
             {% if o['imagen'] %}<img src="{{ o['imagen'] }}" class="w-10 h-10 rounded-lg object-cover border border-slate-200" loading="lazy">{% endif %}
           </td>
           <td class="px-3 py-2.5 text-slate-700 whitespace-nowrap">{{ o['linea'] }}</td>
-          <td class="px-3 py-2.5 text-slate-900 max-w-[250px] truncate" title="{{ o['nombre'] }}">{{ o['nombre'] }}</td>
+          <td class="px-3 py-2.5 text-slate-900 max-w-[200px] sm:max-w-[250px] truncate" title="{{ o['nombre'] }}">{{ o['nombre'] }}</td>
           <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['costo']|default(0, true)|int).replace(',', '.') }}</td>
           <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['precio_retail']|default(0, true)|int).replace(',', '.') }}</td>
           <td class="px-3 py-2.5 text-right font-bold tabular-nums {{ 'text-emerald-600' if (o['margen']|default(0, true)|float) > 50 else 'text-indigo-600' }}">{{ o['margen']|default(0, true) }}%</td>
@@ -194,14 +194,14 @@
 </div>
 
 <!-- Top opportunities - multimarca -->
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-  <div class="px-6 py-4 border-b border-slate-200">
-    <h2 class="text-lg font-semibold text-slate-900">Mayores Oportunidades — multimarca</h2>
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6 sm:mb-8">
+  <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200">
+    <h2 class="text-base sm:text-lg font-semibold text-slate-900">Mayores Oportunidades — multimarca</h2>
     <p class="text-xs text-slate-500 mt-1">Productos con mejor margen</p>
   </div>
   {% if opportunities_mm %}
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm">
+  <div class="overflow-x-auto -mx-px">
+    <table class="w-full text-sm min-w-[500px]">
       <thead>
         <tr class="border-b border-slate-200 bg-slate-50">
           <th class="w-14 px-2 py-3"></th>
@@ -219,7 +219,7 @@
             {% if o['imagen'] %}<img src="{{ o['imagen'] }}" class="w-10 h-10 rounded-lg object-cover border border-slate-200" loading="lazy">{% endif %}
           </td>
           <td class="px-3 py-2.5 text-slate-700 whitespace-nowrap">{{ o['linea'] }}</td>
-          <td class="px-3 py-2.5 text-slate-900 max-w-[250px] truncate" title="{{ o['nombre'] }}">{{ o['nombre'] }}</td>
+          <td class="px-3 py-2.5 text-slate-900 max-w-[200px] sm:max-w-[250px] truncate" title="{{ o['nombre'] }}">{{ o['nombre'] }}</td>
           <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['costo']|default(0, true)|int).replace(',', '.') }}</td>
           <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['precio_retail']|default(0, true)|int).replace(',', '.') }}</td>
           <td class="px-3 py-2.5 text-right font-bold tabular-nums {{ 'text-emerald-600' if (o['margen']|default(0, true)|float) > 50 else 'text-indigo-600' }}">{{ o['margen']|default(0, true) }}%</td>
@@ -235,12 +235,12 @@
 
 <!-- Top wholesale cost -->
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-  <div class="px-6 py-4 border-b border-slate-200">
-    <h2 class="text-lg font-semibold text-slate-900">Mayor Inversión</h2>
+  <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200">
+    <h2 class="text-base sm:text-lg font-semibold text-slate-900">Mayor Inversión</h2>
     <p class="text-xs text-slate-500 mt-1">Productos con mayor costo mayorista</p>
   </div>
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm">
+  <div class="overflow-x-auto -mx-px">
+    <table class="w-full text-sm min-w-[400px]">
       <thead>
         <tr class="border-b border-slate-200 bg-slate-50">
           <th class="w-14 px-2 py-3"></th>
@@ -256,7 +256,7 @@
             {% if t['imagen'] %}<img src="{{ t['imagen'] }}" class="w-10 h-10 rounded-lg object-cover border border-slate-200" loading="lazy">{% endif %}
           </td>
           <td class="px-3 py-2.5 text-slate-700 whitespace-nowrap">{{ t['linea'] }}</td>
-          <td class="px-3 py-2.5 text-slate-900 max-w-[250px] truncate" title="{{ t['nombre'] }}">{{ t['nombre'] }}</td>
+          <td class="px-3 py-2.5 text-slate-900 max-w-[200px] sm:max-w-[250px] truncate" title="{{ t['nombre'] }}">{{ t['nombre'] }}</td>
           <td class="px-3 py-2.5 text-right font-bold text-slate-900 tabular-nums">${{ "{:,}".format(t['precio']).replace(',', '.') }}</td>
         </tr>
         {% endfor %}

@@ -1,52 +1,52 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 class="text-2xl font-bold text-slate-900 mb-6">Comparar Meses</h1>
+<h1 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4 sm:mb-6">Comparar Meses</h1>
 
-<form method="get" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
-  <div class="flex flex-wrap gap-3 items-end">
-    <div>
+<form method="get" class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 sm:p-4 mb-4 sm:mb-6">
+  <div class="flex flex-wrap gap-2 sm:gap-3 items-end">
+    <div class="w-full sm:w-auto">
       <label class="block text-xs font-medium text-slate-500 mb-1">Mes anterior</label>
-      <select name="a" class="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <select name="a" class="w-full sm:w-auto px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
         <option value="">--</option>
         {% for imp in imports %}<option value="{{ imp['import_date'] }}" {{ 'selected' if a_date == imp['import_date'] }}>{{ imp['import_date'] }} ({{ imp['product_count'] }})</option>{% endfor %}
       </select>
     </div>
-    <div>
+    <div class="w-full sm:w-auto">
       <label class="block text-xs font-medium text-slate-500 mb-1">Mes nuevo</label>
-      <select name="b" class="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <select name="b" class="w-full sm:w-auto px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
         <option value="">--</option>
         {% for imp in imports %}<option value="{{ imp['import_date'] }}" {{ 'selected' if b_date == imp['import_date'] }}>{{ imp['import_date'] }} ({{ imp['product_count'] }})</option>{% endfor %}
       </select>
     </div>
-    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">Comparar</button>
+    <button type="submit" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">Comparar</button>
   </div>
 </form>
 
 {% if summary %}
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
-  <h3 class="font-semibold text-slate-900 mb-3">{{ summary['a_date'] }} → {{ summary['b_date'] }}</h3>
-  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-center">
-    <div class="bg-slate-50 rounded-lg p-3"><div class="text-2xl font-bold text-slate-900">{{ summary['total'] }}</div><div class="text-xs text-slate-500 mt-1">Comparados</div></div>
-    <div class="bg-red-50 rounded-lg p-3"><div class="text-2xl font-bold text-red-600">{{ summary['subieron'] }}</div><div class="text-xs text-red-500 mt-1">Subieron</div></div>
-    <div class="bg-emerald-50 rounded-lg p-3"><div class="text-2xl font-bold text-emerald-600">{{ summary['bajaron'] }}</div><div class="text-xs text-emerald-500 mt-1">Bajaron</div></div>
-    <div class="bg-slate-50 rounded-lg p-3"><div class="text-2xl font-bold text-slate-600">{{ summary['iguales'] }}</div><div class="text-xs text-slate-500 mt-1">Sin cambio</div></div>
-    <div class="bg-indigo-50 rounded-lg p-3"><div class="text-2xl font-bold text-indigo-600">{{ summary['nuevos'] }}</div><div class="text-xs text-indigo-500 mt-1">Nuevos</div></div>
-    <div class="bg-purple-50 rounded-lg p-3"><div class="text-2xl font-bold text-purple-600">{{ summary['bajas'] }}</div><div class="text-xs text-purple-500 mt-1">De baja</div></div>
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5 mb-4 sm:mb-6">
+  <h3 class="font-semibold text-slate-900 mb-3 text-sm sm:text-base">{{ summary['a_date'] }} → {{ summary['b_date'] }}</h3>
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 text-center">
+    <div class="bg-slate-50 rounded-lg p-3"><div class="text-xl sm:text-2xl font-bold text-slate-900">{{ summary['total'] }}</div><div class="text-xs text-slate-500 mt-1">Comparados</div></div>
+    <div class="bg-red-50 rounded-lg p-3"><div class="text-xl sm:text-2xl font-bold text-red-600">{{ summary['subieron'] }}</div><div class="text-xs text-red-500 mt-1">Subieron</div></div>
+    <div class="bg-emerald-50 rounded-lg p-3"><div class="text-xl sm:text-2xl font-bold text-emerald-600">{{ summary['bajaron'] }}</div><div class="text-xs text-emerald-500 mt-1">Bajaron</div></div>
+    <div class="bg-slate-50 rounded-lg p-3"><div class="text-xl sm:text-2xl font-bold text-slate-600">{{ summary['iguales'] }}</div><div class="text-xs text-slate-500 mt-1">Sin cambio</div></div>
+    <div class="bg-indigo-50 rounded-lg p-3"><div class="text-xl sm:text-2xl font-bold text-indigo-600">{{ summary['nuevos'] }}</div><div class="text-xs text-indigo-500 mt-1">Nuevos</div></div>
+    <div class="bg-purple-50 rounded-lg p-3"><div class="text-xl sm:text-2xl font-bold text-purple-600">{{ summary['bajas'] }}</div><div class="text-xs text-purple-500 mt-1">De baja</div></div>
   </div>
 </div>
 {% endif %}
 
 {% if diffs %}
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm">
+  <div class="overflow-x-auto -mx-px">
+    <table class="w-full text-sm min-w-[600px]">
       <thead>
         <tr class="border-b border-slate-200 bg-slate-50">
           <th class="text-left px-4 py-3 font-semibold text-slate-600">Marca</th>
           <th class="text-left px-4 py-3 font-semibold text-slate-600">Nombre</th>
-          <th class="text-left px-4 py-3 font-semibold text-slate-600">SKU</th>
-          <th class="text-right px-4 py-3 font-semibold text-slate-600">Precio {{ summary['a_date'] }}</th>
-          <th class="text-right px-4 py-3 font-semibold text-slate-600">Precio {{ summary['b_date'] }}</th>
+          <th class="text-left px-4 py-3 font-semibold text-slate-600 hidden sm:table-cell">SKU</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Antes</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">Ahora</th>
           <th class="text-right px-4 py-3 font-semibold text-slate-600">Dif.</th>
           <th class="text-right px-4 py-3 font-semibold text-slate-600">%</th>
         </tr>
@@ -54,16 +54,16 @@
       <tbody class="divide-y divide-slate-100">
         {% for d in diffs %}
         <tr>
-          <td class="px-4 py-2.5 text-slate-700">{{ d['linea'] }}</td>
-          <td class="px-4 py-2.5 text-slate-900 max-w-xs truncate" title="{{ d['nombre'] }}">{{ d['nombre'] }}</td>
-          <td class="px-4 py-2.5 text-slate-500 font-mono text-xs">{{ d['sku'] }}</td>
+          <td class="px-4 py-2.5 text-slate-700 whitespace-nowrap">{{ d['linea'] }}</td>
+          <td class="px-4 py-2.5 text-slate-900 max-w-[200px] truncate" title="{{ d['nombre'] }}">{{ d['nombre'] }}</td>
+          <td class="px-4 py-2.5 text-slate-500 font-mono text-xs hidden sm:table-cell">{{ d['sku'] }}</td>
           <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(d['precio_a']).replace(',', '.') }}</td>
           <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(d['precio_b']).replace(',', '.') }}</td>
           <td class="px-4 py-2.5 text-right font-medium tabular-nums {{ 'text-red-600' if d['diff'] > 0 else 'text-emerald-600' if d['diff'] < 0 else 'text-slate-400' }}">
             {{ '+' if d['diff'] > 0 }}${{ "{:,}".format(d['diff']).replace(',', '.') }}
           </td>
           <td class="px-4 py-2.5 text-right font-medium tabular-nums {{ 'text-red-600' if d['pct'] and d['pct'] > 0 else 'text-emerald-600' if d['pct'] and d['pct'] < 0 else 'text-slate-400' }}">
-            {{ d['pct'] }}%{% if d['pct'] is not none %}{% endif %}
+            {{ d['pct'] }}%
           </td>
         </tr>
         {% endfor %}

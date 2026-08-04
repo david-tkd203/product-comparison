@@ -1,31 +1,33 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold text-slate-900">Comparativa de Mercado</h1>
+<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+  <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Comparativa de Mercado</h1>
 </div>
 
 {% if not synced['cnt'] %}
-<div class="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center mb-6">
-  <p class="text-amber-800 font-medium">Primero sincronizá los precios de las tiendas.</p>
-  <div class="mt-3 flex justify-center gap-4">
+<div class="bg-amber-50 border border-amber-200 rounded-xl p-4 sm:p-6 text-center mb-4 sm:mb-6">
+  <p class="text-amber-800 font-medium text-sm sm:text-base">Primero sincronizá los precios de las tiendas.</p>
+  <div class="mt-3 flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
     <a href="/sync-cosmetic" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">Sincronizar cosmetic.cl</a>
     <a href="/sync-silk" class="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">Sincronizar silkperfumes.cl</a>
     <a href="/sync-multimarca" class="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors">Sincronizar multimarca</a>
   </div>
 </div>
 {% else %}
-<div class="flex flex-wrap gap-3 items-center text-sm text-slate-500 mb-4">
-  <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> cosmetic.cl: {{ con_cosmetic }} productos</span>
-  <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> silkperfumes: {{ con_silk }} productos</span>
-  <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> multimarca: {{ con_mm }} productos</span>
-  <span class="text-slate-400">| {{ synced['last'] or 'N/A' }}</span>
-  <a href="/sync-cosmetic" class="text-blue-600 hover:text-blue-700 text-xs font-medium">Re-sync cosmetic</a>
-  <a href="/sync-silk" class="text-purple-600 hover:text-purple-700 text-xs font-medium">Re-sync silk</a>
-  <a href="/sync-multimarca" class="text-amber-600 hover:text-amber-700 text-xs font-medium">Re-sync multimarca</a>
+<div class="flex flex-wrap gap-2 sm:gap-3 items-center text-xs sm:text-sm text-slate-500 mb-3 sm:mb-4">
+  <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> cosmetic.cl: {{ con_cosmetic }}</span>
+  <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> silkperfumes: {{ con_silk }}</span>
+  <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> multimarca: {{ con_mm }}</span>
+  <span class="text-slate-400 hidden sm:inline">| {{ synced['last'] or 'N/A' }}</span>
+  <div class="w-full sm:w-auto flex gap-2 sm:ml-auto">
+    <a href="/sync-cosmetic" class="text-blue-600 hover:text-blue-700 text-xs font-medium">Re-sync cosmetic</a>
+    <a href="/sync-silk" class="text-purple-600 hover:text-purple-700 text-xs font-medium">Re-sync silk</a>
+    <a href="/sync-multimarca" class="text-amber-600 hover:text-amber-700 text-xs font-medium">Re-sync multimarca</a>
+  </div>
 </div>
 
-<form method="get" id="filters" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
-  <div class="flex flex-wrap gap-3 items-end">
+<form method="get" id="filters" class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 sm:p-4 mb-4">
+  <div class="flex flex-wrap gap-2 sm:gap-3 items-end">
     <input name="q" value="{{ query }}" placeholder="Buscar..." class="flex-1 min-w-[150px] px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
     <select name="linea" id="brand-select" class="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
       <option value="">Todas las marcas</option>
@@ -39,16 +41,16 @@
       <option value="linea" {{ 'selected' if sort == 'linea' }}>Por marca</option>
     </select>
     <div class="flex items-center gap-1">
-      <label class="text-xs text-slate-500">Margen objetivo:</label>
+      <label class="text-xs text-slate-500">Margen:</label>
       <input type="number" name="margen" value="{{ margen_obj }}" min="5" max="80" step="1" class="w-16 px-2 py-2 border border-slate-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-500">
       <span class="text-xs text-slate-400">%</span>
     </div>
-    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">Filtrar</button>
+    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors w-full sm:w-auto">Filtrar</button>
   </div>
 </form>
 
 {% if products %}
-<div class="flex flex-wrap gap-2 items-center mb-4">
+<div class="flex flex-wrap gap-2 items-center mb-3 sm:mb-4">
   <button onclick="checkAll()" class="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">Seleccionar todo</button>
   <button onclick="uncheckAll()" class="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">Deseleccionar</button>
   <button onclick="checkByBrand()" class="px-3 py-1.5 text-xs font-medium rounded-md bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors">Por marca</button>
@@ -56,12 +58,12 @@
     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
     Exportar
   </button>
-  <span id="count" class="text-xs text-slate-400 ml-2">0 seleccionados</span>
+  <span id="count" class="text-xs text-slate-400 ml-auto sm:ml-2">0 seleccionados</span>
 </div>
 
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm">
+  <div class="overflow-x-auto -mx-px">
+    <table class="w-full text-sm min-w-[900px]">
       <thead>
         <tr class="border-b border-slate-200 bg-slate-50">
           <th class="w-10 px-3 py-3"><input type="checkbox" onchange="toggleAll(this)" title="Todos"></th>
@@ -71,8 +73,8 @@
           <th class="text-right px-3 py-3 font-semibold text-slate-600">Mayorista</th>
           <th class="text-right px-3 py-3 font-semibold text-slate-600">Precio Ideal ({{ margen_pct }}%)</th>
           <th class="text-right px-3 py-3 font-semibold text-slate-600">cosmetic.cl</th>
-          <th class="text-right px-3 py-3 font-semibold text-slate-600">silkperfumes</th>
-          <th class="text-right px-3 py-3 font-semibold text-slate-600">multimarca</th>
+          <th class="text-right px-3 py-3 font-semibold text-slate-600 hidden md:table-cell">silkperfumes</th>
+          <th class="text-right px-3 py-3 font-semibold text-slate-600 hidden lg:table-cell">multimarca</th>
           <th class="text-center px-3 py-3 font-semibold text-slate-600 w-32">Links</th>
         </tr>
       </thead>
@@ -93,7 +95,7 @@
           {% set ideal = (p['precio_mayorista'] / (1 - margen_pct/100)) | int %}
           <td class="px-3 py-2.5 text-right whitespace-nowrap">
             <div class="font-semibold tabular-nums text-indigo-600">${{ "{:,}".format(ideal).replace(',', '.') }}</div>
-            <div class="flex justify-end gap-1 mt-0.5">
+            <div class="flex justify-end gap-1 mt-0.5 flex-wrap">
               {% if p['precio_cosmetic'] %}
                 {% if ideal < p['precio_cosmetic'] %}
                 <span class="text-[10px] px-1 rounded font-medium bg-emerald-50 text-emerald-700">C ${{ "{:,}".format(p['precio_cosmetic']).replace(',', '.') }}</span>
@@ -127,13 +129,13 @@
             <div>${{ "{:,}".format(p['precio_cosmetic']).replace(',', '.') }}</div>
             {% if p['margen_cosmetic'] is not none %}<div class="text-xs {{ 'text-emerald-500' if p['margen_cosmetic'] > 30 else 'text-indigo-500' if p['margen_cosmetic'] > 0 else 'text-red-500' }}">{{ p['margen_cosmetic'] }}%</div>{% endif %}
           </td>
-          <td class="px-3 py-2.5 text-right tabular-nums {{ 'text-emerald-600' if p['diff_silk'] and p['diff_silk'] > 0 else 'text-red-600' if p['diff_silk'] and p['diff_silk'] < 0 else 'text-slate-400' }}">
+          <td class="px-3 py-2.5 text-right tabular-nums {{ 'text-emerald-600' if p['diff_silk'] and p['diff_silk'] > 0 else 'text-red-600' if p['diff_silk'] and p['diff_silk'] < 0 else 'text-slate-400' }} hidden md:table-cell">
             {% if p['precio_silk'] %}
             <div>${{ "{:,}".format(p['precio_silk']).replace(',', '.') }}</div>
             {% if p['margen_silk'] is not none %}<div class="text-xs {{ 'text-emerald-500' if p['margen_silk'] > 30 else 'text-indigo-500' if p['margen_silk'] > 0 else 'text-red-500' }}">{{ p['margen_silk'] }}%</div>{% endif %}
             {% else %}&mdash;{% endif %}
           </td>
-          <td class="px-3 py-2.5 text-right tabular-nums {{ 'text-emerald-600' if p['diff_mm'] and p['diff_mm'] > 0 else 'text-red-600' if p['diff_mm'] and p['diff_mm'] < 0 else 'text-slate-400' }}">
+          <td class="px-3 py-2.5 text-right tabular-nums {{ 'text-emerald-600' if p['diff_mm'] and p['diff_mm'] > 0 else 'text-red-600' if p['diff_mm'] and p['diff_mm'] < 0 else 'text-slate-400' }} hidden lg:table-cell">
             {% if p['precio_mm'] %}
             <div>${{ "{:,}".format(p['precio_mm']).replace(',', '.') }}</div>
             {% if p['margen_mm'] is not none %}<div class="text-xs {{ 'text-emerald-500' if p['margen_mm'] > 30 else 'text-indigo-500' if p['margen_mm'] > 0 else 'text-red-500' }}">{{ p['margen_mm'] }}%</div>{% endif %}
