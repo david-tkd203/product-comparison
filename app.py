@@ -1,15 +1,16 @@
 import os
 import json
 import re
+import secrets
 import urllib.request
 import urllib.error
-from datetime import datetime
+from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
 
 import mysql.connector
-from flask import Flask, render_template, request, redirect, url_for, flash, make_response
+from flask import Flask, render_template, request, redirect, url_for, flash, make_response, jsonify
 import pandas as pd
 
 app = Flask(__name__)
@@ -124,6 +125,30 @@ def init_db():
             sku_mm VARCHAR(50),
             confidence FLOAT
         ) ENGINE=InnoDB
+    ''')
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS catalog_links (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            token VARCHAR(32) UNIQUE NOT NULL,
+            margen_pct DECIMAL(5,2) NOT NULL DEFAULT 30.00,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NULL,
+            active TINYINT(1) DEFAULT 1
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ''')
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS orders (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            link_token VARCHAR(32) NOT NULL,
+            nombre VARCHAR(200) NOT NULL,
+            telefono VARCHAR(50) NOT NULL,
+            items_json LONGTEXT NOT NULL,
+            total INT NOT NULL DEFAULT 0,
+            status VARCHAR(20) DEFAULT 'nuevo',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_token (link_token),
+            INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
 
     # ponytail: dedup + UNIQUE on (sku, import_date). Without it, re-uploads
@@ -1242,6 +1267,176 @@ def export_xlsx():
     resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     resp.headers['Content-Disposition'] = 'attachment; filename=lista_precios.xlsx'
     return resp
+
+
+@app.route('/catalogo/config', methods=['GET', 'POST'])
+def catalogo_config():
+    if request.method == 'POST':
+        margen_str = request.form.get('margen', '30').strip()
+        try:
+            margen_pct = float(margen_str)
+            if margen_pct < 0 or margen_pct > 500:
+                raise ValueError()
+        except ValueError:
+            flash('El margen debe ser un número entre 0 y 500', 'error')
+            return render_template('catalogo_config.html')
+
+        token = secrets.token_urlsafe(12)
+        db = get_db()
+        _query(db, 'INSERT INTO catalog_links (token, margen_pct, expires_at) VALUES (%s, %s, %s)',
+               [token, margen_pct, datetime.now() + timedelta(days=30)])
+        db.close()
+
+        host = request.host_url.rstrip('/')
+        link = f'{host}/c/{token}'
+        flash(f'Link generado: {link}', 'success')
+        return render_template('catalogo_config.html', link=link, margen_pct=margen_pct)
+
+    return render_template('catalogo_config.html')
+
+
+@app.route('/c/<token>')
+def catalogo_publico(token):
+    db = get_db()
+    link = _query(db, 'SELECT * FROM catalog_links WHERE token = %s AND active = 1 AND (expires_at IS NULL OR expires_at > NOW())', [token]).fetchone()
+    if not link:
+        db.close()
+        return 'Este catálogo no está disponible.', 404
+
+    margen_pct = float(link['margen_pct'])
+    query = request.args.get('q', '').strip()
+    linea = request.args.get('linea', '').strip()
+    familia = request.args.get('familia', '').strip()
+
+    latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
+    lineas = [r['linea'] for r in _query(db, '''
+        SELECT DISTINCT p.linea FROM products p
+        JOIN cosmetic_products cp ON p.sku = cp.sku
+        ORDER BY p.linea
+    ''').fetchall()]
+    all_familias = sorted(AROMA_FAMILIES.keys())
+
+    sql = '''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
+                    cp.precio_retail, cp.imagen, cp.url, cp.aromas,
+                    MAX(pr.precio) as precio_mayorista
+             FROM products p
+             JOIN cosmetic_products cp ON p.sku = cp.sku
+             LEFT JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s'''
+    params = [latest] if latest else [None]
+    conditions = []
+    if query:
+        conditions.append('(p.nombre LIKE %s OR p.linea LIKE %s)')
+        like = f'%{query}%'
+        params.extend([like, like])
+    if linea:
+        conditions.append('p.linea = %s')
+        params.append(linea)
+    if familia and familia in AROMA_FAMILIES:
+        family_conditions = []
+        for kw in AROMA_FAMILIES[familia]:
+            family_conditions.append('cp.aromas LIKE %s')
+            params.append(f'%"{kw}%')
+        if family_conditions:
+            conditions.append('(' + ' OR '.join(family_conditions) + ')')
+    if conditions:
+        sql += ' WHERE ' + ' AND '.join(conditions)
+    sql += ' GROUP BY p.sku, p.nombre, p.linea, p.genero, p.formato, cp.precio_retail, cp.imagen, cp.url, cp.aromas'
+    sql += ' ORDER BY p.linea, p.nombre LIMIT 500'
+
+    products = _query(db, sql, params).fetchall()
+
+    for p in products:
+        p['notas'] = {}
+        if p['aromas']:
+            try:
+                p['notas'] = json.loads(p['aromas'])
+                p['familias'] = _classify_family(p['notas'])
+            except (json.JSONDecodeError, TypeError):
+                p['familias'] = []
+        else:
+            p['familias'] = []
+        # Precio con margen aplicado
+        precio_mayorista = p.get('precio_mayorista') or 0
+        if precio_mayorista > 0:
+            p['precio_venta'] = round(precio_mayorista * (1 + margen_pct / 100))
+        else:
+            p['precio_venta'] = 0
+
+    db.close()
+    return render_template('catalogo_publico.html', products=products, query=query,
+                          linea=linea, familia=familia, lineas=lineas,
+                          familias=all_familias, total=len(products),
+                          margen_pct=margen_pct, token=token)
+
+
+@app.route('/c/<token>/pedido', methods=['POST'])
+def recibir_pedido(token):
+    db = get_db()
+    link = _query(db, 'SELECT * FROM catalog_links WHERE token = %s AND active = 1 AND (expires_at IS NULL OR expires_at > NOW())', [token]).fetchone()
+    if not link:
+        db.close()
+        return jsonify({'error': 'Catálogo no disponible'}), 404
+
+    data = request.get_json(force=True)
+    nombre = (data.get('nombre') or '').strip()
+    telefono = (data.get('telefono') or '').strip()
+    items = data.get('items', [])
+
+    if not nombre or not telefono:
+        db.close()
+        return jsonify({'error': 'Nombre y teléfono son obligatorios'}), 400
+    if not items or not isinstance(items, list):
+        db.close()
+        return jsonify({'error': 'El carrito está vacío'}), 400
+
+    total = sum(int(i.get('precio', 0)) * int(i.get('qty', 1)) for i in items)
+    cur = db.cursor()
+    cur.execute('INSERT INTO orders (link_token, nombre, telefono, items_json, total) VALUES (%s, %s, %s, %s, %s)',
+           [token, nombre, telefono, json.dumps(items, ensure_ascii=False), total])
+    order_id = cur.lastrowid
+    cur.close()
+    db.close()
+    return jsonify({'ok': True, 'order_id': order_id})
+
+
+@app.route('/pedidos')
+def pedidos():
+    db = get_db()
+    status_filter = request.args.get('status', '').strip()
+    sql = '''SELECT o.*, cl.margen_pct
+             FROM orders o
+             JOIN catalog_links cl ON o.link_token = cl.token'''
+    params = []
+    if status_filter:
+        sql += ' WHERE o.status = %s'
+        params.append(status_filter)
+    sql += ' ORDER BY o.created_at DESC LIMIT 200'
+    orders_list = _query(db, sql, params).fetchall()
+
+    for o in orders_list:
+        try:
+            o['items'] = json.loads(o['items_json'])
+        except (json.JSONDecodeError, TypeError):
+            o['items'] = []
+
+    counts = _query(db, '''
+        SELECT status, COUNT(*) as cnt FROM orders GROUP BY status
+    ''').fetchall()
+    db.close()
+    return render_template('pedidos.html', orders=orders_list, counts=counts, status_filter=status_filter)
+
+
+@app.route('/pedidos/<int:order_id>/status', methods=['POST'])
+def pedido_status(order_id):
+    nuevo_status = request.form.get('status', '').strip()
+    if nuevo_status not in ('nuevo', 'procesando', 'completado', 'cancelado'):
+        flash('Estado inválido', 'error')
+        return redirect(url_for('pedidos'))
+    db = get_db()
+    _query(db, 'UPDATE orders SET status = %s WHERE id = %s', [nuevo_status, order_id])
+    db.close()
+    flash('Estado actualizado', 'success')
+    return redirect(url_for('pedidos'))
 
 
 if __name__ == '__main__':

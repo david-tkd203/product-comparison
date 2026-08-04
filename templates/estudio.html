@@ -21,7 +21,7 @@
     <div class="text-sm text-slate-500 mt-1">multimarca</div>
   </div>
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-    <div class="text-3xl font-bold text-emerald-600">{{ avg_gap['avg_margin'] }}%</div>
+    <div class="text-3xl font-bold text-emerald-600">{{ avg_gap['avg_margin']|default(0, true) }}%</div>
     <div class="text-sm text-slate-500 mt-1">Margen prom.</div>
   </div>
 </div>
@@ -62,10 +62,15 @@
     <div class="grid grid-cols-2 gap-4">
       <div class="bg-blue-50 rounded-lg p-4 text-center">
         <div class="text-xs text-blue-600 font-medium mb-1">cosmetic.cl</div>
-        <div class="text-2xl font-bold text-slate-900">${{ "{:,}".format(avg_gap['avg_diff']).replace(',', '.') }}</div>
+        {% if avg_gap['avg_diff'] is not none %}
+        <div class="text-2xl font-bold text-slate-900">${{ "{:,}".format(avg_gap['avg_diff']|default(0, true)|int).replace(',', '.') }}</div>
         <div class="text-xs text-slate-500 mt-0.5">Dif. promedio</div>
-        <div class="text-lg font-bold text-emerald-600 mt-1">{{ avg_gap['avg_margin'] }}%</div>
+        <div class="text-lg font-bold text-emerald-600 mt-1">{{ avg_gap['avg_margin']|default(0, true) }}%</div>
         <div class="text-xs text-emerald-600">Margen</div>
+        {% else %}
+        <div class="text-sm text-slate-400 mt-4">Sin datos</div>
+        <div class="text-xs text-slate-400 mt-1">Sincronizá cosmetic.cl primero</div>
+        {% endif %}
       </div>
       <div class="bg-amber-50 rounded-lg p-4 text-center">
         <div class="text-xs text-amber-600 font-medium mb-1">multimarca</div>
@@ -106,9 +111,9 @@
         <tr>
           <td class="px-4 py-2.5 text-slate-700 font-medium">{{ b['linea'] }}</td>
           <td class="px-4 py-2.5 text-right text-slate-600">{{ b['n'] }}</td>
-          <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(b['avg_costo']).replace(',', '.') }}</td>
-          <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(b['avg_retail']).replace(',', '.') }}</td>
-          <td class="px-4 py-2.5 text-right font-medium tabular-nums {{ 'text-emerald-600' if b['avg_margin'] > 40 else 'text-indigo-600' if b['avg_margin'] > 25 else 'text-slate-600' }}">{{ b['avg_margin'] }}%</td>
+          <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(b['avg_costo']|default(0, true)|int).replace(',', '.') }}</td>
+          <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(b['avg_retail']|default(0, true)|int).replace(',', '.') }}</td>
+          <td class="px-4 py-2.5 text-right font-medium tabular-nums {{ 'text-emerald-600' if (b['avg_margin']|default(0, true)|float) > 40 else 'text-indigo-600' if (b['avg_margin']|default(0, true)|float) > 25 else 'text-slate-600' }}">{{ b['avg_margin']|default(0, true) }}%</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -139,9 +144,9 @@
         <tr>
           <td class="px-4 py-2.5 text-slate-700 font-medium">{{ b['linea'] }}</td>
           <td class="px-4 py-2.5 text-right text-slate-600">{{ b['n'] }}</td>
-          <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(b['avg_costo']).replace(',', '.') }}</td>
-          <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(b['avg_retail']).replace(',', '.') }}</td>
-          <td class="px-4 py-2.5 text-right font-medium tabular-nums {{ 'text-emerald-600' if b['avg_margin'] > 40 else 'text-indigo-600' if b['avg_margin'] > 25 else 'text-slate-600' }}">{{ b['avg_margin'] }}%</td>
+          <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(b['avg_costo']|default(0, true)|int).replace(',', '.') }}</td>
+          <td class="px-4 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(b['avg_retail']|default(0, true)|int).replace(',', '.') }}</td>
+          <td class="px-4 py-2.5 text-right font-medium tabular-nums {{ 'text-emerald-600' if (b['avg_margin']|default(0, true)|float) > 40 else 'text-indigo-600' if (b['avg_margin']|default(0, true)|float) > 25 else 'text-slate-600' }}">{{ b['avg_margin']|default(0, true) }}%</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -178,9 +183,9 @@
           </td>
           <td class="px-3 py-2.5 text-slate-700 whitespace-nowrap">{{ o['linea'] }}</td>
           <td class="px-3 py-2.5 text-slate-900 max-w-[250px] truncate" title="{{ o['nombre'] }}">{{ o['nombre'] }}</td>
-          <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['costo']).replace(',', '.') }}</td>
-          <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['precio_retail']).replace(',', '.') }}</td>
-          <td class="px-3 py-2.5 text-right font-bold tabular-nums {{ 'text-emerald-600' if o['margen'] > 50 else 'text-indigo-600' }}">{{ o['margen'] }}%</td>
+          <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['costo']|default(0, true)|int).replace(',', '.') }}</td>
+          <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['precio_retail']|default(0, true)|int).replace(',', '.') }}</td>
+          <td class="px-3 py-2.5 text-right font-bold tabular-nums {{ 'text-emerald-600' if (o['margen']|default(0, true)|float) > 50 else 'text-indigo-600' }}">{{ o['margen']|default(0, true) }}%</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -215,9 +220,9 @@
           </td>
           <td class="px-3 py-2.5 text-slate-700 whitespace-nowrap">{{ o['linea'] }}</td>
           <td class="px-3 py-2.5 text-slate-900 max-w-[250px] truncate" title="{{ o['nombre'] }}">{{ o['nombre'] }}</td>
-          <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['costo']).replace(',', '.') }}</td>
-          <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['precio_retail']).replace(',', '.') }}</td>
-          <td class="px-3 py-2.5 text-right font-bold tabular-nums {{ 'text-emerald-600' if o['margen'] > 50 else 'text-indigo-600' }}">{{ o['margen'] }}%</td>
+          <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['costo']|default(0, true)|int).replace(',', '.') }}</td>
+          <td class="px-3 py-2.5 text-right text-slate-600 tabular-nums">${{ "{:,}".format(o['precio_retail']|default(0, true)|int).replace(',', '.') }}</td>
+          <td class="px-3 py-2.5 text-right font-bold tabular-nums {{ 'text-emerald-600' if (o['margen']|default(0, true)|float) > 50 else 'text-indigo-600' }}">{{ o['margen']|default(0, true) }}%</td>
         </tr>
         {% endfor %}
       </tbody>

@@ -13,7 +13,50 @@ App at `http://localhost:5000`. MySQL takes ~10s to become healthy on first star
 
 ## Architecture
 
-Single-file Flask app (`app.py`, ~1200 lines). No blueprints, no ORM. Raw SQL via `mysql.connector`. Jinja2 + Tailwind CDN templates in `templates/`.
+Single-file Flask app (`app.py`, ~1400 lines). No blueprints, no ORM. Raw SQL via `mysql.connector`. Jinja2 + Tailwind CDN templates in `templates/`.
+
+## Production Deploy
+
+### 1. Configure secrets
+
+```bash
+cp .env.production .env.production.local
+# Editá .env.production.local con tus secretos reales
+nano .env.production.local
+```
+
+**Cambiar obligatorio:**
+- `FLASK_SECRET_KEY` — generar nueva: `python3 -c "import secrets; print(secrets.token_hex(32))"`
+- `MYSQL_PASSWORD` — contraseña fuerte para la DB
+- `MYSQL_ROOT_PASSWORD` — contraseña fuerte para root
+
+### 2. Deploy
+
+```bash
+./deploy.sh
+```
+
+El script hace backup automático de la DB antes de deployear.
+
+### 3. Reverse proxy (recomendado)
+
+El contenedor `web` expone `127.0.0.1:5000` (solo localhost). En producción usá **Nginx** o **Caddy** como reverse proxy con HTTPS:
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name tu-dominio.com;
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+### 4. Cloudflare Tunnel (opcional)
+
+El servicio `tunnel` genera automáticamente una URL pública via `trycloudflare.com`. En producción, considerá configurar un túnel permanente con un dominio propio.
 
 Gunicorn: 1 worker, 4 threads, 300s timeout. The long timeout is intentional — Shopify syncs can take minutes. Don't lower it.
 
@@ -21,7 +64,7 @@ Gunicorn: 1 worker, 4 threads, 300s timeout. The long timeout is intentional —
 
 ## Database
 
-MySQL 8 in Docker. DB `perfumes`, user `perfumes` / `perfumes`. Inits tables on first import (`init_db()` called at module load). Schema: `products`, `prices`, `imports`, `cosmetic_products`, `silk_products`, `multimarca_products`, `silk_matches`, `multimarca_matches`.
+MySQL 8 in Docker. DB `perfumes`, user `perfumes` / `perfumes`. Inits tables on first import (`init_db()` called at module load). Schema: `products`, `prices`, `imports`, `cosmetic_products`, `silk_products`, `multimarca_products`, `silk_matches`, `multimarca_matches`, `catalog_links`, `orders`.
 
 ## XLSX Upload (`/upload`)
 
@@ -57,9 +100,10 @@ Sync scrapes 250 products/page. The fuzzy matcher (`_match_by_name`) uses token-
 | `/upload` | XLSX import (GET form, POST process) |
 | `/compare` | Month-over-month price diff |
 | `/retail` | Side-by-side wholesale vs 3 retailers, margin calc |
-| `/catalogo` | Retail catalog with olfactory family filter |
+| `/catalogo` | Internal retail catalog (view only) |
+| `/catalogo/config` | Generate public catalog link with margin % |
+| `/c/<token>` | **Public catalog** — client browses with margin prices and places orders |
+| `/pedidos` | View client orders (name, phone, items, status) |
 | `/estudio` | Market study dashboard (brand stats, opportunities) |
-| `/retail/export` | Export retail comparison to XLSX |
-| `/catalogo/pdf` | Export catalog page as PDF |
-| `/export/xlsx` | Export selected SKUs to formatted XLSX |
+| `/retail/export` | Export retail comparison to CSV |
 | `/sync-cosmetic`, `/sync-silk`, `/sync-multimarca` | Trigger Shopify sync |
