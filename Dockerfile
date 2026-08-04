@@ -7,4 +7,4 @@ RUN mkdir -p uploads
 VOLUME ["/app/data"]
 ENV FLASK_ENV=production
 EXPOSE 5000
-CMD ["gunicorn", "-w", "1", "--threads", "4", "-b", "0.0.0.0:5000", "app:app"]
+CMD ["gunicorn", "-w", "1", "--threads", "4", "--timeout", "300", "-b", "0.0.0.0:5000", "app:app"]

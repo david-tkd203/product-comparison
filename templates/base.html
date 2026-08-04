@@ -15,31 +15,30 @@
   tbody tr { transition: background 0.15s; }
   tbody tr:hover { background: #f8fafc; }
   input[type="checkbox"] { accent-color: #6366f1; width:16px; height:16px; cursor:pointer; }
+  .scrollbar-none { -ms-overflow-style:none; scrollbar-width:none; }
+  .scrollbar-none::-webkit-scrollbar { display:none; }
 </style>
 </head>
 <body class="h-full bg-slate-50 text-slate-800 antialiased">
 <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6">
-    <div class="flex items-center justify-between h-14">
-      <div class="flex items-center gap-1">
-        <span class="text-lg font-bold text-slate-900 tracking-tight mr-6">Perfumería</span>
-        <a href="/" class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ 'bg-slate-100 text-slate-900' if request.path == '/' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Precios</a>
-        <a href="/upload" class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ 'bg-slate-100 text-slate-900' if request.path == '/upload' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Subir Excel</a>
-        <a href="/compare" class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ 'bg-slate-100 text-slate-900' if request.path == '/compare' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comparar Meses</a>
-        <a href="/retail" class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ 'bg-slate-100 text-slate-900' if request.path == '/retail' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comparativa</a>
-        <a href="/catalogo" class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ 'bg-slate-100 text-slate-900' if request.path == '/catalogo' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Catálogo</a>
-        <a href="/estudio" class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ 'bg-slate-100 text-slate-900' if request.path == '/estudio' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Estudio</a>
+  <div class="max-w-7xl mx-auto px-3 sm:px-6">
+    <div class="flex items-center justify-between h-14 gap-2">
+      <span class="text-base sm:text-lg font-bold text-slate-900 tracking-tight shrink-0">Perfumería</span>
+      <div class="flex items-center gap-0.5 overflow-x-auto scrollbar-none">
+        <a href="/" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Precios</a>
+        <a href="/upload" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/upload' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Subir</a>
+        <a href="/compare" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/compare' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comparar</a>
+        <a href="/retail" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/retail' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comparativa</a>
+        <a href="/catalogo" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/catalogo' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Catálogo</a>
+        <a href="/estudio" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/estudio' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Estudio</a>
       </div>
       {% if tunnel_url %}
-      <div class="flex items-center gap-2">
-        <span class="text-xs text-slate-400 hidden sm:inline">URL pública:</span>
-        <input type="text" readonly value="{{ tunnel_url }}" class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 w-72 cursor-pointer" onclick="this.select();navigator.clipboard.writeText(this.value)" title="Click para copiar">
-      </div>
+      <input type="text" readonly value="{{ tunnel_url }}" class="hidden lg:block text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 w-60 cursor-pointer shrink-0" onclick="this.select();navigator.clipboard.writeText(this.value)" title="Click para copiar">
       {% endif %}
     </div>
   </div>
 </nav>
-<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+<main class="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
     <div class="px-4 py-3 rounded-lg text-sm mb-4 {{ 'flash-success' if category == 'success' else 'flash-error' }}">{{ message }}</div>
