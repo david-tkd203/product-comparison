@@ -29,6 +29,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=dokploy-network"
+      - "traefik.http.services.web.loadbalancer.server.port=5000"
     deploy:
       resources:
         limits:
