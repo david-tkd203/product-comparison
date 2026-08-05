@@ -13,12 +13,6 @@ Flask + MySQL app for wholesale vs retail perfume price comparison. Single-file 
 
 `docker-compose.yml` is the file Dokploy uses. It intentionally uses `expose: ["5000"]` (no host bind) so Traefik routes internally. The `127.0.0.1` bind from `docker-compose.prod.yml` does **not** work with Dokploy.
 
-### Cloudflare Tunnel (optional)
-
-The `tunnel` service generates a temporary public URL via `trycloudflare.com`. In production, prefer the Dokploy domain above.
-
-**Do not switch the tunnel image to `cloudflare/cloudflared`** — it's distroless (no shell); `tunnel-entrypoint.sh` needs a shell to install `cloudflared` dynamically.
-
 ### Fallback manual deploy
 
 If you need to deploy manually (bypass Dokploy):

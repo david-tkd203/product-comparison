@@ -7,7 +7,6 @@ services:
       - MYSQL_PASSWORD=perfumes
       - MYSQL_DATABASE=perfumes
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
-      - TUNNEL_URL_FILE=/app/tunnel/url.txt
 
   nginx:
     image: nginx:alpine

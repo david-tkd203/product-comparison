@@ -7,7 +7,6 @@ services:
       - "5000"
     volumes:
       - uploads:/app/uploads
-      - tunnel_data:/app/tunnel
     environment:
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
       - MYSQL_HOST=${MYSQL_HOST}
@@ -15,7 +14,6 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - TUNNEL_URL_FILE=${TUNNEL_URL_FILE}
     restart: always
     depends_on:
       db:
@@ -61,25 +59,8 @@ services:
           cpus: '0.25'
           memory: 256M
 
-  tunnel:
-    image: debian:bookworm-slim
-    entrypoint: ["/bin/sh", "/entrypoint.sh"]
-    volumes:
-      - tunnel_data:/tmp/tunnel
-      - ./tunnel-entrypoint.sh:/entrypoint.sh:ro
-    depends_on:
-      - web
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 128M
-
 volumes:
   mysqldata:
     driver: local
   uploads:
-    driver: local
-  tunnel_data:
     driver: local
