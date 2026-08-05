@@ -26,11 +26,11 @@ services:
       start_period: 10s
     networks:
       - dokploy-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=dokploy-network"
-      - "traefik.http.services.web.loadbalancer.server.port=5000"
     deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=dokploy-network"
+        - "traefik.http.services.web.loadbalancer.server.port=5000"
       resources:
         limits:
           cpus: '1.0'
