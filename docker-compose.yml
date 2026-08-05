@@ -27,6 +27,7 @@ services:
     networks:
       - dokploy-network
     labels:
+      - "traefik.enable=true"
       - "traefik.docker.network=dokploy-network"
     deploy:
       resources:
