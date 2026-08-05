@@ -24,6 +24,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.docker.network=dokploy-network"
     deploy:
       resources:
         limits:
@@ -64,3 +68,7 @@ volumes:
     driver: local
   uploads:
     driver: local
+
+networks:
+  dokploy-network:
+    external: true
