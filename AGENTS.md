@@ -1,88 +1,72 @@
 # AGENTS.md — Product Comparison
 
-Flask + MySQL app for wholesale vs retail perfume price comparison. Docker Compose stack: `web`, `db` (MySQL 8), `tunnel` (Cloudflare).
+Flask + MySQL app for wholesale vs retail perfume price comparison. Single-file app (`app.py` ~1500 lines) with Jinja2 templates and Tailwind CSS CDN.
 
-## Run (local development)
+## Production Deploy (Dokploy)
+
+**Push to main redeploys automatically.** Dokploy on the Contabo VPS (213.136.67.132) reads `docker-compose.yml`, builds, and routes via Traefik.
+
+- `siyash.cl` / `www.siyash.cl` DNS A records already point to `213.136.67.132`
+- The domain is added in the Dokploy UI (Domains tab)
+- Dokploy handles SSL automatically (no manual nginx or Certbot needed)
+- **Do not run nginx on the host** — Dokploy has its own reverse proxy
+
+`docker-compose.yml` is the file Dokploy uses. It intentionally uses `expose: ["5000"]` (no host bind) so Traefik routes internally. The `127.0.0.1` bind from `docker-compose.prod.yml` does **not** work with Dokploy.
+
+### Cloudflare Tunnel (optional)
+
+The `tunnel` service generates a temporary public URL via `trycloudflare.com`. In production, prefer the Dokploy domain above.
+
+**Do not switch the tunnel image to `cloudflare/cloudflared`** — it's distroless (no shell); `tunnel-entrypoint.sh` needs a shell to install `cloudflared` dynamically.
+
+### Fallback manual deploy
+
+If you need to deploy manually (bypass Dokploy):
 
 ```bash
-docker compose up --build -d       # all services
+./deploy.sh          # uses docker-compose.yml + .env.production
+```
+
+The script auto-backs up the DB before deploying and uses `--no-cache` builds intentionally.
+
+## Local Development
+
+```bash
+docker compose up --build -d       # all services (web, db, nginx, tunnel)
 docker compose up -d --no-deps web # web only after code changes
 ```
 
-App at `http://localhost:5000`. MySQL takes ~10s to become healthy on first start.
-
-## Production Deploy
-
-### 1. Configure secrets
-
-```bash
-cp .env.production .env.production.local
-# Editá .env.production.local con tus secretos reales
-nano .env.production.local
-```
-
-**Cambiar obligatorio:**
-- `FLASK_SECRET_KEY` — generar nueva: `python3 -c "import secrets; print(secrets.token_hex(32))"`
-- `ADMIN_PASSWORD` — contraseña fuerte para el panel
-- `MYSQL_PASSWORD` — contraseña fuerte para la DB
-- `MYSQL_ROOT_PASSWORD` — contraseña fuerte para root
-
-### 2. Deploy
-
-```bash
-./deploy.sh
-```
-
-El script hace backup automático de la DB antes de deployear.
-
-### 3. Dokploy
-
-El `docker-compose.yml` principal ya tiene todo configurado para producción (healthchecks, límites de recursos, volumes nombrados). En Dokploy:
-
-| Campo | Valor |
-|-------|-------|
-| Service Name | `web` |
-| Host | `siyash.cl` (o `www.siyash.cl`) |
-| Container Port | `5000` |
-| HTTPS | ✅ Activado |
-
-### 4. Cloudflare Tunnel (opcional)
-
-El servicio `tunnel` genera automáticamente una URL pública via `trycloudflare.com`. En producción, considerá configurar un túnel permanente con un dominio propio.
-
-Gunicorn: 1 worker, 4 threads, 300s timeout. The long timeout is intentional — Shopify syncs can take minutes. Don't lower it.
-
-### Important: no test suite exists. Verify changes manually via the browser or `curl`.
+Docker Compose automatically merges `docker-compose.override.yml`, which adds nginx and exposes `http://localhost:5000`. MySQL takes ~10s to become healthy on first start.
 
 ## Database
 
-MySQL 8 in Docker. DB `perfumes`, user `perfumes` / `perfumes`. Inits tables on first import (`init_db()` called at module load). Schema: `products`, `prices`, `imports`, `cosmetic_products`, `silk_products`, `multimarca_products`, `silk_matches`, `multimarca_matches`, `catalog_links`, `orders`.
+MySQL 8 in Docker. DB `perfumes`, user `perfumes` / `perfumes`. Tables are created on first module import (`init_db()` runs when `app.py` is loaded). Schema: `products`, `prices`, `imports`, `cosmetic_products`, `silk_products`, `multimarca_products`, `silk_matches`, `multimarca_matches`, `catalog_links`, `orders`.
+
+**Note:** `DB_CONFIG` in `app.py` hardcodes `user='perfumes'` and `password='perfumes'`; only `host` is read from `MYSQL_HOST`. Changing `.env.production` credentials does not affect the app's DB login unless `app.py` is also modified.
 
 ## XLSX Upload (`/upload`)
 
-`parse_excel()` auto-detects the header row (scans first 12 rows for `sku`/`nombre`/`precio`/`linea` keywords). Column matching is case-insensitive, accent-stripped, and accepts Spanish/English aliases (e.g. `Marca`→linea, `Codigo`→sku, `Valor Neto`→precio). When columns can't be matched, the error explicitly lists what was found vs expected.
+`parse_excel()` auto-detects the header row (scans first 12 rows for `sku`/`nombre`/`precio`/`linea` keywords). Column matching is case-insensitive, accent-stripped, and accepts Spanish/English aliases (e.g. `Marca`→`linea`, `Codigo`→`sku`, `Valor Neto`→`precio`). When columns cannot be matched, the error explicitly lists what was found vs expected.
 
-Import date must be unique — existing date blocks the upload.
-
-## Tunnel (Cloudflare)
-
-The tunnel service uses `debian:bookworm-slim` (NOT `alpine` — cloudflared binary links glibc, musl crashes silently). `tunnel-entrypoint.sh` auto-installs wget + cloudflared, pipes stdout through grep for the `trycloudflare.com` URL, and writes it to the shared volume.
-
-Volume sharing: `./tunnel_data` mounted at `/tmp/tunnel` (tunnel container, writes `url.txt`) and `/app/tunnel` (web container, reads it). Env: `TUNNEL_URL_FILE=/app/tunnel/url.txt`.
-
-**Do not switch the tunnel image to `cloudflare/cloudflared`** — it's distroless (no shell), the entrypoint script can't run.
+Import date must be unique — an existing date blocks the upload.
 
 ## Shopify Sync
 
-Three stores, all use the public `/products.json` Shopify API (no auth needed):
+Three stores, all using the public `/products.json` Shopify API (no auth):
 
 | Store | Endpoint | Matching |
 |-------|----------|----------|
-| cosmetic.cl | `/sync-cosmetic` | Direct SKU match (COSxxxx format) |
-| silkperfumes.cl | `/sync-silk` | Fuzzy name matching (~30% match rate) |
-| multimarcasperfumes.cl | `/sync-multimarca` | Fuzzy name matching (~22% match rate) |
+| cosmetic.cl | `/sync-cosmetic` | Direct SKU match (`COSxxxx` format) |
+| silkperfumes.cl | `/sync-silk` | Fuzzy name matching (~30% match) |
+| multimarcasperfumes.cl | `/sync-multimarca` | Fuzzy name (~22% match) |
 
-Sync scrapes 250 products/page. The fuzzy matcher (`_match_by_name`) uses token-based narrowing + `SequenceMatcher` with 0.70 threshold. First sync can take minutes. Aroma extraction (`_extract_aromas`) parses fragrance notes from product descriptions via regex.
+Sync scrapes 250 products/page. Fuzzy matcher (`_match_by_name`) uses token narrowing + `SequenceMatcher` with 0.70 threshold. First sync can take minutes.
+
+Gunicorn: 1 worker, 4 threads, **300s timeout**. The long timeout is intentional — Shopify syncs can take minutes. Do not lower it.
+
+## Important: No Test Suite
+
+There is no automated test suite. Verify changes manually via browser or `curl`. If adding logic, test against local Docker before deploying.
 
 ## Key Routes
 
