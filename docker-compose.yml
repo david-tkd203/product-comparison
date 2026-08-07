@@ -30,6 +30,15 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=dokploy-network"
+        - "traefik.http.routers.web.rule=Host(`siyash.cl`) || Host(`www.siyash.cl`)"
+        - "traefik.http.routers.web.entrypoints=websecure"
+        - "traefik.http.routers.web.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.web.service=web"
+        - "traefik.http.routers.web-http.rule=Host(`siyash.cl`) || Host(`www.siyash.cl`)"
+        - "traefik.http.routers.web-http.entrypoints=web"
+        - "traefik.http.routers.web-http.service=web"
+        - "traefik.http.middlewares.web-redirect.redirectscheme.scheme=https"
+        - "traefik.http.routers.web-http.middlewares=web-redirect"
         - "traefik.http.services.web.loadbalancer.server.port=5000"
       resources:
         limits:
@@ -56,6 +65,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - dokploy-network
     deploy:
       resources:
         limits:
