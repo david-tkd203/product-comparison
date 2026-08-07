@@ -221,6 +221,9 @@ def require_login(f):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated
+
+
+def parse_excel(filepath):
     df = pd.read_excel(filepath, engine='openpyxl', header=None)
 
     # Detect the header row — look for the row that has the most expected keywords
