@@ -197,12 +197,16 @@ def init_db():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
 
-    # Create default admin if no users exist
+    # Create or update default admin password from environment
     admin_pass = os.environ.get('ADMIN_PASSWORD', 'admin123')
     cur.execute('SELECT COUNT(*) as cnt FROM users')
     if cur.fetchone()[0] == 0:
         cur.execute('INSERT INTO users (username, password_hash) VALUES (%s, %s)',
                     ['admin', generate_password_hash(admin_pass)])
+    else:
+        # Ensure admin password always matches current ADMIN_PASSWORD env var
+        cur.execute('UPDATE users SET password_hash = %s WHERE username = %s',
+                    [generate_password_hash(admin_pass), 'admin'])
 
     cur.close()
     db.close()
