@@ -30,7 +30,7 @@ docker compose up --build -d       # all services (web, db, nginx, tunnel)
 docker compose up -d --no-deps web # web only after code changes
 ```
 
-Docker Compose automatically merges `docker-compose.override.yml`, which adds nginx and exposes `http://localhost:5000`. MySQL takes ~10s to become healthy on first start.
+Docker Compose automatically merges `docker-compose.override.yml`, which adds nginx and exposes `http://localhost:80`. MySQL takes ~10s to become healthy on first start.
 
 ## Database
 

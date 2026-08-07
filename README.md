@@ -38,7 +38,7 @@ El script instala Docker, construye los contenedores, importa el Excel (si exist
 docker compose up --build -d
 ```
 
-3. Importá el Excel desde la web (`http://localhost:5000/upload`)
+3. Importá el Excel desde la web (`http://localhost:80/upload`)
 4. Sincronizá las tiendas desde **Comparativa de Mercado**
 
 ### Manual
@@ -48,12 +48,12 @@ docker compose up --build -d
 docker compose up --build -d
 
 # Esperar a que MySQL esté listo (~10s)
-# Abrir http://localhost:5000
+# Abrir http://localhost:80
 
 # Sincronizar tiendas (desde el navegador o CLI)
-curl http://localhost:5000/sync-cosmetic
-curl http://localhost:5000/sync-silk
-curl http://localhost:5000/sync-multimarca
+curl http://localhost:80/sync-cosmetic
+curl http://localhost:80/sync-silk
+curl http://localhost:80/sync-multimarca
 ```
 
 ## Uso

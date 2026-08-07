@@ -66,10 +66,10 @@ done
 
 # 7. Verificar que la app responde
 echo "[5/5] Verificando app..."
-if curl -sf http://localhost:5000/ > /dev/null 2>&1; then
+if curl -sf http://localhost:80/ > /dev/null 2>&1; then
     echo "  App responde OK ✓"
 else
-    echo "  Advertencia: app no responde en localhost:5000"
+    echo "  Advertencia: app no responde en localhost:80"
 fi
 
 echo ""

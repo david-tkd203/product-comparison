@@ -17,8 +17,8 @@ fi
 OUTPUT="${TUNNEL_OUTPUT:-/tmp/tunnel/url.txt}"
 mkdir -p "$(dirname "$OUTPUT")"
 
-echo "[tunnel] Starting tunnel to http://web:5000"
-cloudflared tunnel --url http://web:5000 2>&1 | while IFS= read -r line; do
+echo "[tunnel] Starting tunnel to http://web:80"
+cloudflared tunnel --url http://web:80 2>&1 | while IFS= read -r line; do
   echo "$line"
   url=$(echo "$line" | grep -o 'https://[^ ]*trycloudflare\.com')
   if [ -n "$url" ]; then

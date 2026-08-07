@@ -49,15 +49,15 @@ fi
 echo ""
 echo "Sincronizando precios de tiendas (esto puede tardar unos minutos)..."
 echo "  cosmetic.cl..."
-curl -s http://localhost:5000/sync-cosmetic > /dev/null
+curl -s http://localhost:80/sync-cosmetic > /dev/null
 echo "  silkperfumes.cl..."
-curl -s http://localhost:5000/sync-silk > /dev/null
+curl -s http://localhost:80/sync-silk > /dev/null
 echo "  multimarcasperfumes.cl..."
-curl -s http://localhost:5000/sync-multimarca > /dev/null
+curl -s http://localhost:80/sync-multimarca > /dev/null
 
 echo ""
 echo "=== Listo ==="
-echo "Abrí http://localhost:5000 en tu navegador"
+echo "Abrí http://localhost:80 en tu navegador"
 docker compose logs tunnel 2>&1 | grep -o 'https://.*trycloudflare\.com' | head -1 | while read url; do
     echo "URL pública: $url"
 done

@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "127.0.0.1:5000:5000"          # Solo localhost; usar reverse proxy (nginx/caddy) en prod
+      - "127.0.0.1:80:80"          # Solo localhost; usar reverse proxy (nginx/caddy) en prod
     volumes:
       - uploads:/app/uploads
       - tunnel_data:/app/tunnel
@@ -21,7 +21,7 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
       interval: 30s
       timeout: 10s
       retries: 3
