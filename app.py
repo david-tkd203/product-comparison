@@ -304,12 +304,28 @@ def _query(db, sql, params=None):
     return cur
 
 
+def _paginate(sql, params, page, per_page):
+    """Return paginated results plus total count."""
+    page = max(1, page)
+    offset = (page - 1) * per_page
+    # Count total
+    count_sql = f'SELECT COUNT(*) AS cnt FROM ({sql}) AS t'
+    # Remove LIMIT clause from count query if present in the raw sql
+    # The caller should pass the base SQL without LIMIT.
+    # We append LIMIT/OFFSET to data query separately.
+    data_sql = f'{sql} LIMIT %s OFFSET %s'
+    data_params = list(params) + [per_page, offset]
+    return data_sql, data_params, page, per_page, offset
+
+
 @app.route('/')
 @require_login
 def index():
     query = request.args.get('q', '').strip()
     linea = request.args.get('linea', '').strip()
     genero = request.args.get('genero', '').strip()
+    page = max(1, int(request.args.get('page', 1) or 1))
+    per_page = 50
 
     db = get_db()
     lineas = [r['linea'] for r in _query(db, 'SELECT DISTINCT linea FROM products ORDER BY linea')]
@@ -336,13 +352,18 @@ def index():
         params.append(genero)
     if conditions:
         sql += ' WHERE ' + ' AND '.join(conditions)
-    sql += ' ORDER BY p.linea, p.nombre LIMIT 500'
+    sql += ' ORDER BY p.linea, p.nombre'
 
-    products = _query(db, sql, params).fetchall()
+    # Count total
+    total = _query(db, f'SELECT COUNT(*) AS cnt FROM ({sql}) AS t', params).fetchone()['cnt']
+    offset = (page - 1) * per_page
+    products = _query(db, f'{sql} LIMIT %s OFFSET %s', params + [per_page, offset]).fetchall()
+    total_pages = (total + per_page - 1) // per_page if total else 1
     db.close()
     return render_template('index.html', products=products, query=query,
                           linea=linea, genero=genero, lineas=lineas,
-                          generos=generos, latest=latest, total=len(products))
+                          generos=generos, latest=latest, total=total,
+                          page=page, per_page=per_page, total_pages=total_pages)
 
 
 @app.route('/upload', methods=['GET', 'POST'])
@@ -761,6 +782,8 @@ def retail():
     linea = request.args.get('linea', '').strip()
     sort = request.args.get('sort', 'diff_cosmetic_desc')
     margen_obj = request.args.get('margen', '30')
+    page = max(1, int(request.args.get('page', 1) or 1))
+    per_page = 50
     try:
         margen_pct = float(margen_obj)
     except ValueError:
@@ -810,12 +833,15 @@ def retail():
         'margen_silk': 'CASE WHEN sp.precio_retail > 0 THEN (sp.precio_retail - pr.precio) * 100.0 / sp.precio_retail ELSE 0 END DESC',
         'linea': 'p.linea, p.nombre',
     }
-    sql += f' ORDER BY {sort_map.get(sort, sort_map["diff_cosmetic_desc"])} LIMIT 500'
+    sql += f' ORDER BY {sort_map.get(sort, sort_map["diff_cosmetic_desc"])}'
 
-    products = _query(db, sql, params).fetchall()
+    # Count total
+    total = _query(db, f'SELECT COUNT(*) AS cnt FROM ({sql}) AS t', params).fetchone()['cnt']
+    offset = (page - 1) * per_page
+    products = _query(db, f'{sql} LIMIT %s OFFSET %s', params + [per_page, offset]).fetchall()
+    total_pages = (total + per_page - 1) // per_page if total else 1
     db.close()
 
-    total = len(products)
     con_cosmetic = sum(1 for p in products if p['precio_cosmetic'] > 0)
     con_silk = sum(1 for p in products if p['precio_silk'] and p['precio_silk'] > 0)
     con_mm = sum(1 for p in products if p['precio_mm'] and p['precio_mm'] > 0)
@@ -823,7 +849,8 @@ def retail():
                           linea=linea, lineas=lineas, latest=latest,
                           synced=synced, total=total,
                           con_cosmetic=con_cosmetic, con_silk=con_silk, con_mm=con_mm,
-                          sort=sort, margen_obj=margen_obj, margen_pct=margen_pct)
+                          sort=sort, margen_obj=margen_obj, margen_pct=margen_pct,
+                          page=page, per_page=per_page, total_pages=total_pages)
 
 
 @app.route('/retail/export')
@@ -879,6 +906,8 @@ def catalogo():
     query = request.args.get('q', '').strip()
     linea = request.args.get('linea', '').strip()
     familia = request.args.get('familia', '').strip()
+    page = max(1, int(request.args.get('page', 1) or 1))
+    per_page = 24
     try:
         margen_pct = float(request.args.get('margen', '30'))
     except ValueError:
@@ -921,9 +950,13 @@ def catalogo():
     if conditions:
         sql += ' WHERE ' + ' AND '.join(conditions)
     sql += ' GROUP BY p.sku, p.nombre, p.linea, p.genero, p.formato, cp.precio_retail, cp.imagen, cp.url, cp.aromas'
-    sql += ' ORDER BY p.linea, p.nombre LIMIT 500'
+    sql += ' ORDER BY p.linea, p.nombre'
 
-    products = _query(db, sql, params).fetchall()
+    # Count total
+    total = _query(db, f'SELECT COUNT(*) AS cnt FROM ({sql}) AS t', params).fetchone()['cnt']
+    offset = (page - 1) * per_page
+    products = _query(db, f'{sql} LIMIT %s OFFSET %s', params + [per_page, offset]).fetchall()
+    total_pages = (total + per_page - 1) // per_page if total else 1
 
     for p in products:
         p['notas'] = {}
@@ -939,8 +972,8 @@ def catalogo():
     db.close()
     return render_template('catalogo.html', products=products, query=query,
                           linea=linea, familia=familia, lineas=lineas,
-                          familias=all_familias, total=len(products),
-                          margen_pct=margen_pct)
+                          familias=all_familias, total=total,
+                          margen_pct=margen_pct, page=page, per_page=per_page, total_pages=total_pages)
 
 
 @app.route('/catalogo/pdf')
@@ -1345,6 +1378,8 @@ def catalogo_publico(token):
     query = request.args.get('q', '').strip()
     linea = request.args.get('linea', '').strip()
     familia = request.args.get('familia', '').strip()
+    page = max(1, int(request.args.get('page', 1) or 1))
+    per_page = 24
 
     latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
     lineas = [r['linea'] for r in _query(db, '''
@@ -1379,9 +1414,13 @@ def catalogo_publico(token):
     if conditions:
         sql += ' WHERE ' + ' AND '.join(conditions)
     sql += ' GROUP BY p.sku, p.nombre, p.linea, p.genero, p.formato, cp.precio_retail, cp.imagen, cp.url, cp.aromas'
-    sql += ' ORDER BY p.linea, p.nombre LIMIT 500'
+    sql += ' ORDER BY p.linea, p.nombre'
 
-    products = _query(db, sql, params).fetchall()
+    # Count total
+    total = _query(db, f'SELECT COUNT(*) AS cnt FROM ({sql}) AS t', params).fetchone()['cnt']
+    offset = (page - 1) * per_page
+    products = _query(db, f'{sql} LIMIT %s OFFSET %s', params + [per_page, offset]).fetchall()
+    total_pages = (total + per_page - 1) // per_page if total else 1
 
     for p in products:
         p['notas'] = {}
@@ -1403,8 +1442,9 @@ def catalogo_publico(token):
     db.close()
     return render_template('catalogo_publico.html', products=products, query=query,
                           linea=linea, familia=familia, lineas=lineas,
-                          familias=all_familias, total=len(products),
-                          margen_pct=margen_pct, token=token)
+                          familias=all_familias, total=total,
+                          margen_pct=margen_pct, token=token,
+                          page=page, per_page=per_page, total_pages=total_pages)
 
 
 @app.route('/c/<token>/pedido', methods=['POST'])
