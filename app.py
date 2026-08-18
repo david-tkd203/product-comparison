@@ -738,6 +738,56 @@ def _parse_notas_list(raw):
     return [i for i in items if len(i) > 2 and not i.startswith('nota')]
 
 
+
+@app.route('/admin/migrar-db')
+@require_login
+def migrar_db():
+    db = get_db()
+    c = db.cursor(dictionary=True)
+    c.execute("SELECT * FROM cosmetic_products")
+    rows = c.fetchall()
+    
+    today = date.today().strftime('%Y-%m-%d')
+    _query(db, 'INSERT IGNORE INTO imports (import_date) VALUES (%s)', [today])
+    
+    added = 0
+    for r in rows:
+        aroma_family = None
+        if r['aromas']:
+            try:
+                notas = json.loads(r['aromas'])
+                fams = _classify_family(notas)
+                if fams:
+                    aroma_family = fams[0]
+            except Exception:
+                pass
+                
+        if not aroma_family:
+            fams = _classify_family({'general': [r['nombre']]})
+            if fams:
+                aroma_family = fams[0]
+
+        linea = r['nombre'].split()[0] if r['nombre'] else ''
+        
+        _query(db, '''INSERT INTO products (sku, nombre, linea, aroma_family, is_active, stock)
+                      VALUES (%s, %s, %s, %s, 1, 10)
+                      ON DUPLICATE KEY UPDATE 
+                      nombre=VALUES(nombre), aroma_family=VALUES(aroma_family)''',
+               [r['sku'], r['nombre'], linea, aroma_family])
+               
+        precio = r['precio_retail'] if r['precio_retail'] else 0
+        if precio > 0:
+            exists = _query(db, 'SELECT id FROM prices WHERE sku = %s AND import_date = %s', [r['sku'], today]).fetchone()
+            if not exists:
+                _query(db, 'INSERT INTO prices (sku, import_date, precio) VALUES (%s, %s, %s)', [r['sku'], today, precio])
+            else:
+                _query(db, 'UPDATE prices SET precio = %s WHERE sku = %s AND import_date = %s', [precio, r['sku'], today])
+        added += 1
+
+    db.commit()
+    flash(f'¡Migración completada! Se aplicaron {added} productos de cosmetic.cl a tu inventario real.', 'success')
+    return redirect(url_for('admin_productos'))
+
 @app.route('/sync-cosmetic')
 @require_login
 def sync_cosmetic():
