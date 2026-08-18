@@ -33,7 +33,9 @@
 
       <!-- Desktop nav -->
       <div class="hidden md:flex items-center gap-0.5">
-        <a href="/" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Precios</a>
+        <a href="/" target="_blank" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap text-indigo-600 hover:text-indigo-800 hover:bg-slate-50">Tienda</a>
+        <a href="/admin/productos" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/productos' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Precios</a>
+        <a href="/admin/inventario" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/inventario' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Inventario</a>
         <a href="/upload" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/upload' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Subir</a>
         <a href="/compare" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/compare' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comparar</a>
         <a href="/retail" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/retail' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comparativa</a>
@@ -65,7 +67,9 @@
     <!-- Mobile menu -->
     <div id="mobile-menu" class="hidden md:hidden border-t border-slate-100 pb-3">
       <div class="flex flex-col gap-1 pt-2">
-        <a href="/" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/' else 'text-slate-600 hover:bg-slate-50' }}">Precios</a>
+        <a href="/" target="_blank" class="px-3 py-2 text-sm font-medium rounded-md text-indigo-600 hover:text-indigo-800 hover:bg-slate-50">Tienda</a>
+        <a href="/admin/productos" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/productos' else 'text-slate-600 hover:bg-slate-50' }}">Precios</a>
+        <a href="/admin/inventario" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/inventario' else 'text-slate-600 hover:bg-slate-50' }}">Inventario</a>
         <a href="/upload" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/upload' else 'text-slate-600 hover:bg-slate-50' }}">Subir</a>
         <a href="/compare" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/compare' else 'text-slate-600 hover:bg-slate-50' }}">Comparar</a>
         <a href="/retail" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/retail' else 'text-slate-600 hover:bg-slate-50' }}">Comparativa</a>

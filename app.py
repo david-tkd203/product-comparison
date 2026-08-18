@@ -55,6 +55,9 @@ def init_db():
             formato VARCHAR(50)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
+    _add_column_if_missing(cur, 'products', 'stock', 'INT DEFAULT 0')
+    _add_column_if_missing(cur, 'products', 'is_active', 'TINYINT(1) DEFAULT 0')
+    _add_column_if_missing(cur, 'products', 'aroma_family', 'VARCHAR(50) DEFAULT NULL')
     cur.execute('''
         CREATE TABLE IF NOT EXISTS prices (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -318,9 +321,15 @@ def _paginate(sql, params, page, per_page):
     return data_sql, data_params, page, per_page, offset
 
 
-@app.route('/')
+
+@app.route('/admin')
 @require_login
-def index():
+def admin_redirect():
+    return redirect(url_for('admin_productos'))
+
+@app.route('/admin/productos')
+@require_login
+def admin_productos():
     query = request.args.get('q', '').strip()
     linea = request.args.get('linea', '').strip()
     genero = request.args.get('genero', '').strip()
@@ -360,7 +369,7 @@ def index():
     products = _query(db, f'{sql} LIMIT %s OFFSET %s', params + [per_page, offset]).fetchall()
     total_pages = (total + per_page - 1) // per_page if total else 1
     db.close()
-    return render_template('index.html', products=products, query=query,
+    return render_template('admin_productos.html', products=products, query=query,
                           linea=linea, genero=genero, lineas=lineas,
                           generos=generos, latest=latest, total=total,
                           page=page, per_page=per_page, total_pages=total_pages)
@@ -404,11 +413,14 @@ def upload():
 
             count = 0
             for _, row in data.iterrows():
-                _query(db, '''INSERT INTO products (sku, nombre, linea, ean, genero, formato)
-                              VALUES (%s, %s, %s, %s, %s, %s)
+                fams = _classify_family({'salida': [str(row['nombre'])]})
+                aroma = fams[0] if fams else None
+                _query(db, '''INSERT INTO products (sku, nombre, linea, ean, genero, formato, aroma_family)
+                              VALUES (%s, %s, %s, %s, %s, %s, %s)
                               ON DUPLICATE KEY UPDATE nombre=VALUES(nombre), linea=VALUES(linea),
-                              ean=VALUES(ean), genero=VALUES(genero), formato=VALUES(formato)''',
-                       [row['sku'], row['nombre'], row['linea'], row['ean'], row['genero'], row['formato']])
+                              ean=VALUES(ean), genero=VALUES(genero), formato=VALUES(formato),
+                              aroma_family=COALESCE(aroma_family, VALUES(aroma_family))''',
+                       [row['sku'], row['nombre'], row['linea'], row['ean'], row['genero'], row['formato'], aroma])
                 _query(db, 'INSERT INTO prices (sku, import_date, precio) VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE precio = VALUES(precio)',
                        [row['sku'], import_date, row['precio']])
                 count += 1
@@ -420,7 +432,7 @@ def upload():
             flash(f'Error: {e}', 'error')
         finally:
             db.close()
-        return redirect(url_for('index'))
+        return redirect(url_for('admin_productos'))
     return render_template('upload.html')
 
 
@@ -1272,7 +1284,7 @@ def export_xlsx():
     skus = request.args.get('skus', '').split(',')
     if not skus or skus == ['']:
         flash('Seleccioná al menos un producto', 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('admin_productos'))
 
     db = get_db()
     latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
@@ -1531,7 +1543,7 @@ def login():
             session['user_id'] = user['id']
             session['username'] = user['username']
             flash(f'Bienvenido, {user["username"]}', 'success')
-            return redirect(url_for('index'))
+            return redirect(url_for('admin_productos'))
         else:
             flash('Usuario o contraseña incorrectos', 'error')
     return render_template('login.html')
@@ -1549,3 +1561,145 @@ if __name__ == '__main__':
     app.run(debug=True)
 else:
     init_db()
+
+@app.route('/admin/inventario')
+@require_login
+def admin_inventario():
+    query = request.args.get('q', '').strip()
+    page = max(1, int(request.args.get('page', 1) or 1))
+    per_page = 50
+
+    db = get_db()
+    
+    sql = '''SELECT p.sku, p.nombre, p.linea, p.stock, p.is_active, p.aroma_family
+             FROM products p'''
+    params = []
+    if query:
+        sql += ' WHERE (p.nombre LIKE %s OR p.sku LIKE %s OR p.linea LIKE %s)'
+        like = f'%{query}%'
+        params.extend([like, like, like])
+    sql += ' ORDER BY p.linea, p.nombre'
+
+    total = _query(db, f'SELECT COUNT(*) AS cnt FROM ({sql}) AS t', params).fetchone()['cnt']
+    offset = (page - 1) * per_page
+    products = _query(db, f'{sql} LIMIT %s OFFSET %s', params + [per_page, offset]).fetchall()
+    total_pages = (total + per_page - 1) // per_page if total else 1
+    
+    db.close()
+    return render_template('inventario.html', products=products, query=query,
+                          total=total, page=page, per_page=per_page, total_pages=total_pages)
+
+@app.route('/api/update_inventory', methods=['POST'])
+@require_login
+def update_inventory():
+    data = request.get_json()
+    sku = data.get('sku')
+    stock = data.get('stock')
+    is_active = data.get('is_active')
+    aroma_family = data.get('aroma_family')
+
+    db = get_db()
+    try:
+        _query(db, 'UPDATE products SET stock=%s, is_active=%s, aroma_family=%s WHERE sku=%s',
+               [stock, 1 if is_active else 0, aroma_family, sku])
+        db.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'ok': False, 'error': str(e)})
+    finally:
+        db.close()
+
+@app.route('/')
+def tienda():
+    query = request.args.get('q', '').strip()
+    linea = request.args.get('linea', '').strip()
+    genero = request.args.get('genero', '').strip()
+    aroma = request.args.get('aroma', '').strip()
+    sort = request.args.get('sort', 'precio_asc').strip()
+    page = max(1, int(request.args.get('page', 1) or 1))
+    per_page = 24
+
+    db = get_db()
+    
+    lineas = [r['linea'] for r in _query(db, 'SELECT DISTINCT linea FROM products WHERE is_active=1 AND stock>0 ORDER BY linea')]
+    generos = [r['genero'] for r in _query(db, 'SELECT DISTINCT genero FROM products WHERE is_active=1 AND stock>0 ORDER BY genero')]
+    aromas = [r['aroma_family'] for r in _query(db, 'SELECT DISTINCT aroma_family FROM products WHERE is_active=1 AND stock>0 AND aroma_family IS NOT NULL ORDER BY aroma_family')]
+
+    sql = '''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato, p.aroma_family, p.stock, pr.precio
+             FROM products p
+             JOIN prices pr ON p.sku = pr.sku
+             WHERE p.is_active = 1 AND p.stock > 0
+             AND pr.import_date = (SELECT MAX(import_date) FROM imports)'''
+    
+    params = []
+    
+    if query:
+        sql += ' AND (p.nombre LIKE %s OR p.linea LIKE %s)'
+        like = f'%{query}%'
+        params.extend([like, like])
+    if linea:
+        sql += ' AND p.linea = %s'
+        params.append(linea)
+    if genero:
+        sql += ' AND p.genero = %s'
+        params.append(genero)
+    if aroma:
+        sql += ' AND p.aroma_family = %s'
+        params.append(aroma)
+        
+    if sort == 'precio_asc':
+        sql += ' ORDER BY pr.precio ASC'
+    elif sort == 'precio_desc':
+        sql += ' ORDER BY pr.precio DESC'
+    else:
+        sql += ' ORDER BY p.linea, p.nombre'
+
+    total = _query(db, f'SELECT COUNT(*) AS cnt FROM ({sql}) AS t', params).fetchone()['cnt']
+    offset = (page - 1) * per_page
+    products = _query(db, f'{sql} LIMIT %s OFFSET %s', params + [per_page, offset]).fetchall()
+    total_pages = (total + per_page - 1) // per_page if total else 1
+    
+    db.close()
+    return render_template('ecommerce.html', products=products, query=query,
+                          linea=linea, genero=genero, aroma=aroma, sort=sort,
+                          lineas=lineas, generos=generos, aromas=aromas,
+                          total=total, page=page, per_page=per_page, total_pages=total_pages)
+
+@app.route('/api/pedido', methods=['POST'])
+def api_pedido():
+    data = request.get_json()
+    nombre = (data.get('nombre') or '').strip()
+    telefono = (data.get('telefono') or '').strip()
+    items = data.get('items', [])
+    
+    if not nombre or not telefono or not items:
+        return jsonify({'ok': False, 'error': 'Faltan datos requeridos'})
+
+    total = sum(int(i.get('precio', 0)) * int(i.get('qty', 0)) for i in items)
+    items_json = json.dumps(items, ensure_ascii=False)
+
+    db = get_db()
+    try:
+        _query(db, '''INSERT INTO orders (link_token, nombre, telefono, items_json, total, status)
+                      VALUES (%s, %s, %s, %s, %s, %s)''',
+               ['ECOMMERCE', nombre, telefono, items_json, total, 'nuevo'])
+        
+        for i in items:
+            _query(db, 'UPDATE products SET stock = stock - %s WHERE sku = %s AND stock >= %s',
+                   [int(i.get('qty', 0)), i.get('sku'), int(i.get('qty', 0))])
+            
+        db.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'ok': False, 'error': str(e)})
+    finally:
+        db.close()
+
+if __name__ == '__main__':
+    init_db()
+    app.run(debug=True)
+else:
+    init_db()
+

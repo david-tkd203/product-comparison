@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+  <div>
+    <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Gestión de Inventario</h1>
+    <p class="text-xs sm:text-sm text-slate-500 mt-0.5">{{ total }} productos en total</p>
+  </div>
+</div>
+
+<form method="get" class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 sm:p-4 mb-4">
+  <div class="flex flex-wrap gap-2 sm:gap-3">
+    <input name="q" value="{{ query }}" placeholder="Buscar nombre, SKU o marca..." class="flex-1 min-w-[180px] px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors w-full sm:w-auto">Buscar</button>
+  </div>
+</form>
+
+{% macro page_link(p) %}
+  ?q={{ query | urlencode }}&page={{ p }}
+{% endmacro %}
+
+{% if products %}
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+  <div class="overflow-x-auto -mx-px">
+    <table class="w-full text-sm min-w-[800px]">
+      <thead>
+        <tr class="border-b border-slate-200 bg-slate-50">
+          <th class="text-left px-4 py-3 font-semibold text-slate-600">Marca</th>
+          <th class="text-left px-4 py-3 font-semibold text-slate-600">Nombre</th>
+          <th class="text-left px-4 py-3 font-semibold text-slate-600">SKU</th>
+          <th class="text-center px-4 py-3 font-semibold text-slate-600">Familia Olfativa</th>
+          <th class="text-center px-4 py-3 font-semibold text-slate-600">Stock</th>
+          <th class="text-center px-4 py-3 font-semibold text-slate-600">Activo (Tienda)</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for p in products %}
+        <tr data-sku="{{ p['sku'] }}">
+          <td class="px-4 py-2 text-slate-700 whitespace-nowrap">{{ p['linea'] }}</td>
+          <td class="px-4 py-2 text-slate-900 max-w-[200px] truncate" title="{{ p['nombre'] }}">{{ p['nombre'] }}</td>
+          <td class="px-4 py-2 text-slate-500 font-mono text-xs">{{ p['sku'] }}</td>
+          <td class="px-4 py-2 text-center">
+            <input type="text" class="w-32 px-2 py-1 text-xs border border-slate-200 rounded text-center focus:outline-none focus:ring-2 focus:ring-indigo-500" value="{{ p['aroma_family'] or '' }}" onchange="saveRow('{{ p['sku'] }}', this.parentElement.parentElement)">
+          </td>
+          <td class="px-4 py-2 text-center">
+            <input type="number" min="0" class="w-20 px-2 py-1 border border-slate-200 rounded text-center focus:outline-none focus:ring-2 focus:ring-indigo-500" value="{{ p['stock'] or 0 }}" onchange="saveRow('{{ p['sku'] }}', this.parentElement.parentElement)">
+          </td>
+          <td class="px-4 py-2 text-center">
+            <label class="inline-flex items-center cursor-pointer">
+              <input type="checkbox" class="sr-only peer" {{ 'checked' if p['is_active'] }} onchange="saveRow('{{ p['sku'] }}', this.parentElement.parentElement.parentElement)">
+              <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if total_pages > 1 %}
+<div class="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4">
+  <p class="text-sm text-slate-500">Página {{ page }} de {{ total_pages }} · {{ total }} productos</p>
+  <div class="flex items-center gap-1">
+    {% if page > 1 %}
+    <a href="{{ page_link(page-1) }}" class="px-3 py-1.5 text-sm font-medium rounded-md bg-white border border-slate-200 text-slate-600 hover:bg-slate-50">Anterior</a>
+    {% endif %}
+    {% for p in range([1, page-2] | max, [total_pages+1, page+3] | min) %}
+    <a href="{{ page_link(p) }}" class="px-3 py-1.5 text-sm font-medium rounded-md {{ 'bg-indigo-600 text-white' if p == page else 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' }}">{{ p }}</a>
+    {% endfor %}
+    {% if page < total_pages %}
+    <a href="{{ page_link(page+1) }}" class="px-3 py-1.5 text-sm font-medium rounded-md bg-white border border-slate-200 text-slate-600 hover:bg-slate-50">Siguiente</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% elif total == 0 %}
+<div class="text-center py-12 text-slate-400">Sin resultados. Probá con otros filtros.</div>
+{% endif %}
+
+<script>
+function saveRow(sku, tr) {
+  var stock = tr.querySelector('input[type="number"]').value;
+  var is_active = tr.querySelector('input[type="checkbox"]').checked;
+  var aroma_family = tr.querySelector('input[type="text"]').value;
+  
+  fetch('/api/update_inventory', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      sku: sku,
+      stock: parseInt(stock) || 0,
+      is_active: is_active,
+      aroma_family: aroma_family
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if(!data.ok) {
+      alert('Error guardando: ' + data.error);
+    } else {
+      // Opcional: mostrar feedback visual de guardado exitoso
+      var td = tr.querySelector('td:last-child');
+      var ogBg = td.style.backgroundColor;
+      td.style.backgroundColor = '#ecfdf5';
+      setTimeout(() => td.style.backgroundColor = ogBg, 500);
+    }
+  });
+}
+</script>
+{% endblock %}
