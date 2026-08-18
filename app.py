@@ -15,6 +15,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import pandas as pd
 
 app = Flask(__name__)
+app.url_map.strict_slashes = False
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'cambiar-en-produccion')
 
 DB_CONFIG = {
@@ -375,6 +376,7 @@ def _paginate(sql, params, page, per_page):
 
 
 @app.route('/admin')
+@app.route('/admin/')
 @require_login
 def admin_redirect():
     return redirect(url_for('admin_productos'))
