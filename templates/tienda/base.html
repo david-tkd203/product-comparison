@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% block title %}Siyash · Alta Perfumería{% endblock %}</title>
+<title>{% block title %}Siyash · Fragancia con elegancia y selección. Marca la diferencia.{% endblock %}</title>
 <link rel="icon" type="image/png" href="/static/img/LogoSiyash-01.png">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -102,6 +102,23 @@
 
 
 <body class="bg-brand-white text-brand-800 font-sans antialiased flex h-full flex-col">
+
+<!-- 1. SPLASH SCREEN (PRELOADER) -->
+<div id="splash-screen" class="fixed inset-0 z-[100] bg-brand-white flex flex-col items-center justify-center transition-opacity duration-700">
+  <div class="flex flex-col items-center animate-logo-pulse text-center px-4">
+    <h1 class="font-serif text-5xl sm:text-7xl tracking-wide text-brand-black mb-6">Siyash</h1>
+    <p class="font-serif italic text-lg sm:text-2xl text-brand-500 max-w-md">"Fragancia con elegancia y selección, marca la diferencia."</p>
+  </div>
+</div>
+
+<!-- 2. BRANDED OVERLAY (ASYNC LOADING MODAL) -->
+<div id="branded-overlay" class="fixed inset-0 z-[90] bg-brand-white/80 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+  <div class="flex flex-col items-center">
+    <div class="w-12 h-12 border-t-2 border-brand-black rounded-full animate-spin mb-4"></div>
+    <span class="text-[10px] tracking-widest2 uppercase text-brand-800">Actualizando...</span>
+  </div>
+</div>
+
 
 <!-- Announcement bar -->
 <div class="bg-brand-white border-b border-brand-100 text-center py-2 px-4">
