@@ -3,49 +3,51 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Iniciar Sesión — Perfumería</title>
+<title>Administración · Siyash</title>
+<link rel="icon" type="image/png" href="/static/img/LogoSiyash-01.png">
 <script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','system-ui','sans-serif']}}}}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  body { font-family: 'Inter', system-ui, sans-serif; }
+  body { font-family: 'Jost', system-ui, sans-serif; }
+  .tracking-widest2 { letter-spacing: 0.35em; }
 </style>
 </head>
-<body class="h-full bg-slate-50 text-slate-800 antialiased flex items-center justify-center p-4">
+<body class="h-full bg-brand-black antialiased flex items-center justify-center p-4" style="background:#000000;">
 
 <div class="w-full max-w-sm">
   <div class="text-center mb-8">
-    <div class="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 rounded-2xl mb-4 shadow-lg">
-      <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-    </div>
-    <h1 class="text-2xl font-bold text-slate-900">Perfumería</h1>
-    <p class="text-sm text-slate-500 mt-1">Panel de gestión</p>
+    <img src="/static/img/LogoSiyash-02.png" alt="Siyash" class="h-14 w-auto mx-auto mb-5">
+    <h1 class="font-serif text-3xl text-white" style="font-family:'Cormorant Garamond',serif;">Administración</h1>
+    <p class="text-[10px] tracking-widest2 uppercase text-gray-500 mt-2">Acceso restringido</p>
   </div>
 
-  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
+  <div class="bg-white p-6 sm:p-8">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for category, message in messages %}
-        <div class="px-4 py-3 rounded-lg text-sm mb-4 {{ 'bg-emerald-50 text-emerald-700 border border-emerald-200' if category == 'success' else 'bg-red-50 text-red-700 border border-red-200' }}">{{ message }}</div>
+        <div class="px-4 py-3 text-sm mb-4 {{ 'bg-emerald-50 text-emerald-700 border border-emerald-200' if category == 'success' else 'bg-red-50 text-red-700 border border-red-200' }}">{{ message }}</div>
       {% endfor %}
     {% endwith %}
 
     <form method="post" class="space-y-4">
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Usuario</label>
-        <input type="text" name="username" required autofocus class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="admin">
+        <label class="block text-[10px] tracking-widest2 uppercase text-gray-500 mb-1.5">Usuario</label>
+        <input type="text" name="username" required autofocus class="w-full px-3 py-2.5 border border-gray-200 text-sm focus:outline-none focus:border-black transition-colors" placeholder="admin" autocomplete="username">
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-        <input type="password" name="password" required class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="••••••••">
+        <label class="block text-[10px] tracking-widest2 uppercase text-gray-500 mb-1.5">Contraseña</label>
+        <input type="password" name="password" required class="w-full px-3 py-2.5 border border-gray-200 text-sm focus:outline-none focus:border-black transition-colors" placeholder="••••••••" autocomplete="current-password">
       </div>
-      <button type="submit" class="w-full px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
+      <button type="submit" class="w-full px-4 py-3 bg-black text-white text-[11px] tracking-widest2 uppercase font-medium hover:bg-gray-800 transition-colors">
         Iniciar sesión
       </button>
     </form>
   </div>
 
-  <p class="text-center text-xs text-slate-400 mt-6">Perfumería Siyash · siyash.cl</p>
+  <div class="text-center mt-6">
+    <a href="/" class="text-[10px] tracking-widest2 uppercase text-gray-500 hover:text-white transition-colors">← Volver a la tienda</a>
+  </div>
 </div>
 
 </body>

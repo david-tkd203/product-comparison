@@ -1,0 +1,73 @@
+{% macro filtros() %}
+<form method="get" class="space-y-7">
+
+  <!-- Búsqueda -->
+  <div>
+    <label class="block text-[10px] tracking-widest2 uppercase text-brand-400 mb-2">Buscar</label>
+    <div class="flex border border-brand-200 focus-within:border-brand-black transition-colors">
+      <input type="text" name="q" value="{{ q }}" placeholder="Perfume, marca o SKU…" class="flex-1 min-w-0 px-3 py-2.5 text-sm bg-brand-white focus:outline-none">
+      <button type="submit" class="px-3 text-brand-400 hover:text-brand-black transition-colors" aria-label="Buscar">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-5.2-5.2m2.2-5.3a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Género -->
+  {% if not preset %}
+  <div>
+    <label class="block text-[10px] tracking-widest2 uppercase text-brand-400 mb-2">Género</label>
+    <select name="genero" class="w-full border border-brand-200 px-3 py-2.5 text-sm bg-brand-white focus:outline-none focus:border-brand-black">
+      <option value="">Todos</option>
+      <option value="Mujer" {{ 'selected' if genero == 'Mujer' }}>Femenino</option>
+      <option value="Hombre" {{ 'selected' if genero == 'Hombre' }}>Masculino</option>
+      <option value="Unisex" {{ 'selected' if genero == 'Unisex' }}>Unisex</option>
+    </select>
+  </div>
+  {% endif %}
+
+  <!-- Marca -->
+  <div>
+    <label class="block text-[10px] tracking-widest2 uppercase text-brand-400 mb-2">Marca</label>
+    <select name="linea" class="w-full border border-brand-200 px-3 py-2.5 text-sm bg-brand-white focus:outline-none focus:border-brand-black">
+      <option value="">Todas las marcas</option>
+      {% for l in lineas %}
+      <option value="{{ l }}" {{ 'selected' if linea == l }}>{{ l }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Familia olfativa -->
+  <div>
+    <span class="block text-[10px] tracking-widest2 uppercase text-brand-400 mb-3">Familia olfativa</span>
+    <div class="space-y-2">
+      <label class="flex items-center gap-2.5 cursor-pointer text-sm text-brand-700">
+        <input type="radio" name="familia" value="" class="accent-brand-black w-3.5 h-3.5" {{ 'checked' if not familia }}>
+        Todas las familias
+      </label>
+      {% for f in familias %}
+      <label class="flex items-center gap-2.5 cursor-pointer text-sm text-brand-700">
+        <input type="radio" name="familia" value="{{ f }}" class="accent-brand-black w-3.5 h-3.5" {{ 'checked' if familia == f }}>
+        {{ f }}
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Precio -->
+  <div>
+    <span class="block text-[10px] tracking-widest2 uppercase text-brand-400 mb-2">Precio (CLP)</span>
+    <div class="flex items-center gap-2">
+      <input type="number" name="pmin" value="{{ pmin or '' }}" min="0" placeholder="{{ bounds_min }}" class="w-full border border-brand-200 px-3 py-2.5 text-sm bg-brand-white focus:outline-none focus:border-brand-black">
+      <span class="text-brand-300">—</span>
+      <input type="number" name="pmax" value="{{ pmax or '' }}" min="0" placeholder="{{ bounds_max }}" class="w-full border border-brand-200 px-3 py-2.5 text-sm bg-brand-white focus:outline-none focus:border-brand-black">
+    </div>
+  </div>
+
+  {% if sort and sort != 'destacados' %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+
+  <div class="flex gap-2">
+    <button type="submit" class="flex-1 py-3 bg-brand-black text-brand-white text-[10px] tracking-widest2 uppercase hover:bg-brand-700 transition-colors">Aplicar</button>
+    <a href="{{ '/hombre' if preset == 'Hombre' else '/mujer' if preset == 'Mujer' else '/perfumes' }}" class="px-4 py-3 border border-brand-200 text-[10px] tracking-widest2 uppercase text-brand-500 hover:border-brand-black hover:text-brand-black transition-colors">Limpiar</a>
+  </div>
+</form>
+{% endmacro %}

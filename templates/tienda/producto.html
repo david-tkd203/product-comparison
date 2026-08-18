@@ -1,0 +1,106 @@
+{% extends "tienda/base.html" %}
+{% from "tienda/_macros.html" import product_card, precio_clp %}
+
+{% block title %}{{ p['linea'] }} · {{ p['nombre'] }} | Siyash{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+
+  <nav class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-8">
+    <a href="/" class="hover:text-brand-black transition-colors">Inicio</a> ·
+    <a href="{{ '/hombre' if p['genero_norm'] == 'Hombre' else '/mujer' if p['genero_norm'] == 'Mujer' else '/perfumes' }}" class="hover:text-brand-black transition-colors">
+      {{ 'Para Él' if p['genero_norm'] == 'Hombre' else 'Para Ella' if p['genero_norm'] == 'Mujer' else 'Catálogo' }}</a> ·
+    <a href="/perfumes?linea={{ p['linea'] | urlencode }}" class="hover:text-brand-black transition-colors">{{ p['linea'] }}</a>
+  </nav>
+
+  <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 mb-20">
+
+    <!-- Imagen -->
+    <div class="bg-brand-50 border border-brand-100 aspect-[4/5] flex items-center justify-center overflow-hidden">
+      {% if p['imagen'] %}
+      <img src="{{ p['imagen'] }}" alt="{{ p['nombre'] }}" class="w-full h-full object-contain p-8 sm:p-14">
+      {% else %}
+      <div class="text-center px-6">
+        <span class="font-serif text-5xl italic text-brand-300">{{ p['linea'] }}</span>
+        <p class="text-[10px] tracking-widest2 uppercase text-brand-300 mt-4">{{ p['formato'] or '' }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Info -->
+    <div class="flex flex-col">
+      <p class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-3">{{ p['linea'] }}</p>
+      <h1 class="font-serif text-4xl sm:text-5xl text-brand-black leading-tight mb-5">{{ p['nombre'] }}</h1>
+
+      <div class="flex flex-wrap gap-2 mb-8">
+        {% if p['genero_norm'] %}<span class="text-[9px] tracking-widest uppercase border border-brand-300 text-brand-600 px-3 py-1.5">{{ p['genero_norm'] }}</span>{% endif %}
+        {% if p['formato'] %}<span class="text-[9px] tracking-widest uppercase border border-brand-300 text-brand-600 px-3 py-1.5">{{ p['formato'] }}</span>{% endif %}
+        {% for f in p['familias'] %}<span class="text-[9px] tracking-widest uppercase border border-brand-300 text-brand-600 px-3 py-1.5">{{ f }}</span>{% endfor %}
+      </div>
+
+      <div class="border-y border-brand-100 py-6 mb-8">
+        <span class="font-serif text-4xl sm:text-5xl text-brand-black">{{ precio_clp(p['precio_venta']) }}</span>
+      </div>
+
+      <!-- Notas olfativas -->
+      {% if p['notas'] and (p['notas'].get('salida') or p['notas'].get('corazon') or p['notas'].get('fondo')) %}
+      <div class="mb-10 space-y-5">
+        <p class="text-[10px] tracking-widest2 uppercase text-brand-400">Pirámide olfativa</p>
+        {% for label, key in [('Salida', 'salida'), ('Corazón', 'corazon'), ('Fondo', 'fondo')] %}
+          {% if p['notas'].get(key) %}
+          <div class="grid grid-cols-[90px_1fr] gap-4 items-baseline">
+            <span class="text-[10px] tracking-widest uppercase text-brand-400">{{ label }}</span>
+            <span class="font-serif italic text-lg text-brand-700 leading-snug">{{ p['notas'][key] | join(', ') }}</span>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="mt-auto space-y-3">
+        <div class="flex gap-3">
+          <div class="flex items-center border border-brand-900">
+            <button onclick="qtyDelta(-1)" class="px-4 py-3.5 text-brand-500 hover:bg-brand-50 transition-colors" aria-label="Menos">−</button>
+            <input id="pqty" type="text" value="1" readonly class="w-12 text-center text-sm border-x border-brand-900 py-3.5 focus:outline-none">
+            <button onclick="qtyDelta(1)" class="px-4 py-3.5 text-brand-500 hover:bg-brand-50 transition-colors" aria-label="Más">+</button>
+          </div>
+          <button onclick="addThisToCart()" class="flex-1 py-3.5 bg-brand-black text-brand-white text-xs tracking-widest2 uppercase hover:bg-brand-700 transition-colors">Agregar a la selección</button>
+        </div>
+        <p class="text-[10px] text-brand-400 text-center tracking-wide">Pedido coordinado por WhatsApp · Envíos a todo Chile</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Relacionados -->
+  {% if relacionados %}
+  <section class="border-t border-brand-100 pt-12">
+    <h2 class="font-serif text-3xl sm:text-4xl text-brand-black mb-8">También te puede interesar</h2>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+      {% for r in relacionados %}{{ product_card(r) }}{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+
+<script>
+var PRECIO = {{ p['precio_venta'] | int }};
+var SKU = '{{ p['sku'] }}';
+var NOMBRE = '{{ p['nombre'] | replace("'", "\\'") }}';
+var LINEA = '{{ p['linea'] | replace("'", "\\'") }}';
+
+function qtyDelta(d) {
+  var el = document.getElementById('pqty');
+  var v = Math.min(99, Math.max(1, parseInt(el.value, 10) + d));
+  el.value = v;
+}
+function addThisToCart() {
+  var qty = parseInt(document.getElementById('pqty').value, 10) || 1;
+  var cart = getCart();
+  if (cart[SKU]) { cart[SKU].qty = Math.min(99, cart[SKU].qty + qty); }
+  else { cart[SKU] = { sku: SKU, nombre: NOMBRE, precio: PRECIO, linea: LINEA, qty: qty }; }
+  saveCart(cart);
+  updateCartBadge();
+  openCart();
+}
+</script>
+{% endblock %}

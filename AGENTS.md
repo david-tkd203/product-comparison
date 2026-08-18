@@ -1,6 +1,6 @@
-# AGENTS.md — Product Comparison
+# AGENTS.md — Siyash Perfumería
 
-Flask + MySQL app for wholesale vs retail perfume price comparison. Single-file app (`app.py` ~1500 lines) with Jinja2 templates and Tailwind CSS CDN.
+Flask + MySQL app: **public ecommerce at siyash.cl** plus an internal admin/backoffice for wholesale price comparison. Single-file app (`app.py`) with Jinja2 templates and Tailwind CSS CDN. Monochrome Siyash brand (black/white/gray); logos in `static/img/`.
 
 ## Production Deploy (Dokploy)
 
@@ -11,7 +11,7 @@ Flask + MySQL app for wholesale vs retail perfume price comparison. Single-file 
 - Dokploy handles SSL automatically (no manual nginx or Certbot needed)
 - **Do not run nginx on the host** — Dokploy has its own reverse proxy
 
-`docker-compose.yml` is the file Dokploy uses. It intentionally uses `expose: ["5000"]` (no host bind) so Traefik routes internally. The `127.0.0.1` bind from `docker-compose.prod.yml` does **not** work with Dokploy.
+`docker-compose.yml` is the file Dokploy uses. It intentionally uses `expose: ["80"]` (no host bind) so Traefik routes internally.
 
 ### Fallback manual deploy
 
@@ -26,15 +26,19 @@ The script auto-backs up the DB before deploying and uses `--no-cache` builds in
 ## Local Development
 
 ```bash
-docker compose up --build -d       # all services (web, db, nginx, tunnel)
+docker compose up --build -d       # all services (web, db)
 docker compose up -d --no-deps web # web only after code changes
 ```
 
-Docker Compose automatically merges `docker-compose.override.yml`, which adds nginx and exposes `http://localhost:80`. MySQL takes ~10s to become healthy on first start.
+MySQL takes ~10s to become healthy on first start.
 
 ## Database
 
-MySQL 8 in Docker. DB `perfumes`, user `perfumes` / `perfumes`. Tables are created on first module import (`init_db()` runs when `app.py` is loaded). Schema: `products`, `prices`, `imports`, `cosmetic_products`, `silk_products`, `multimarca_products`, `silk_matches`, `multimarca_matches`, `catalog_links`, `orders`.
+MySQL 8 in Docker. DB `perfumes`, user `perfumes` / `perfumes`. Tables are created on first module import (`init_db()` runs when `app.py` is loaded). Schema: `products`, `prices`, `imports`, `cosmetic_products`, `silk_products`, `multimarca_products`, `silk_matches`, `multimarca_matches`, `catalog_links` (legacy, unused), `orders`, `users`, `settings`.
+
+**Storefront model:** products appear on the public ecommerce only when `products.is_active = 1 AND products.stock > 0` (set from `/admin/inventario`; stock is never shown to clients). Prices shown = `wholesale price × (1 + settings.margen_pct/100)` rounded to nearest 10, computed server-side (`_tienda_sql()`). The global margin lives in the `settings` table (`margen_pct`, editable at `/admin/inventario`). Order prices are always recomputed server-side in `/api/pedido` — client-sent prices are ignored, stock is checked and decremented atomically. Web orders use `link_token = 'WEB'`.
+
+**Gender normalization:** raw `genero` values from XLSX are messy; `_norm_genero()` maps them to `Hombre` / `Mujer` / `Unisex` (also normalized at import time).
 
 **Note:** `DB_CONFIG` in `app.py` hardcodes `user='perfumes'` and `password='perfumes'`; only `host` is read from `MYSQL_HOST`. Changing `.env.production` credentials does not affect the app's DB login unless `app.py` is also modified.
 
@@ -64,16 +68,31 @@ There is no automated test suite. Verify changes manually via browser or `curl`.
 
 ## Key Routes
 
+### Storefront (public, monochrome Siyash brand — templates in `templates/tienda/`)
+
 | Route | Purpose |
 |-------|---------|
-| `/` | Wholesale product list with search/filter |
+| `/` | Home: hero, Para Él/Ella split, destacados, familias, marcas |
+| `/perfumes` | Full catalog with filters: search, gender, brand, olfactory family, price range, sort |
+| `/hombre`, `/mujer` | Catalog preset to Hombre / Mujer |
+| `/producto/<sku>` | Product detail: image, olfactory pyramid, related items |
+| `/api/pedido` | POST checkout — server-side pricing + atomic stock decrement |
+| `/login` | Admin login (footer link "Acceso administración") |
+
+### Admin/backoffice (login required)
+
+| Route | Purpose |
+|-------|---------|
+| `/admin` → `/admin/productos` | Wholesale product list with search/filter |
+| `/admin/inventario` | **Store inventory**: activate checkbox + stock qty + aroma family + store margin config |
+| `/admin/config` | POST — updates global `margen_pct` |
 | `/upload` | XLSX import (GET form, POST process) |
 | `/compare` | Month-over-month price diff |
 | `/retail` | Side-by-side wholesale vs 3 retailers, margin calc |
 | `/catalogo` | Internal retail catalog (view only) |
-| `/catalogo/config` | Generate public catalog link with margin % |
-| `/c/<token>` | **Public catalog** — client browses with margin prices and places orders |
 | `/pedidos` | View client orders (name, phone, items, status) |
 | `/estudio` | Market study dashboard (brand stats, opportunities) |
 | `/retail/export` | Export retail comparison to CSV |
 | `/sync-cosmetic`, `/sync-silk`, `/sync-multimarca` | Trigger Shopify sync |
+
+**Removed:** the dynamic catalog link feature (`/catalogo/config`, `/c/<token>`) was replaced by the storefront itself at siyash.cl.

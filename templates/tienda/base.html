@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Siyash · Alta Perfumería{% endblock %}</title>
+<link rel="icon" type="image/png" href="/static/img/LogoSiyash-01.png">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Jost', 'Inter', 'system-ui', 'sans-serif'],
+          serif: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+        },
+        colors: {
+          brand: {
+            white: '#ffffff',
+            50: '#f6f6f6',
+            100: '#e2e2e2',
+            200: '#c9c9c9',
+            300: '#a8a8a8',
+            400: '#797979',
+            500: '#5f5f5f',
+            600: '#494949',
+            700: '#3a3a3a',
+            800: '#333334',
+            900: '#2d2d2e',
+            black: '#000000',
+          }
+        },
+        letterSpacing: { widest2: '0.35em' }
+      }
+    }
+  }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  ::selection { background: #000; color: #fff; }
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .fade-up { animation: fadeUp .7s ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  .card-img { transition: transform .6s cubic-bezier(.2,.6,.2,1); }
+  .group:hover .card-img { transform: scale(1.05); }
+  #mobile-nav { transition: max-height .35s ease, opacity .3s ease; }
+  #mobile-nav.hidden { max-height: 0; opacity: 0; overflow: hidden; }
+  #mobile-nav:not(.hidden) { max-height: 420px; opacity: 1; }
+  .marquee { animation: slide 28s linear infinite; }
+  @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+</style>
+
+<style>
+  /* Splash Screen Fade Out */
+  .splash-fade-out {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  
+  /* Shimmer Animation para Skeletons */
+  @keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+  }
+  .animate-shimmer {
+    background: linear-gradient(to right, #f6f6f6 4%, #e2e2e2 25%, #f6f6f6 36%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite linear;
+  }
+  
+  /* Pulse Animation para Overlay */
+  @keyframes logoPulse {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    50% { transform: scale(1.05); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.8; }
+  }
+  .animate-logo-pulse {
+    animation: logoPulse 2s infinite ease-in-out;
+  }
+</style>
+</head>
+
+<body class="bg-brand-white text-brand-800 font-sans antialiased flex h-full flex-col">
+
+<!-- Announcement bar -->
+<div class="bg-brand-white border-b border-brand-100 text-center py-2 px-4">
+  <p class="text-[10px] tracking-widest2 uppercase text-brand-600">Envíos a todo Chile · Perfumería original garantizada</p>
+</div>
+
+<!-- Header -->
+<header class="bg-brand-black text-brand-white sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16 sm:h-20">
+    <a href="/" class="flex items-center shrink-0" aria-label="Siyash — Inicio">
+      <img src="/static/img/LogoSiyash-02.png" alt="Siyash" class="h-9 sm:h-11 w-auto">
+    </a>
+
+    <nav class="hidden md:flex items-center gap-8">
+      <a href="/" class="text-xs tracking-widest2 uppercase text-brand-200 hover:text-white transition-colors">Inicio</a>
+      <a href="/mujer" class="text-xs tracking-widest2 uppercase text-brand-200 hover:text-white transition-colors">Para Ella</a>
+      <a href="/hombre" class="text-xs tracking-widest2 uppercase text-brand-200 hover:text-white transition-colors">Para Él</a>
+      <a href="/perfumes" class="text-xs tracking-widest2 uppercase text-brand-200 hover:text-white transition-colors">Todos los perfumes</a>
+    </nav>
+
+    <div class="flex items-center gap-3 sm:gap-5">
+      <a href="/perfumes" class="text-brand-200 hover:text-white transition-colors" aria-label="Buscar">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-5.2-5.2m2.2-5.3a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z"/></svg>
+      </a>
+      <button onclick="openCart()" class="relative text-brand-200 hover:text-white transition-colors" aria-label="Carrito">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+        <span id="cart-badge" class="absolute -top-1.5 -right-2 bg-brand-white text-brand-black text-[9px] font-semibold w-4 h-4 rounded-full items-center justify-center hidden">0</span>
+      </button>
+      <button id="menu-btn" class="md:hidden text-brand-200 hover:text-white p-1" onclick="toggleMenu()" aria-label="Menú">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="mobile-nav" class="hidden md:hidden border-t border-brand-700">
+    <div class="flex flex-col px-6 py-4 gap-4">
+      <a href="/" class="text-xs tracking-widest2 uppercase text-brand-200">Inicio</a>
+      <a href="/mujer" class="text-xs tracking-widest2 uppercase text-brand-200">Para Ella</a>
+      <a href="/hombre" class="text-xs tracking-widest2 uppercase text-brand-200">Para Él</a>
+      <a href="/perfumes" class="text-xs tracking-widest2 uppercase text-brand-200">Todos los perfumes</a>
+    </div>
+  </div>
+</header>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 mt-4">
+    <div class="px-4 py-3 text-sm {{ 'bg-emerald-50 text-emerald-800 border border-emerald-200' if category == 'success' else 'bg-red-50 text-red-800 border border-red-200' }}">{{ message }}</div>
+  </div>
+  {% endfor %}
+{% endwith %}
+
+<main class="flex-1">
+{% block content %}{% endblock %}
+</main>
+
+<!-- Footer -->
+<footer class="bg-brand-black text-brand-300 mt-20">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-14 grid gap-10 md:grid-cols-3">
+    <div>
+      <img src="/static/img/LogoSiyash-02.png" alt="Siyash" class="h-10 w-auto mb-4">
+      <p class="font-serif italic text-lg text-brand-200">El perfume es la forma más intensa del recuerdo.</p>
+    </div>
+    <div>
+      <h4 class="text-[10px] tracking-widest2 uppercase text-brand-500 mb-4">Colección</h4>
+      <div class="flex flex-col gap-2.5">
+        <a href="/mujer" class="text-sm text-brand-200 hover:text-white transition-colors">Perfumes para ella</a>
+        <a href="/hombre" class="text-sm text-brand-200 hover:text-white transition-colors">Perfumes para él</a>
+        <a href="/perfumes?genero=Unisex" class="text-sm text-brand-200 hover:text-white transition-colors">Unisex</a>
+        <a href="/perfumes" class="text-sm text-brand-200 hover:text-white transition-colors">Catálogo completo</a>
+      </div>
+    </div>
+    <div>
+      <h4 class="text-[10px] tracking-widest2 uppercase text-brand-500 mb-4">Siyash</h4>
+      <div class="flex flex-col gap-2.5">
+        <span class="text-sm text-brand-200">Pedidos por WhatsApp y teléfono</span>
+        <span class="text-sm text-brand-200">Envíos a todo Chile</span>
+        <a href="/admin" class="text-[11px] text-brand-600 hover:text-brand-300 transition-colors uppercase tracking-widest mt-2">Acceso administración</a>
+      </div>
+    </div>
+  </div>
+  <div class="border-t border-brand-800/60">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p class="text-[10px] tracking-widest2 uppercase text-brand-600">© 2026 Siyash Perfumería</p>
+      <p class="text-[10px] tracking-widest2 uppercase text-brand-600">siyash.cl</p>
+    </div>
+  </div>
+</footer>
+
+<!-- Cart drawer -->
+<div id="cart-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 hidden" onclick="closeCart()"></div>
+<aside id="cart-sidebar" class="fixed top-0 right-0 h-full w-full max-w-md bg-brand-white shadow-2xl z-50 translate-x-full transition-transform duration-300 flex flex-col">
+  <div class="px-6 py-5 border-b border-brand-100 flex items-center justify-between">
+    <h2 class="font-serif text-2xl text-brand-black">Tu selección</h2>
+    <button onclick="closeCart()" class="text-brand-400 hover:text-brand-black transition-colors" aria-label="Cerrar">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <div class="flex-1 overflow-y-auto px-6" id="cart-items"></div>
+
+  <div id="cart-footer" class="px-6 py-5 border-t border-brand-100 bg-brand-50 hidden">
+    <div class="flex justify-between items-baseline mb-5">
+      <span class="text-[10px] tracking-widest2 uppercase text-brand-500">Total</span>
+      <span id="cart-total" class="font-serif text-3xl text-brand-black">$0</span>
+    </div>
+    <div class="space-y-2.5 mb-4">
+      <input type="text" id="order-name" class="w-full px-4 py-3 bg-brand-white border border-brand-200 text-sm focus:outline-none focus:border-brand-black transition-colors" placeholder="Nombre y apellido">
+      <input type="tel" id="order-phone" class="w-full px-4 py-3 bg-brand-white border border-brand-200 text-sm focus:outline-none focus:border-brand-black transition-colors" placeholder="Teléfono / WhatsApp">
+    </div>
+    <button id="checkout-btn" onclick="submitOrder()" class="w-full py-4 bg-brand-black text-brand-white text-xs font-medium tracking-widest2 uppercase hover:bg-brand-700 transition-colors">Finalizar pedido</button>
+    <p class="text-[10px] text-brand-400 text-center mt-3">Coordinamos pago y envío por WhatsApp al recibir tu pedido</p>
+  </div>
+</aside>
+
+<!-- Success modal -->
+<div id="success-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 items-center justify-center hidden px-4">
+  <div class="bg-brand-white max-w-sm w-full text-center py-12 px-8 border-t-2 border-brand-black">
+    <svg class="w-10 h-10 mx-auto mb-5 text-brand-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M5 13l4 4L19 7"/></svg>
+    <h3 class="font-serif text-3xl text-brand-black mb-3">Gracias</h3>
+    <p class="text-sm text-brand-500 mb-8 leading-relaxed">Tu pedido fue recibido. Te contactaremos pronto para coordinar el pago y la entrega.</p>
+    <button onclick="closeSuccessModal()" class="px-8 py-3 bg-brand-black text-brand-white text-xs tracking-widest2 uppercase hover:bg-brand-700 transition-colors">Continuar</button>
+  </div>
+</div>
+
+<script>
+var CART_KEY = 'siyash_cart';
+
+function getCart() {
+  try { return JSON.parse(localStorage.getItem(CART_KEY) || '{}'); } catch(e) { return {}; }
+}
+function saveCart(cart) { localStorage.setItem(CART_KEY, JSON.stringify(cart)); }
+function clp(n) { return '$' + Number(n).toLocaleString('es-CL'); }
+
+function updateCartBadge() {
+  var cart = getCart(), count = 0;
+  for (var sku in cart) count += cart[sku].qty;
+  var badge = document.getElementById('cart-badge');
+  if (count > 0) {
+    badge.textContent = count > 99 ? '99+' : count;
+    badge.classList.remove('hidden');
+    badge.classList.add('flex');
+  } else {
+    badge.classList.add('hidden');
+    badge.classList.remove('flex');
+  }
+}
+function addToCart(sku, nombre, precio, linea) {
+  var cart = getCart();
+  if (cart[sku]) { cart[sku].qty += 1; }
+  else { cart[sku] = { sku: sku, nombre: nombre, precio: parseInt(precio, 10), linea: linea || '', qty: 1 }; }
+  saveCart(cart);
+  updateCartBadge();
+  openCart();
+}
+function removeFromCart(sku) {
+  var cart = getCart(); delete cart[sku];
+  saveCart(cart); updateCartBadge(); renderCart();
+}
+function changeQty(sku, delta) {
+  var cart = getCart();
+  if (cart[sku]) {
+    cart[sku].qty += delta;
+    if (cart[sku].qty <= 0) delete cart[sku];
+    saveCart(cart); updateCartBadge(); renderCart();
+  }
+}
+function openCart() {
+  renderCart();
+  document.getElementById('cart-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  setTimeout(function() { document.getElementById('cart-sidebar').classList.remove('translate-x-full'); }, 10);
+}
+function closeCart() {
+  document.getElementById('cart-sidebar').classList.add('translate-x-full');
+  document.body.style.overflow = '';
+  setTimeout(function() { document.getElementById('cart-overlay').classList.add('hidden'); }, 300);
+}
+function renderCart() {
+  var cart = getCart(), container = document.getElementById('cart-items'),
+      footer = document.getElementById('cart-footer'), total = 0, count = 0, html = '';
+  for (var sku in cart) {
+    count++;
+    var item = cart[sku], sub = item.qty * item.precio;
+    total += sub;
+    html += '<div class="flex py-5 border-b border-brand-100 last:border-0">' +
+      '<div class="flex-1 min-w-0 pr-4">' +
+        (item.linea ? '<p class="text-[9px] tracking-widest2 uppercase text-brand-400 mb-0.5">' + item.linea + '</p>' : '') +
+        '<h4 class="text-sm text-brand-black leading-snug mb-2">' + item.nombre + '</h4>' +
+        '<div class="flex items-center gap-4">' +
+          '<div class="flex items-center border border-brand-200">' +
+            '<button onclick="changeQty(\'' + sku + '\',-1)" class="px-2.5 py-1 text-brand-500 hover:bg-brand-50">−</button>' +
+            '<span class="px-2 text-xs">' + item.qty + '</span>' +
+            '<button onclick="changeQty(\'' + sku + '\',1)" class="px-2.5 py-1 text-brand-500 hover:bg-brand-50">+</button>' +
+          '</div>' +
+          '<button onclick="removeFromCart(\'' + sku + '\')" class="text-[10px] uppercase tracking-widest text-brand-400 hover:text-brand-black underline underline-offset-4 decoration-brand-200">Quitar</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="font-serif text-lg text-brand-black">' + clp(sub) + '</div>' +
+    '</div>';
+  }
+  if (count === 0) {
+    html = '<div class="text-center py-16"><p class="font-serif italic text-xl text-brand-300">Tu selección está vacía</p></div>';
+    footer.classList.add('hidden');
+  } else { footer.classList.remove('hidden'); }
+  container.innerHTML = html;
+  document.getElementById('cart-total').textContent = clp(total);
+}
+function submitOrder() {
+  var nombre = document.getElementById('order-name').value.trim();
+  var telefono = document.getElementById('order-phone').value.trim();
+  if (!nombre || !telefono) { alert('Completa tu nombre y teléfono para continuar.'); return; }
+  var cart = getCart(), items = [];
+  for (var sku in cart) items.push({ sku: sku, qty: cart[sku].qty });
+  var btn = document.getElementById('checkout-btn');
+  btn.disabled = true; btn.textContent = 'Procesando…';
+  fetch('/api/pedido', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre: nombre, telefono: telefono, items: items })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.disabled = false; btn.textContent = 'Finalizar pedido';
+    if (data.ok) {
+      localStorage.removeItem(CART_KEY);
+      updateCartBadge();
+      closeCart();
+      var m = document.getElementById('success-modal');
+      m.classList.remove('hidden'); m.classList.add('flex');
+    } else {
+      alert(data.error || 'No pudimos procesar el pedido. Intenta nuevamente.');
+    }
+  })
+  .catch(function() {
+    btn.disabled = false; btn.textContent = 'Finalizar pedido';
+    alert('Error de conexión. Intenta nuevamente.');
+  });
+}
+function closeSuccessModal() {
+  var m = document.getElementById('success-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+  window.location.href = '/perfumes';
+}
+function toggleMenu() { document.getElementById('mobile-nav').classList.toggle('hidden'); }
+window.addEventListener('resize', function() {
+  if (window.innerWidth >= 768) document.getElementById('mobile-nav').classList.add('hidden');
+});
+updateCartBadge();
+</script>
+
+<!-- LÓGICA DE ESTADOS Y UI -->
+<script>
+  // Manejo del Splash Screen
+  window.addEventListener('load', () => {
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
+      setTimeout(() => {
+        splash.classList.add('splash-fade-out');
+        setTimeout(() => splash.remove(), 800); // Quitar del DOM tras animar
+      }, 500); // Pequeño delay para asegurar que el DOM pintó
+    }
+  });
+
+  // API Global para manejar estados de carga asíncronos (Branded Overlay)
+  window.SiyashUI = {
+    showLoading: function() {
+      const overlay = document.getElementById('branded-overlay');
+      overlay.classList.remove('opacity-0', 'pointer-events-none');
+      overlay.classList.add('opacity-100', 'pointer-events-auto');
+    },
+    hideLoading: function() {
+      const overlay = document.getElementById('branded-overlay');
+      overlay.classList.remove('opacity-100', 'pointer-events-auto');
+      overlay.classList.add('opacity-0', 'pointer-events-none');
+    }
+  };
+</script>
+</body>
+
+</html>

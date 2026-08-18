@@ -32,7 +32,7 @@
       </div>
       <div class="text-left sm:text-right shrink-0">
         <p class="text-lg font-bold text-indigo-700">${{ "{:,}".format(o['total']).replace(',', '.') }}</p>
-        <p class="text-xs text-slate-400">Margen: {{ o['margen_pct'] }}%</p>
+        <p class="text-xs text-slate-400">{{ 'Tienda online' if o['link_token'] == 'WEB' else 'Catálogo · margen {}%'.format(o['margen_pct']) if o['margen_pct'] else 'Canal: ' + o['link_token'] }}</p>
         <p class="text-xs text-slate-400">{{ o['created_at'].strftime('%d/%m/%Y %H:%M') if o['created_at'] else '' }}</p>
       </div>
     </div>

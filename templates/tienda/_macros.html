@@ -1,0 +1,58 @@
+{% macro precio_clp(v) %}${{ "{:,}".format(v|int).replace(',', '.') }}{% endmacro %}
+
+{% macro product_card(p) %}
+<article class="group">
+  <a href="/producto/{{ p['sku'] }}" class="block">
+    <div class="aspect-[4/5] bg-brand-50 overflow-hidden relative mb-4 border border-brand-100">
+      {% if p['imagen'] %}
+      <img src="{{ p['imagen'] }}" alt="{{ p['nombre'] }}" loading="lazy" class="card-img w-full h-full object-contain p-5">
+      {% else %}
+      <div class="w-full h-full flex flex-col items-center justify-center text-brand-300 text-center px-4">
+        <span class="font-serif text-2xl italic">{{ p['linea'] }}</span>
+        <span class="text-[9px] tracking-widest2 uppercase mt-2">{{ p['formato'] or '' }}</span>
+      </div>
+      {% endif %}
+      {% if p.get('familias') %}
+      <span class="absolute top-3 left-3 bg-brand-white/90 text-brand-700 text-[8px] tracking-widest uppercase px-2 py-1">{{ p['familias'][0] }}</span>
+      {% endif %}
+    </div>
+    <p class="text-[9px] tracking-widest2 uppercase text-brand-400 mb-1.5">{{ p['linea'] }}</p>
+    <h3 class="font-serif text-lg leading-tight text-brand-black mb-3 line-clamp-2 group-hover:underline underline-offset-4 decoration-brand-200">{{ p['nombre'] }}</h3>
+  </a>
+  <div class="flex items-center justify-between">
+    <span class="text-base font-medium text-brand-900">{{ precio_clp(p['precio_venta']) }}</span>
+    <button onclick="event.preventDefault(); event.stopPropagation(); addToCart('{{ p['sku'] }}', '{{ p['nombre'] | replace("'", "\\'") }}', {{ p['precio_venta']|int }}, '{{ p['linea'] | replace("'", "\\'") }}')" class="w-10 h-10 border border-brand-900 text-brand-900 flex items-center justify-center hover:bg-brand-black hover:text-brand-white transition-colors" aria-label="Agregar {{ p['nombre'] }} al carrito">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v12m6-6H6"/></svg>
+    </button>
+  </div>
+</article>
+{% endmacro %}
+
+{% macro skeleton_card() %}
+<!-- 3. SKELETON LOADER CON SHIMMER EFFECT -->
+<div class="group flex flex-col h-full bg-brand-white">
+  <!-- Imagen Placeholder -->
+  <div class="aspect-[4/5] bg-brand-50 relative overflow-hidden mb-4 animate-shimmer"></div>
+  
+  <!-- Contenido Placeholder -->
+  <div class="flex-1 flex flex-col px-2">
+    <!-- Marca -->
+    <div class="w-16 h-3 bg-brand-50 mb-2 animate-shimmer"></div>
+    <!-- Título -->
+    <div class="w-full h-4 bg-brand-50 mb-1 animate-shimmer"></div>
+    <div class="w-2/3 h-4 bg-brand-50 mb-3 animate-shimmer"></div>
+    
+    <!-- Tags -->
+    <div class="flex gap-2 mb-4">
+      <div class="w-12 h-4 bg-brand-50 animate-shimmer"></div>
+      <div class="w-16 h-4 bg-brand-50 animate-shimmer"></div>
+    </div>
+    
+    <!-- Precio -->
+    <div class="mt-auto pt-4 border-t border-brand-50 flex items-center justify-between">
+      <div class="w-20 h-5 bg-brand-50 animate-shimmer"></div>
+      <div class="w-10 h-10 bg-brand-50 animate-shimmer"></div>
+    </div>
+  </div>
+</div>
+{% endmacro %}

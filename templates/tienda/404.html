@@ -1,0 +1,13 @@
+{% extends "tienda/base.html" %}
+{% block title %}No encontrado · Siyash{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 py-28 sm:py-40 text-center">
+  <p class="font-serif italic text-7xl sm:text-9xl text-brand-100 mb-6">404</p>
+  <h1 class="font-serif text-3xl sm:text-4xl text-brand-black mb-4">Esta esencia se ha evaporado</h1>
+  <p class="text-sm text-brand-400 mb-10">La página que buscas no existe o el perfume ya no está disponible.</p>
+  <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+    <a href="/perfumes" class="px-8 py-3.5 bg-brand-black text-brand-white text-[10px] tracking-widest2 uppercase hover:bg-brand-700 transition-colors">Explorar catálogo</a>
+    <a href="/" class="px-8 py-3.5 border border-brand-300 text-brand-600 text-[10px] tracking-widest2 uppercase hover:border-brand-black hover:text-brand-black transition-colors">Volver al inicio</a>
+  </div>
+</div>
+{% endblock %}

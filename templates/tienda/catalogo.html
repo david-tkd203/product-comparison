@@ -1,0 +1,108 @@
+{% extends "tienda/base.html" %}
+{% from "tienda/_macros.html" import product_card, precio_clp %}
+{% import "tienda/_macros_filtros.html" as filtros with context %}
+
+{% block title %}{{ 'Para Él' if preset == 'Hombre' else 'Para Ella' if preset == 'Mujer' else 'Catálogo' }} · Siyash{% endblock %}
+
+{% macro page_link(p) %}?q={{ q | urlencode }}&linea={{ linea | urlencode }}{% if not preset %}&genero={{ genero | urlencode }}{% endif %}&familia={{ familia | urlencode }}&pmin={{ pmin or '' }}&pmax={{ pmax or '' }}&sort={{ sort | urlencode }}&page={{ p }}{% endmacro %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+
+  <!-- Encabezado -->
+  <div class="mb-8 sm:mb-12">
+    <p class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-2">
+      <a href="/" class="hover:text-brand-black transition-colors">Inicio</a> · Catálogo
+    </p>
+    <h1 class="font-serif text-4xl sm:text-6xl text-brand-black">
+      {% if preset == 'Hombre' %}Para Él
+      {% elif preset == 'Mujer' %}Para Ella
+      {% elif genero == 'Hombre' %}Para Él
+      {% elif genero == 'Mujer' %}Para Ella
+      {% else %}La Colección{% endif %}
+    </h1>
+    <p class="text-xs text-brand-400 mt-2 tracking-wide">{{ total }} fragancia{{ 's' if total != 1 }}</p>
+  </div>
+
+  <!-- Pills rápidos de género -->
+  <div class="flex flex-wrap gap-2 mb-8">
+    <a href="/perfumes{% if q %}?q={{ q | urlencode }}{% endif %}" class="px-5 py-2.5 text-[10px] tracking-widest2 uppercase transition-colors {{ 'bg-brand-black text-brand-white' if (not preset and not genero) else 'border border-brand-300 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">Todos</a>
+    <a href="/mujer" class="px-5 py-2.5 text-[10px] tracking-widest2 uppercase transition-colors {{ 'bg-brand-black text-brand-white' if (preset == 'Mujer' or genero == 'Mujer') else 'border border-brand-300 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">Para Ella</a>
+    <a href="/hombre" class="px-5 py-2.5 text-[10px] tracking-widest2 uppercase transition-colors {{ 'bg-brand-black text-brand-white' if (preset == 'Hombre' or genero == 'Hombre') else 'border border-brand-300 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">Para Él</a>
+    <a href="/perfumes?genero=Unisex" class="px-5 py-2.5 text-[10px] tracking-widest2 uppercase transition-colors {{ 'bg-brand-black text-brand-white' if (not preset and genero == 'Unisex') else 'border border-brand-300 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">Unisex</a>
+  </div>
+
+  <div class="lg:grid lg:grid-cols-[240px_1fr] lg:gap-12">
+
+    <!-- ====== FILTROS ====== -->
+    <aside class="mb-8 lg:mb-0">
+      <details class="lg:hidden border border-brand-200 mb-6">
+        <summary class="px-5 py-4 text-[10px] tracking-widest2 uppercase cursor-pointer flex items-center justify-between">
+          Filtros
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M7 12h10m-7 6h4"/></svg>
+        </summary>
+        <div class="px-5 pb-5">{{ filtros.filtros() }}</div>
+      </details>
+      <div class="hidden lg:block sticky top-28">
+        {{ filtros.filtros() }}
+      </div>
+    </aside>
+
+    <!-- ====== PRODUCTOS ====== -->
+    <div>
+      <!-- Toolbar -->
+      <div class="flex items-center justify-between gap-4 mb-6 border-b border-brand-100 pb-4">
+        <p class="text-[10px] tracking-widest2 uppercase text-brand-400 hidden sm:block">
+          Mostrando {{ products | length }} de {{ total }}
+        </p>
+        <form method="get" class="flex items-center gap-2 ml-auto">
+          <input type="hidden" name="q" value="{{ q }}">
+          {% if not preset %}<input type="hidden" name="genero" value="{{ genero or '' }}">{% endif %}
+          <input type="hidden" name="linea" value="{{ linea }}">
+          <input type="hidden" name="familia" value="{{ familia }}">
+          <input type="hidden" name="pmin" value="{{ pmin or '' }}">
+          <input type="hidden" name="pmax" value="{{ pmax or '' }}">
+          <label class="text-[10px] tracking-widest2 uppercase text-brand-400">Ordenar</label>
+          <select name="sort" onchange="this.form.submit()" class="bg-brand-white border border-brand-200 text-xs px-3 py-2 focus:outline-none focus:border-brand-black">
+            <option value="destacados" {{ 'selected' if sort == 'destacados' }}>Destacados</option>
+            <option value="precio_asc" {{ 'selected' if sort == 'precio_asc' }}>Menor precio</option>
+            <option value="precio_desc" {{ 'selected' if sort == 'precio_desc' }}>Mayor precio</option>
+            <option value="nombre" {{ 'selected' if sort == 'nombre' }}>Nombre A–Z</option>
+            <option value="marca" {{ 'selected' if sort == 'marca' }}>Marca</option>
+          </select>
+        </form>
+      </div>
+
+      {% if products %}
+      <div class="grid grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+        {% for p in products %}{{ product_card(p) }}{% endfor %}
+      </div>
+
+      {% if total_pages > 1 %}
+      <div class="flex items-center justify-between mt-14 border-t border-brand-100 pt-8">
+        <p class="text-[10px] tracking-widest2 uppercase text-brand-400">Página {{ page }} de {{ total_pages }}</p>
+        <div class="flex items-center gap-1.5">
+          {% if page > 1 %}
+          <a href="{{ page_link(page - 1) }}" class="px-4 py-2 border border-brand-200 text-[10px] tracking-widest uppercase text-brand-600 hover:border-brand-black hover:text-brand-black transition-colors">Ant</a>
+          {% endif %}
+          {% for pg in range([1, page - 2] | max, [total_pages + 1, page + 3] | min) %}
+          <a href="{{ page_link(pg) }}" class="px-4 py-2 text-[10px] tracking-widest uppercase transition-colors {{ 'bg-brand-black text-brand-white' if pg == page else 'border border-brand-200 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">{{ pg }}</a>
+          {% endfor %}
+          {% if page < total_pages %}
+          <a href="{{ page_link(page + 1) }}" class="px-4 py-2 border border-brand-200 text-[10px] tracking-widest uppercase text-brand-600 hover:border-brand-black hover:text-brand-black transition-colors">Sig</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="text-center py-24 border border-brand-100">
+        <p class="font-serif italic text-3xl text-brand-300 mb-3">Sin resultados</p>
+        <p class="text-sm text-brand-400 mb-8">No encontramos fragancias con esos criterios.</p>
+        <a href="{{ '/hombre' if preset == 'Hombre' else '/mujer' if preset == 'Mujer' else '/perfumes' }}" class="inline-block px-8 py-3 bg-brand-black text-brand-white text-[10px] tracking-widest2 uppercase hover:bg-brand-700 transition-colors">Ver todo</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

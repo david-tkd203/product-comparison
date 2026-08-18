@@ -1,0 +1,112 @@
+{% extends "tienda/base.html" %}
+{% from "tienda/_macros.html" import product_card, precio_clp %}
+
+{% block content %}
+
+<!-- HERO -->
+<section class="relative bg-brand-black text-brand-white overflow-hidden">
+  <div class="absolute inset-0 opacity-[0.35]" style="background:
+      radial-gradient(60% 80% at 20% 10%, #333334 0%, transparent 60%),
+      radial-gradient(50% 70% at 85% 90%, #2d2d2e 0%, transparent 55%);"></div>
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 sm:py-36 lg:py-44 text-center fade-up">
+    <p class="text-[10px] sm:text-xs tracking-widest2 uppercase text-brand-300 mb-6">Alta perfumería · Chile</p>
+    <h1 class="font-serif font-medium text-5xl sm:text-7xl lg:text-8xl tracking-wide mb-6">Siyash</h1>
+    <p class="font-serif italic text-lg sm:text-2xl text-brand-200 max-w-xl mx-auto mb-10">Una colección de esencias que se convierten en memoria.</p>
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+      <a href="/mujer" class="w-full sm:w-auto px-10 py-4 bg-brand-white text-brand-black text-xs tracking-widest2 uppercase hover:bg-brand-100 transition-colors">Descubrir para ella</a>
+      <a href="/hombre" class="w-full sm:w-auto px-10 py-4 border border-brand-500 text-brand-white text-xs tracking-widest2 uppercase hover:bg-brand-800 hover:border-brand-800 transition-colors">Descubrir para él</a>
+    </div>
+  </div>
+</section>
+
+<!-- Marquee -->
+<section class="bg-brand-black text-brand-600 border-t border-brand-800/60 overflow-hidden py-4">
+  <div class="marquee whitespace-nowrap text-[10px] tracking-widest2 uppercase">
+    {% set frase = 'Siyash · Perfumería original · Envíos a todo Chile · ' %}
+    <span>{{ frase * 8 }}</span><span>{{ frase * 8 }}</span>
+  </div>
+</section>
+
+<!-- GENDER SPLIT -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
+  <div class="grid md:grid-cols-2 gap-4 sm:gap-6">
+    <a href="/mujer" class="group relative h-64 sm:h-96 bg-brand-black text-brand-white overflow-hidden flex items-center justify-center">
+      <div class="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity duration-700" style="background: radial-gradient(70% 100% at 50% 0%, #494949 0%, transparent 70%);"></div>
+      <div class="relative text-center px-6">
+        <p class="text-[10px] tracking-widest2 uppercase text-brand-300 mb-3">{{ n_mujer }} fragancias</p>
+        <h2 class="font-serif text-4xl sm:text-6xl italic mb-4">Para Ella</h2>
+        <span class="text-[10px] tracking-widest2 uppercase border-b border-brand-400 pb-1 group-hover:border-brand-white transition-colors">Explorar colección</span>
+      </div>
+    </a>
+    <a href="/hombre" class="group relative h-64 sm:h-96 bg-brand-white border border-brand-900 text-brand-black overflow-hidden flex items-center justify-center">
+      <div class="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-700 bg-brand-black"></div>
+      <div class="relative text-center px-6">
+        <p class="text-[10px] tracking-widest2 uppercase text-brand-500 mb-3">{{ n_hombre }} fragancias</p>
+        <h2 class="font-serif text-4xl sm:text-6xl mb-4">Para Él</h2>
+        <span class="text-[10px] tracking-widest2 uppercase border-b border-brand-400 pb-1 group-hover:border-brand-black transition-colors">Explorar colección</span>
+      </div>
+    </a>
+  </div>
+</section>
+
+<!-- DESTACADOS -->
+{% if destacados %}
+<section class="max-w-7xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
+  <div class="flex items-end justify-between mb-8 sm:mb-10">
+    <div>
+      <p class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-2">Curaduría Siyash</p>
+      <h2 class="font-serif text-3xl sm:text-5xl text-brand-black">Selección esencial</h2>
+    </div>
+    <a href="/perfumes" class="hidden sm:inline text-[10px] tracking-widest2 uppercase text-brand-600 hover:text-brand-black border-b border-brand-300 hover:border-brand-black pb-1 transition-colors">Ver todo</a>
+  </div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+    {% for p in destacados %}{{ product_card(p) }}{% endfor %}
+  </div>
+  <a href="/perfumes" class="sm:hidden mt-8 inline-block text-[10px] tracking-widest2 uppercase text-brand-600 border-b border-brand-300 pb-1">Ver toda la colección</a>
+</section>
+{% endif %}
+
+<!-- FAMILIAS -->
+{% if familias %}
+<section class="bg-brand-50 border-y border-brand-100">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20 text-center">
+    <p class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-2">Encuentra tu huella</p>
+    <h2 class="font-serif text-3xl sm:text-5xl text-brand-black mb-10">Familias olfativas</h2>
+    <div class="flex flex-wrap justify-center gap-3 max-w-3xl mx-auto">
+      {% for f in familias %}
+      <a href="/perfumes?familia={{ f['fam'] | urlencode }}" class="px-6 py-3 bg-brand-white border border-brand-200 text-xs tracking-widest uppercase text-brand-700 hover:bg-brand-black hover:text-brand-white hover:border-brand-black transition-colors">
+        {{ f['fam'] }} <span class="text-brand-300 ml-1">{{ f['n'] }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- MARCAS -->
+{% if marcas %}
+<section class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
+  <div class="text-center mb-10">
+    <p class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-2">{{ marcas | length }} casas de perfumería</p>
+    <h2 class="font-serif text-3xl sm:text-5xl text-brand-black">Las marcas</h2>
+  </div>
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-px bg-brand-100 border border-brand-100">
+    {% for m in marcas %}
+    <a href="/perfumes?linea={{ m['linea'] | urlencode }}" class="bg-brand-white hover:bg-brand-black group flex items-center justify-center h-24 sm:h-28 px-4 transition-colors">
+      <span class="font-serif text-lg sm:text-xl text-brand-800 group-hover:text-brand-white group-hover:italic transition-all text-center leading-tight">{{ m['linea'] }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- CITA EDITORIAL -->
+<section class="bg-brand-black text-brand-white">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 py-20 sm:py-28 text-center">
+    <p class="font-serif italic text-2xl sm:text-4xl leading-relaxed text-brand-100">«Viste la invisible esencia:<br class="hidden sm:block"> el perfume es el traje que nadie ve<br class="hidden sm:block"> y todos recuerdan.»</p>
+    <p class="text-[10px] tracking-widest2 uppercase text-brand-500 mt-8">Colección Siyash · {{ total }} fragancias disponibles</p>
+    <a href="/perfumes" class="inline-block mt-8 px-10 py-4 border border-brand-500 text-xs tracking-widest2 uppercase hover:bg-brand-white hover:text-brand-black hover:border-brand-white transition-colors">Explorar el catálogo</a>
+  </div>
+</section>
+
+{% endblock %}
