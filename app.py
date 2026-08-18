@@ -10,12 +10,27 @@ from functools import wraps
 from io import BytesIO
 
 import mysql.connector
+
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
+
 from flask import Flask, render_template, request, redirect, url_for, flash, make_response, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
 import pandas as pd
 
 app = Flask(__name__)
+
 app.url_map.strict_slashes = False
+
+csrf = CSRFProtect(app)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["1000 per day", "200 per hour"],
+    storage_uri="memory://"
+)
+
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'cambiar-en-produccion')
 
 DB_CONFIG = {
@@ -1397,6 +1412,7 @@ def pedido_status(order_id):
 
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit('5 per minute')
 def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
@@ -1642,6 +1658,7 @@ def tienda_producto(sku):
 
 
 @app.route('/api/pedido', methods=['POST'])
+@csrf.exempt
 def api_pedido():
     """Place an order from the storefront. Prices are computed server-side."""
     data = request.get_json(force=True, silent=True) or {}

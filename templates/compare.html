@@ -3,6 +3,7 @@
 <h1 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4 sm:mb-6">Comparar Meses</h1>
 
 <form method="get" class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 sm:p-4 mb-4 sm:mb-6">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
   <div class="flex flex-wrap gap-2 sm:gap-3 items-end">
     <div class="w-full sm:w-auto">
       <label class="block text-xs font-medium text-slate-500 mb-1">Mes anterior</label>

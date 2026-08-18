@@ -79,18 +79,22 @@
     <!-- Status actions -->
     <div class="flex flex-wrap gap-2">
       <form method="post" action="/pedidos/{{ o['id'] }}/status" class="inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <input type="hidden" name="status" value="nuevo">
         <button type="submit" class="px-3 py-1 text-xs font-medium rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 {{ 'ring-1 ring-amber-300' if o['status'] == 'nuevo' }}">Nuevo</button>
       </form>
       <form method="post" action="/pedidos/{{ o['id'] }}/status" class="inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <input type="hidden" name="status" value="procesando">
         <button type="submit" class="px-3 py-1 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 {{ 'ring-1 ring-blue-300' if o['status'] == 'procesando' }}">Procesando</button>
       </form>
       <form method="post" action="/pedidos/{{ o['id'] }}/status" class="inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <input type="hidden" name="status" value="completado">
         <button type="submit" class="px-3 py-1 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 {{ 'ring-1 ring-green-300' if o['status'] == 'completado' }}">Completado</button>
       </form>
       <form method="post" action="/pedidos/{{ o['id'] }}/status" class="inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <input type="hidden" name="status" value="cancelado">
         <button type="submit" class="px-3 py-1 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 {{ 'ring-1 ring-red-300' if o['status'] == 'cancelado' }}">Cancelado</button>
       </form>

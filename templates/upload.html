@@ -5,6 +5,7 @@
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-lg">
   <p class="text-sm text-slate-500 mb-4">Seleccioná el archivo Excel con el mismo formato que la lista mayorista.</p>
   <form method="post" enctype="multipart/form-data" class="space-y-4">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <div>
       <label class="block text-sm font-medium text-slate-700 mb-1">Archivo .xlsx</label>
       <input type="file" name="file" accept=".xlsx" required class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">

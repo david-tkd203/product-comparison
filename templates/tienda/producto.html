@@ -43,17 +43,24 @@
       </div>
 
       <!-- Notas olfativas -->
-      {% if p['notas'] and (p['notas'].get('salida') or p['notas'].get('corazon') or p['notas'].get('fondo')) %}
+      {% if p['notas'] and (p['notas'].get('salida') or p['notas'].get('corazon') or p['notas'].get('fondo') or p['notas'].get('general')) %}
       <div class="mb-10 space-y-5">
         <p class="text-[10px] tracking-widest2 uppercase text-brand-400">Pirámide olfativa</p>
-        {% for label, key in [('Salida', 'salida'), ('Corazón', 'corazon'), ('Fondo', 'fondo')] %}
-          {% if p['notas'].get(key) %}
+        {% if p['notas'].get('salida') or p['notas'].get('corazon') or p['notas'].get('fondo') %}
+          {% for label, key in [('Salida', 'salida'), ('Corazón', 'corazon'), ('Fondo', 'fondo')] %}
+            {% if p['notas'].get(key) %}
+            <div class="grid grid-cols-[90px_1fr] gap-4 items-baseline">
+              <span class="text-[10px] tracking-widest uppercase text-brand-400">{{ label }}</span>
+              <span class="font-serif italic text-lg text-brand-700 leading-snug">{{ p['notas'][key] | join(', ') }}</span>
+            </div>
+            {% endif %}
+          {% endfor %}
+        {% elif p['notas'].get('general') %}
           <div class="grid grid-cols-[90px_1fr] gap-4 items-baseline">
-            <span class="text-[10px] tracking-widest uppercase text-brand-400">{{ label }}</span>
-            <span class="font-serif italic text-lg text-brand-700 leading-snug">{{ p['notas'][key] | join(', ') }}</span>
+            <span class="text-[10px] tracking-widest uppercase text-brand-400">Acordes</span>
+            <span class="font-serif italic text-lg text-brand-700 leading-snug">{{ p['notas']['general'] | join(', ') | capitalize }}</span>
           </div>
-          {% endif %}
-        {% endfor %}
+        {% endif %}
       </div>
       {% endif %}
 
