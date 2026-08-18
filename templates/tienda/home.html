@@ -3,9 +3,12 @@
 
 {% block content %}
 
+
 <!-- HERO -->
-<section class="relative bg-brand-black text-brand-white overflow-hidden">
+<section class="relative bg-brand-black text-brand-white overflow-hidden" id="hero-section">
+  <canvas id="hero-canvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
   <div class="absolute inset-0 opacity-[0.35]" style="background:
+
       radial-gradient(60% 80% at 20% 10%, #333334 0%, transparent 60%),
       radial-gradient(50% 70% at 85% 90%, #2d2d2e 0%, transparent 55%);"></div>
   <div class="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 sm:py-36 lg:py-44 text-center fade-up">
@@ -29,7 +32,7 @@
 
 <!-- GENDER SPLIT -->
 <section class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
-  <div class="grid md:grid-cols-2 gap-4 sm:gap-6">
+  <div class="grid md:grid-cols-2 gap-4 sm:gap-6 gsap-reveal">
     <a href="/mujer" class="group relative h-64 sm:h-96 bg-brand-black text-brand-white overflow-hidden flex items-center justify-center">
       <div class="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity duration-700" style="background: radial-gradient(70% 100% at 50% 0%, #494949 0%, transparent 70%);"></div>
       <div class="relative text-center px-6">
@@ -52,14 +55,14 @@
 <!-- DESTACADOS -->
 {% if destacados %}
 <section class="max-w-7xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
-  <div class="flex items-end justify-between mb-8 sm:mb-10">
+  <div class="flex items-end justify-between mb-8 sm:mb-10 gsap-reveal">
     <div>
       <p class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-2">Curaduría Siyash</p>
       <h2 class="font-serif text-3xl sm:text-5xl text-brand-black">Selección esencial</h2>
     </div>
     <a href="/perfumes" class="hidden sm:inline text-[10px] tracking-widest2 uppercase text-brand-600 hover:text-brand-black border-b border-brand-300 hover:border-brand-black pb-1 transition-colors">Ver todo</a>
   </div>
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 gsap-reveal">
     {% for p in destacados %}{{ product_card(p) }}{% endfor %}
   </div>
   <a href="/perfumes" class="sm:hidden mt-8 inline-block text-[10px] tracking-widest2 uppercase text-brand-600 border-b border-brand-300 pb-1">Ver toda la colección</a>
@@ -69,7 +72,7 @@
 <!-- FAMILIAS -->
 {% if familias %}
 <section class="bg-brand-50 border-y border-brand-100">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20 text-center">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20 text-center gsap-reveal">
     <p class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-2">Encuentra tu huella</p>
     <h2 class="font-serif text-3xl sm:text-5xl text-brand-black mb-10">Familias olfativas</h2>
     <div class="flex flex-wrap justify-center gap-3 max-w-3xl mx-auto">
@@ -86,11 +89,11 @@
 <!-- MARCAS -->
 {% if marcas %}
 <section class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
-  <div class="text-center mb-10">
+  <div class="text-center mb-10 gsap-reveal">
     <p class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-2">{{ marcas | length }} casas de perfumería</p>
     <h2 class="font-serif text-3xl sm:text-5xl text-brand-black">Las marcas</h2>
   </div>
-  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-px bg-brand-100 border border-brand-100">
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-px bg-brand-100 border border-brand-100 gsap-reveal">
     {% for m in marcas %}
     <a href="/perfumes?linea={{ m['linea'] | urlencode }}" class="bg-brand-white hover:bg-brand-black group flex items-center justify-center h-24 sm:h-28 px-4 transition-colors">
       <span class="font-serif text-lg sm:text-xl text-brand-800 group-hover:text-brand-white group-hover:italic transition-all text-center leading-tight">{{ m['linea'] }}</span>
@@ -109,4 +112,82 @@
   </div>
 </section>
 
+
 {% endblock %}
+
+{% block scripts %}
+<script>
+  // THREE.JS Particle Effect (Esencia/Humo flotante)
+  const canvas = document.getElementById('hero-canvas');
+  if(canvas) {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+    
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    
+    // Partículas
+    const particlesGeometry = new THREE.BufferGeometry();
+    const particlesCount = 800; // cantidad de partículas
+    const posArray = new Float32Array(particlesCount * 3);
+    
+    for(let i=0; i < particlesCount * 3; i++) {
+      // Distribución en un rango más amplio
+      posArray[i] = (Math.random() - 0.5) * 15;
+    }
+    
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+    
+    const particlesMaterial = new THREE.PointsMaterial({
+      size: 0.02,
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.3,
+      blending: THREE.AdditiveBlending
+    });
+    
+    const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+    scene.add(particlesMesh);
+    
+    camera.position.z = 3;
+    
+    // Animación de las partículas
+    let mouseX = 0;
+    let mouseY = 0;
+    
+    document.addEventListener('mousemove', (event) => {
+      mouseX = event.clientX / window.innerWidth - 0.5;
+      mouseY = event.clientY / window.innerHeight - 0.5;
+    });
+    
+    const clock = new THREE.Clock();
+    
+    function animateParticles() {
+      requestAnimationFrame(animateParticles);
+      const elapsedTime = clock.getElapsedTime();
+      
+      particlesMesh.rotation.y = -mouseX * 0.2 + elapsedTime * 0.05;
+      particlesMesh.rotation.x = -mouseY * 0.2;
+      
+      // Movimiento vertical flotante
+      const positions = particlesGeometry.attributes.position.array;
+      for(let i = 1; i < particlesCount * 3; i += 3) {
+        positions[i] += Math.sin(elapsedTime + positions[i-1]) * 0.001;
+      }
+      particlesGeometry.attributes.position.needsUpdate = true;
+      
+      renderer.render(scene, camera);
+    }
+    
+    animateParticles();
+    
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  }
+</script>
+{% endblock %}
+

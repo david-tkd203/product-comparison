@@ -1,7 +1,7 @@
 {% macro precio_clp(v) %}${{ "{:,}".format(v|int).replace(',', '.') }}{% endmacro %}
 
 {% macro product_card(p) %}
-<article class="group">
+<article class="group tilt-card">
   <a href="/producto/{{ p['sku'] }}" class="block">
     <div class="aspect-[4/5] bg-brand-50 overflow-hidden relative mb-4 border border-brand-100">
       {% if p['imagen'] %}
