@@ -595,35 +595,54 @@ def _sync_shopify(db, table, base_url):
 AROMA_FAMILIES = {
     'Cítrica': ['limón', 'lima', 'naranja', 'pomelo', 'bergamota', 'mandarina', 'toronja',
                 'cítrico', 'citrus', 'cidra', 'yuzu', 'neroli', 'petitgrain', 'verbena',
-                'tangerina', 'clementina', 'kumquat'],
+                'tangerina', 'clementina', 'kumquat', 'limoncello', 'citronela', 'calamansí',
+                'naranja sanguina'],
+    
     'Floral': ['rosa', 'jazmín', 'violeta', 'lirio', 'flor', 'gardenia', 'magnolia',
                'peonía', 'peonia', 'azahar', 'geranio', 'ylang', 'azucena', 'fresia',
                'narciso', 'jacinto', 'mimosa', 'camelia', 'loto', 'orquídea', 'tuberosa',
                'lavanda', 'madreselva', 'iris', 'clavel', 'crisantemo', 'dalia',
-               'floral', 'azahar', 'neroli', 'caléndula', 'margarita'],
+               'floral', 'caléndula', 'margarita', 'heliotropo', 'frangipani', 'nardos',
+               'flor de loto', 'flor de almendro', 'flor de cerezo', 'osmanthus', 'pétalo',
+               'amapola', 'flor de manzano', 'flor del peral'],
+               
     'Amaderada': ['cedro', 'sándalo', 'pino', 'pachulí', 'patchouli', 'madera', 'vetiver',
                   'roble', 'abedul', 'caoba', 'secuoya', 'palo', 'sándal', 'guayaco',
                   'ébano', 'nogal', 'teca', 'cachemira', 'oud', 'agarwood', 'akigalawood',
-                  'abeto', 'cálamo', 'ciprés'],
-    'Oriental': ['vainilla', 'ámbar', 'incienso', 'mirra', 'benjuí', 'canela', 'clavo',
+                  'abeto', 'cálamo', 'ciprés', 'musgo', 'encina', 'haya', 'arce', 'bambú',
+                  'maderas', 'woody', 'bois', 'bosque'],
+                  
+    'Oriental / Especiada': ['vainilla', 'ámbar', 'incienso', 'mirra', 'benjuí', 'canela', 'clavo',
                  'nuez moscada', 'cardamomo', 'pimienta', 'almizcle', 'resina', 'opoponax',
                  'bálsamo', 'tolú', 'estoraque', 'azafrán', 'comino', 'cúrcuma',
                  'especia', 'especiado', 'ambarado', 'oriental', 'almizcl', 'ambreta',
                  'anís', 'regaliz', 'inciens', 'tabaco', 'cumarina', 'haba tonka',
-                 'pachul', 'pachuli', 'cachemir'],
-    'Fougère': ['fougère', 'fougere', 'helecho', 'musgo de roble', 'lavanda', 'salvia',
-                'geranio', 'hierba', 'herbal', 'tomillo', 'romero', 'albahaca',
-                'artemisa', 'abrótano', 'ajenjo', 'absenta'],
-    'Chipre': ['chipre', 'chypre', 'musgo', 'cuero', 'gamuz', 'gamuza', 'brea', 'alquitrán',
+                 'cachemir', 'jengibre', 'cilantro', 'pimentón', 'masala', 'clavo de olor'],
+                 
+    'Fougère / Aromática': ['fougère', 'fougere', 'helecho', 'musgo de roble', 'salvia',
+                'hierba', 'herbal', 'tomillo', 'romero', 'albahaca', 'aromática', 'aromático',
+                'artemisa', 'abrótano', 'ajenjo', 'absenta', 'eucalipto', 'menta', 'yerbabuena',
+                'laurel', 'hoja', 'té', 'mate', 'orégano', 'estragón', 'angélica', 'hinojo'],
+                
+    'Chipre / Cuero': ['chipre', 'chypre', 'cuero', 'gamuz', 'gamuza', 'brea', 'alquitrán',
                'ahumado', 'phenol', 'castóreo', 'civet', 'algalia', 'coriáceo',
-               'bergamota', 'pachulí', 'labdanum', 'jara', 'musgo de encina'],
-    'Gourmand': ['caramelo', 'chocolate', 'café', 'miel', 'azúcar', 'praliné', 'avellana',
+               'labdanum', 'jara', 'musgo de encina', 'abedul', 'leather', 'cuir', 'humo',
+               'tabaco rubio', 'incienso ahumado'],
+               
+    'Gourmand / Frutal': ['caramelo', 'chocolate', 'café', 'miel', 'azúcar', 'praliné', 'avellana',
                  'cacao', 'dulce', 'goloso', 'gourmand', 'almendra', 'coco', 'leche',
                  'nata', 'crema', 'caramel', 'toffee', 'mazapán', 'turrón', 'chicle',
-                 'algodón de azúcar', 'galleta', 'vainilla', 'ron', 'whisky', 'licor',
+                 'algodón de azúcar', 'galleta', 'ron', 'whisky', 'licor',
                  'cereza', 'frutilla', 'fresa', 'frambuesa', 'arándano', 'mora',
                  'manzana', 'pera', 'melocotón', 'durazno', 'ciruela', 'cassis',
-                 'grosella', 'piña', 'coco', 'maracuyá', 'mango', 'higo'],
+                 'grosella', 'piña', 'maracuyá', 'mango', 'higo', 'sandía', 'melón',
+                 'fruta', 'frutal', 'kiwi', 'papaya', 'guayaba', 'lichi', 'zarzamora',
+                 'champaña', 'cognac', 'amaretto'],
+                 
+    'Acuática / Fresca': ['mar', 'marino', 'agua', 'acuática', 'acuático', 'brisa', 'ozono',
+                 'salado', 'sal', 'algas', 'calone', 'cascalone', 'hielo', 'glaciar',
+                 'lluvia', 'rocío', 'fresco', 'acuoso', 'loto de agua', 'nenúfar',
+                 'bambú de agua']
 }
 
 
@@ -631,7 +650,7 @@ def _classify_family(notas_dict):
     """Classify a perfume's notes into olfactory families."""
     families = set()
     all_notes = []
-    for key in ('salida', 'corazon', 'fondo'):
+    for key in ('salida', 'corazon', 'fondo', 'general'):
         all_notes.extend(notas_dict.get(key, []))
     all_text = ' '.join(all_notes).lower()
     for family, keywords in AROMA_FAMILIES.items():
@@ -644,40 +663,45 @@ def _classify_family(notas_dict):
 
 def _extract_aromas(db, table='cosmetic_products'):
     """Parse body_html to extract fragrance notes. Works for any retail product table."""
-    rows = _query(db, f"SELECT sku, body_html FROM {table} WHERE body_html IS NOT NULL AND body_html != '' AND aromas IS NULL").fetchall()
+    rows = _query(db, f"SELECT sku, body_html, nombre FROM {table} WHERE body_html IS NOT NULL AND body_html != '' AND aromas IS NULL").fetchall()
     extracted = 0
     for r in rows:
         html = r['body_html']
         text = re.sub(r'<[^>]+>', ' ', html)
         text = re.sub(r'\s+', ' ', text).strip()
-
-        notas = {'salida': [], 'corazon': [], 'fondo': []}
-
-        block_start = re.search(
-            r'(?:las?\s+)?(?:contiene\s+)?(?:con\s+)?notas?\s+de\s+salida',
-            text, re.IGNORECASE)
-        if not block_start:
-            continue
-
-        block = text[block_start.start():]
-
-        m_salida = re.search(
-            r'notas?\s+de\s+salida\s*(?:son|de|:)?\s*(.+?)(?=\s*(?:las?\s+)?(?:la\s+)?(?:con\s+)?(?:y\s+)?notas?\s+d[ee]l?\s+coraz|\s*(?:las?\s+)?(?:con\s+)?(?:y\s+)?notas?\s+de\s+fondo|\s*$)',
-            block, re.IGNORECASE)
-        if m_salida:
-            notas['salida'] = _parse_notas_list(m_salida.group(1))
-
-        m_corazon = re.search(
-            r'notas?\s+d[ee]l?\s+coraz[oó]n\s*(?:son|de|:|es)?\s*(.+?)(?=\s*(?:las?\s+)?(?:con\s+)?(?:y\s+)?notas?\s+de\s+fondo|\s*$)',
-            block, re.IGNORECASE)
-        if m_corazon:
-            notas['corazon'] = _parse_notas_list(m_corazon.group(1))
-
-        m_fondo = re.search(
-            r'notas?\s+de\s+fondo\s*(?:son|de|:)?\s*(.+?)(?=\s*(?:<|\.\s*[A-ZÁÉÍÓÚ]|\s*\n\s*\n|\s*$))',
-            block, re.IGNORECASE)
-        if m_fondo:
-            notas['fondo'] = _parse_notas_list(m_fondo.group(1))
+        
+        notas = {'salida': [], 'corazon': [], 'fondo': [], 'general': []}
+        
+        # 1. Structured notes
+        block_start = re.search(r'(?:las?\s+)?(?:contiene\s+)?(?:con\s+)?notas?\s+de\s+salida', text, re.IGNORECASE)
+        if block_start:
+            block = text[block_start.start():]
+            m_salida = re.search(r'notas?\s+de\s+salida\s*(?:son|de|:)?\s*(.+?)(?=\s*(?:las?\s+)?(?:la\s+)?(?:con\s+)?(?:y\s+)?notas?\s+d[ee]l?\s+coraz|\s*(?:las?\s+)?(?:con\s+)?(?:y\s+)?notas?\s+de\s+fondo|\s*$)', block, re.IGNORECASE)
+            if m_salida: notas['salida'] = _parse_notas_list(m_salida.group(1))
+            m_corazon = re.search(r'notas?\s+d[ee]l?\s+coraz[oó]n\s*(?:son|de|:|es)?\s*(.+?)(?=\s*(?:las?\s+)?(?:con\s+)?(?:y\s+)?notas?\s+de\s+fondo|\s*$)', block, re.IGNORECASE)
+            if m_corazon: notas['corazon'] = _parse_notas_list(m_corazon.group(1))
+            m_fondo = re.search(r'notas?\s+de\s+fondo\s*(?:son|de|:)?\s*(.+?)(?=\s*(?:<|\.\s*[A-ZÁÉÍÓÚ]|\s*\n\s*\n|\s*$))', block, re.IGNORECASE)
+            if m_fondo: notas['fondo'] = _parse_notas_list(m_fondo.group(1))
+        
+        # 2. Extract specific phrases if structured fails or is partial
+        if not notas['salida'] and not notas['corazon'] and not notas['fondo']:
+            m_familia = re.search(r'familia olfativa[\s:]*(.+?)(?:\.|\n|$)', text, re.IGNORECASE)
+            if m_familia:
+                notas['general'].extend(_parse_notas_list(m_familia.group(1)))
+            m_notas = re.search(r'notas principales[\s:]*(.+?)(?:\.|\n|$)', text, re.IGNORECASE)
+            if m_notas:
+                notas['general'].extend(_parse_notas_list(m_notas.group(1)))
+        
+        # 3. Last resort: scan the text for ANY keyword from our dictionary
+        if not any(notas.values()):
+            found = set()
+            text_lower = text.lower() + " " + r['nombre'].lower()
+            for fam, keywords in AROMA_FAMILIES.items():
+                for kw in keywords:
+                    if kw in text_lower:
+                        found.add(kw)
+            if found:
+                notas['general'] = list(found)
 
         if any(notas.values()):
             _query(db, f'UPDATE {table} SET aromas = %s WHERE sku = %s',
@@ -705,7 +729,7 @@ def sync_cosmetic():
         added, error = _sync_shopify(db, 'cosmetic_products', 'https://cosmetic.cl')
         extracted = 0
         if not error:
-            extracted = _extract_aromas(db, 'multimarca_products')
+            extracted = _extract_aromas(db, 'cosmetic_products')
     finally:
         db.close()
     if error:
@@ -963,82 +987,6 @@ def retail_export():
     resp.headers['Content-Type'] = 'text/csv; charset=utf-8'
     resp.headers['Content-Disposition'] = 'attachment; filename=comparativa.csv'
     return resp
-
-
-@app.route('/catalogo')
-@require_login
-def catalogo():
-    query = request.args.get('q', '').strip()
-    linea = request.args.get('linea', '').strip()
-    familia = request.args.get('familia', '').strip()
-    page = max(1, int(request.args.get('page', 1) or 1))
-    per_page = 24
-    try:
-        margen_pct = float(request.args.get('margen', '30'))
-    except ValueError:
-        margen_pct = 30
-
-    db = get_db()
-    latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
-    lineas = [r['linea'] for r in _query(db, '''
-        SELECT DISTINCT p.linea FROM products p
-        JOIN cosmetic_products cp ON p.sku = cp.sku
-        ORDER BY p.linea
-    ''').fetchall()]
-
-    # Available families
-    all_familias = sorted(AROMA_FAMILIES.keys())
-
-    sql = '''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
-                    cp.precio_retail, cp.imagen, cp.url, cp.aromas,
-                    MAX(pr.precio) as precio_mayorista
-             FROM products p
-             JOIN cosmetic_products cp ON p.sku = cp.sku
-             LEFT JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s'''
-    params = [latest] if latest else [None]
-    conditions = []
-    if query:
-        conditions.append('(p.nombre LIKE %s OR p.linea LIKE %s)')
-        like = f'%{query}%'
-        params.extend([like, like])
-    if linea:
-        conditions.append('p.linea = %s')
-        params.append(linea)
-    # Filter by family: search for any keyword from that family in aromas JSON
-    if familia and familia in AROMA_FAMILIES:
-        family_conditions = []
-        for kw in AROMA_FAMILIES[familia]:
-            family_conditions.append('cp.aromas LIKE %s')
-            params.append(f'%"{kw}%')
-        if family_conditions:
-            conditions.append('(' + ' OR '.join(family_conditions) + ')')
-    if conditions:
-        sql += ' WHERE ' + ' AND '.join(conditions)
-    sql += ' GROUP BY p.sku, p.nombre, p.linea, p.genero, p.formato, cp.precio_retail, cp.imagen, cp.url, cp.aromas'
-    sql += ' ORDER BY p.linea, p.nombre'
-
-    # Count total
-    total = _query(db, f'SELECT COUNT(*) AS cnt FROM ({sql}) AS t', params).fetchone()['cnt']
-    offset = (page - 1) * per_page
-    products = _query(db, f'{sql} LIMIT %s OFFSET %s', params + [per_page, offset]).fetchall()
-    total_pages = (total + per_page - 1) // per_page if total else 1
-
-    for p in products:
-        p['notas'] = {}
-        if p['aromas']:
-            try:
-                p['notas'] = json.loads(p['aromas'])
-                p['familias'] = _classify_family(p['notas'])
-            except (json.JSONDecodeError, TypeError):
-                p['familias'] = []
-        else:
-            p['familias'] = []
-
-    db.close()
-    return render_template('catalogo.html', products=products, query=query,
-                          linea=linea, familia=familia, lineas=lineas,
-                          familias=all_familias, total=total,
-                          margen_pct=margen_pct, page=page, per_page=per_page, total_pages=total_pages)
 
 
 @app.route('/catalogo/pdf')

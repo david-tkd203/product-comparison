@@ -8,7 +8,56 @@
 <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','system-ui','sans-serif']}}}}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Jost', 'Inter', 'system-ui', 'sans-serif'],
+          serif: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+        },
+        colors: {
+          slate: {
+            50: '#f6f6f6',
+            100: '#e2e2e2',
+            200: '#c9c9c9',
+            300: '#a8a8a8',
+            400: '#797979',
+            500: '#5f5f5f',
+            600: '#494949',
+            700: '#3a3a3a',
+            800: '#333334',
+            900: '#2d2d2e',
+          },
+          indigo: {
+            50: '#f6f6f6',
+            100: '#e2e2e2',
+            500: '#333334',
+            600: '#000000',
+            700: '#000000',
+            800: '#000000',
+            900: '#000000',
+          },
+          blue: {
+            50: '#f6f6f6',
+            100: '#e2e2e2',
+            500: '#333334',
+            600: '#000000',
+            700: '#000000',
+            800: '#000000',
+            900: '#000000',
+          }
+        }
+      }
+    }
+  }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
+
   body { font-family: 'Inter', system-ui, sans-serif; }
   .flash-success { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
   .flash-error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
@@ -23,13 +72,13 @@
   #mobile-menu:not(.hidden) { max-height:400px; opacity:1; }
 </style>
 </head>
-<body class="h-full bg-slate-50 text-slate-800 antialiased">
+<body class="h-full bg-slate-50 text-slate-800 font-sans antialiased">
 
 <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
   <div class="max-w-7xl mx-auto px-3 sm:px-6">
     <div class="flex items-center justify-between h-14">
       <!-- Logo -->
-      <span class="text-base sm:text-lg font-bold text-slate-900 tracking-tight shrink-0">Perfumería</span>
+      <img src="/static/img/LogoSiyash-01-t.png" alt="Siyash Admin" class="h-6 sm:h-8 w-auto">
 
       <!-- Desktop nav -->
       <div class="hidden md:flex items-center gap-0.5">
@@ -39,7 +88,7 @@
         <a href="/upload" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/upload' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Subir</a>
         <a href="/compare" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/compare' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comparar</a>
         <a href="/retail" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/retail' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comparativa</a>
-        <a href="/catalogo" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/catalogo' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Catálogo</a>
+        
         <a href="/pedidos" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/pedidos' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Pedidos</a>
         <a href="/estudio" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/estudio' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Estudio</a>
       </div>
@@ -72,7 +121,7 @@
         <a href="/upload" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/upload' else 'text-slate-600 hover:bg-slate-50' }}">Subir</a>
         <a href="/compare" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/compare' else 'text-slate-600 hover:bg-slate-50' }}">Comparar</a>
         <a href="/retail" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/retail' else 'text-slate-600 hover:bg-slate-50' }}">Comparativa</a>
-        <a href="/catalogo" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/catalogo' else 'text-slate-600 hover:bg-slate-50' }}">Catálogo</a>
+        
         <a href="/pedidos" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/pedidos' else 'text-slate-600 hover:bg-slate-50' }}">Pedidos</a>
         <a href="/estudio" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/estudio' else 'text-slate-600 hover:bg-slate-50' }}">Estudio</a>
         {% if session.get('username') %}
