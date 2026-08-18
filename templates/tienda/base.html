@@ -57,7 +57,7 @@
   .splash-fade-out {
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.8s cubic-bezier(0.65, 0, 0.35, 1);
+    transition: opacity 1.2s cubic-bezier(0.65, 0, 0.35, 1);
   }
   
   /* Shimmer Animation para Skeletons */
@@ -106,7 +106,7 @@
 <!-- 1. SPLASH SCREEN (PRELOADER) -->
 <div id="splash-screen" class="fixed inset-0 z-[100] bg-brand-white flex flex-col items-center justify-center transition-opacity duration-700">
   <div class="flex flex-col items-center animate-logo-pulse text-center px-4">
-    <h1 class="font-serif text-5xl sm:text-7xl tracking-wide text-brand-black mb-6">Siyash</h1>
+    <img src="/static/img/LogoSiyash-01.png" alt="Siyash" class="h-24 sm:h-32 w-auto object-contain mb-6 ">
     <p class="font-serif italic text-lg sm:text-2xl text-brand-500 max-w-md">"Fragancia con elegancia y selección, marca la diferencia."</p>
   </div>
 </div>
@@ -129,7 +129,7 @@
 <header class="bg-brand-black text-brand-white sticky top-0 z-40">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16 sm:h-20">
     <a href="/" class="flex items-center shrink-0" aria-label="Siyash — Inicio">
-      <img src="/static/img/LogoSiyash-02.png" alt="Siyash" class="h-9 sm:h-11 w-auto">
+      <img src="/static/img/LogoSiyash-02.png" alt="Siyash" class="h-16 sm:h-20 w-auto object-contain">
     </a>
 
     <nav class="hidden md:flex items-center gap-8">
@@ -378,8 +378,8 @@ updateCartBadge();
     if (splash) {
       setTimeout(() => {
         splash.classList.add('splash-fade-out');
-        setTimeout(() => splash.remove(), 800); // Quitar del DOM tras animar
-      }, 500); // Pequeño delay para asegurar que el DOM pintó
+        setTimeout(() => splash.remove(), 1200); // Quitar del DOM tras animar
+      }, 2500); // Pequeño delay para asegurar que el DOM pintó
     }
   });
 
