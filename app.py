@@ -1428,7 +1428,7 @@ def _tienda_sql():
     """Base SQL for storefront products. First param must be the margin factor."""
     return '''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato, p.aroma_family, p.stock,
                      pr.precio AS precio_mayorista,
-                     ROUND(pr.precio * %s, -1) AS precio_venta,
+                     (ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10) AS precio_venta,
                      COALESCE(NULLIF(cp.imagen, ''), NULLIF(mp.imagen, ''), NULLIF(sp.imagen, '')) AS imagen,
                      COALESCE(cp.aromas, mp.aromas) AS aromas
               FROM products p
@@ -1553,11 +1553,11 @@ def _catalogo_response(preset_genero=None):
             params.append(f'%{kw}%')
         conditions.append('(' + ' OR '.join(fam_conds) + ')')
     if pmin:
-        conditions.append('ROUND(pr.precio * %s, -1) >= %s')
+        conditions.append('(ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10) >= %s')
         params.append(factor)
         params.append(pmin)
     if pmax:
-        conditions.append('ROUND(pr.precio * %s, -1) <= %s')
+        conditions.append('(ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10) <= %s')
         params.append(factor)
         params.append(pmax)
     if conditions:
@@ -1578,7 +1578,7 @@ def _catalogo_response(preset_genero=None):
     total_pages = (total + per_page - 1) // per_page if total else 1
     _enrich_products(products)
 
-    bounds = _query(db, '''SELECT ROUND(MIN(pr.precio) * %s, -1) AS pmin, ROUND(MAX(pr.precio) * %s, -1) AS pmax
+    bounds = _query(db, '''SELECT (ROUND((MIN(pr.precio) * %s + 10) / 1000) * 1000 - 10) AS pmin, (ROUND((MAX(pr.precio) * %s + 10) / 1000) * 1000 - 10) AS pmax
                            FROM products p JOIN prices pr ON pr.sku = p.sku
                            WHERE p.is_active = 1 AND p.stock > 0
                            AND pr.import_date = (SELECT MAX(import_date) FROM imports)''',
@@ -1668,7 +1668,7 @@ def api_pedido():
             if not sku:
                 continue
             row = _query(db, '''SELECT p.sku, p.nombre, p.linea, p.stock,
-                                       ROUND(pr.precio * %s, -1) AS precio_venta
+                                       (ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10) AS precio_venta
                                 FROM products p
                                 JOIN prices pr ON p.sku = pr.sku
                                      AND pr.import_date = (SELECT MAX(import_date) FROM imports)
@@ -1729,7 +1729,7 @@ def admin_inventario():
 
     sql = '''SELECT p.sku, p.nombre, p.linea, p.genero, p.stock, p.is_active, p.aroma_family,
                     pr.precio AS precio_mayor,
-                    ROUND(pr.precio * %s, -1) AS precio_venta
+                    (ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10) AS precio_venta
              FROM products p
              LEFT JOIN prices pr ON pr.sku = p.sku
                   AND pr.import_date = (SELECT MAX(import_date) FROM imports)'''
