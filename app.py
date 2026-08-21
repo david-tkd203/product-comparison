@@ -1557,9 +1557,17 @@ def tienda_home():
     n_mujer = _count_genero('Mujer')
     n_unisex = max(0, total - n_hombre - n_mujer)
 
-    marcas = _query(db, '''SELECT p.linea, COUNT(*) AS n FROM products p
+    marcas = _query(db, '''SELECT p.linea, COUNT(*) AS n,
+                                  COALESCE(NULLIF(cp.imagen, ''), NULLIF(mp.imagen, ''), NULLIF(sp.imagen, '')) AS imagen
+                           FROM products p
+                           LEFT JOIN cosmetic_products cp ON cp.sku = p.sku
+                           LEFT JOIN multimarca_matches mmk ON mmk.sku_wholesale = p.sku
+                           LEFT JOIN multimarca_products mp ON mp.sku = mmk.sku_mm
+                           LEFT JOIN silk_matches smk ON smk.sku_wholesale = p.sku
+                           LEFT JOIN silk_products sp ON sp.sku = smk.sku_silk
                            WHERE p.is_active = 1 AND p.stock > 0
-                           GROUP BY p.linea ORDER BY p.linea''').fetchall()
+                           GROUP BY p.linea 
+                           ORDER BY n DESC LIMIT 16''').fetchall()
 
     familias = _query(db, '''SELECT p.aroma_family AS fam, COUNT(*) AS n FROM products p
                              WHERE p.is_active = 1 AND p.stock > 0 AND p.aroma_family IS NOT NULL

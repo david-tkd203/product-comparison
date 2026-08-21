@@ -94,8 +94,14 @@
   </div>
   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-px bg-brand-100 border border-brand-100 gsap-reveal">
     {% for m in marcas %}
-    <a href="/perfumes?linea={{ m['linea'] | urlencode }}" class="bg-brand-white hover:bg-brand-black group flex items-center justify-center h-24 sm:h-28 px-4 transition-colors">
-      <span class="font-serif text-lg sm:text-xl text-brand-800 group-hover:text-brand-white group-hover:italic transition-all text-center leading-tight">{{ m['linea'] }}</span>
+    <a href="/perfumes?linea={{ m['linea'] | urlencode }}" class="group relative flex items-center justify-center h-32 sm:h-40 overflow-hidden bg-brand-white hover:bg-brand-black transition-colors">
+      {% if m['imagen'] %}
+      <img src="{{ m['imagen'] }}" alt="{{ m['linea'] }}" class="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700">
+      {% endif %}
+      <div class="relative z-10 p-4">
+        <span class="font-serif text-lg sm:text-2xl text-brand-900 group-hover:text-brand-white transition-colors text-center block leading-tight">{{ m['linea'] }}</span>
+        <span class="text-[9px] tracking-widest uppercase text-brand-500 group-hover:text-brand-300 block text-center mt-2 transition-colors">{{ m['n'] }} Fragancias</span>
+      </div>
     </a>
     {% endfor %}
   </div>
