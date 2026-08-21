@@ -1497,7 +1497,7 @@ def _tienda_sql():
     return '''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato, p.aroma_family, p.stock,
                      pr.precio AS precio_mayorista,
                      (ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10) AS precio_venta,
-                     MAX(COALESCE(NULLIF(cp.imagen, ''), NULLIF(mp.imagen, ''), NULLIF(sp.imagen, ''))) AS imagen,
+                     COALESCE(NULLIF(cp.imagen, ''), NULLIF(mp.imagen, ''), NULLIF(sp.imagen, '')) AS imagen,
                      COALESCE(cp.aromas, mp.aromas) AS aromas
               FROM products p
               JOIN prices pr ON p.sku = pr.sku
