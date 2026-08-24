@@ -113,9 +113,13 @@ function saveRow(sku, tr) {
   var is_active = tr.querySelector('input[type="checkbox"]').checked;
   var aroma_family = tr.querySelector('input[list="familias-list"]').value;
 
+  var csrf_token = document.querySelector('input[name="csrf_token"]').value;
   fetch('/api/update_inventory', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrf_token
+    },
     body: JSON.stringify({
       sku: sku,
       stock: parseInt(stock) || 0,
