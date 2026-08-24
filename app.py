@@ -1793,6 +1793,16 @@ def api_pedido():
 
 # ==================== ADMIN: inventario y configuración ====================
 
+
+@app.route('/admin/activar-todo')
+@require_login
+def activar_todo():
+    db = get_db()
+    _query(db, 'UPDATE products SET is_active = 1, stock = 10')
+    db.commit()
+    flash('¡Éxito! Todos los perfumes han sido activados y se les ha asignado 10 unidades de stock.', 'success')
+    return redirect(url_for('admin_inventario'))
+
 @app.route('/admin/inventario')
 @require_login
 def admin_inventario():
