@@ -408,16 +408,11 @@ def admin_productos():
     db = get_db()
     lineas = [r['linea'] for r in _query(db, 'SELECT DISTINCT linea FROM products ORDER BY linea')]
     generos = [r['genero'] for r in _query(db, 'SELECT DISTINCT genero FROM products ORDER BY genero')]
-    latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
-
     sql = '''SELECT p.sku, p.nombre, p.linea, p.ean, p.genero, p.formato, pr.precio
              FROM products p
-             JOIN prices pr ON p.sku = pr.sku'''
+             JOIN prices pr ON p.sku = pr.sku AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)'''
     params = []
     conditions = []
-    if latest:
-        conditions.append('pr.import_date = %s')
-        params.append(latest)
     if query:
         conditions.append('(p.nombre LIKE %s OR p.sku LIKE %s OR p.linea LIKE %s)')
         like = f'%{query}%'
@@ -945,7 +940,7 @@ def retail():
     except ValueError:
         margen_pct = 30
     db = get_db()
-    latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
+
     lineas = [r['linea'] for r in _query(db, 'SELECT DISTINCT linea FROM products ORDER BY linea')]
     synced = _query(db, 'SELECT COUNT(*) as cnt, MAX(last_synced) as last FROM cosmetic_products').fetchone()
 
@@ -964,7 +959,7 @@ def retail():
                     CASE WHEN sp.precio_retail > 0 THEN ROUND((sp.precio_retail - pr.precio) * 100.0 / sp.precio_retail, 1) END as margen_silk,
                     CASE WHEN mp.precio_retail > 0 THEN ROUND((mp.precio_retail - pr.precio) * 100.0 / mp.precio_retail, 1) END as margen_mm
              FROM products p
-             JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+             JOIN prices pr ON p.sku = pr.sku AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
              JOIN cosmetic_products cp ON p.sku = cp.sku
              LEFT JOIN silk_matches sm ON p.sku = sm.sku_wholesale
              LEFT JOIN silk_products sp ON sm.sku_silk = sp.sku
@@ -1017,7 +1012,7 @@ def retail_export():
         flash('Seleccioná al menos un producto', 'error')
         return redirect(url_for('retail'))
     db = get_db()
-    latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
+
     placeholders = ','.join(['%s'] * len(skus))
     rows = _query(db, f'''
         SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
@@ -1025,7 +1020,7 @@ def retail_export():
                cp.precio_retail as cosmetic, cp.url as url_cosmetic, cp.imagen as img_cosmetic,
                sp.precio_retail as silk, sp.url as url_silk, sp.imagen as img_silk
         FROM products p
-        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
         JOIN cosmetic_products cp ON p.sku = cp.sku
         LEFT JOIN silk_matches sm ON p.sku = sm.sku_wholesale
         LEFT JOIN silk_products sp ON sm.sku_silk = sp.sku
@@ -1033,7 +1028,7 @@ def retail_export():
         GROUP BY p.sku, p.nombre, p.linea, p.genero, p.formato, pr.precio,
                  cp.precio_retail, cp.url, cp.imagen, sp.precio_retail, sp.url, sp.imagen
         ORDER BY p.linea, p.nombre
-    ''', [latest] + skus).fetchall()
+    ''', skus).fetchall()
     db.close()
 
     import csv, io
@@ -1068,7 +1063,7 @@ def catalogo_pdf():
         margen_pct = 30
 
     db = get_db()
-    latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
+
     placeholders = ','.join(['%s'] * len(skus))
     rows = _query(db, f'''
         SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
@@ -1076,12 +1071,12 @@ def catalogo_pdf():
                MAX(pr.precio) as precio_mayorista
         FROM products p
         JOIN cosmetic_products cp ON p.sku = cp.sku
-        LEFT JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        LEFT JOIN prices pr ON p.sku = pr.sku AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
         WHERE p.sku IN ({placeholders})
         GROUP BY p.sku, p.nombre, p.linea, p.genero, p.formato,
                  cp.imagen, cp.url, cp.aromas, cp.precio_retail
         ORDER BY p.linea, p.nombre
-    ''', [latest] + skus).fetchall()
+    ''', skus).fetchall()
     db.close()
 
     if not rows:
@@ -1241,7 +1236,6 @@ def _generate_catalogo_pdf(products, margen_pct=30):
 @require_login
 def estudio():
     db = get_db()
-    latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
     total_wholesale = _query(db, 'SELECT COUNT(*) as cnt FROM products').fetchone()['cnt']
     total_cosmetic = _query(db, 'SELECT COUNT(*) as cnt FROM cosmetic_products').fetchone()['cnt']
     total_silk = _query(db, 'SELECT COUNT(*) as cnt FROM silk_products').fetchone()['cnt']
@@ -1257,7 +1251,7 @@ def estudio():
         SELECT ROUND(AVG(cp.precio_retail - pr.precio)) as avg_diff,
                ROUND(AVG((cp.precio_retail - pr.precio) * 100.0 / cp.precio_retail), 1) as avg_margin
         FROM products p
-        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
         JOIN cosmetic_products cp ON p.sku = cp.sku
         WHERE cp.precio_retail > 0
     ''', [latest]).fetchone()
@@ -1266,7 +1260,7 @@ def estudio():
         SELECT ROUND(AVG(mp.precio_retail - pr.precio)) as avg_diff,
                ROUND(AVG((mp.precio_retail - pr.precio) * 100.0 / mp.precio_retail), 1) as avg_margin
         FROM products p
-        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
         JOIN multimarca_matches mm ON p.sku = mm.sku_wholesale
         JOIN multimarca_products mp ON mm.sku_mm = mp.sku
         WHERE mp.precio_retail > 0
@@ -1278,12 +1272,12 @@ def estudio():
                ROUND(AVG(cp.precio_retail)) as avg_retail,
                ROUND(AVG((cp.precio_retail - pr.precio) * 100.0 / cp.precio_retail), 1) as avg_margin
         FROM products p
-        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
         JOIN cosmetic_products cp ON p.sku = cp.sku
         WHERE cp.precio_retail > 0
         GROUP BY p.linea HAVING n >= 3
         ORDER BY avg_margin DESC LIMIT 20
-    ''', [latest]).fetchall()
+    ''').fetchall()
 
     brand_stats_mm = _query(db, '''
         SELECT p.linea, COUNT(*) as n,
@@ -1291,13 +1285,13 @@ def estudio():
                ROUND(AVG(mp.precio_retail)) as avg_retail,
                ROUND(AVG((mp.precio_retail - pr.precio) * 100.0 / mp.precio_retail), 1) as avg_margin
         FROM products p
-        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
         JOIN multimarca_matches mm ON p.sku = mm.sku_wholesale
         JOIN multimarca_products mp ON mm.sku_mm = mp.sku
         WHERE mp.precio_retail > 0
         GROUP BY p.linea HAVING n >= 3
         ORDER BY avg_margin DESC LIMIT 20
-    ''', [latest]).fetchall()
+    ''').fetchall()
 
     opportunities = _query(db, '''
         SELECT p.sku, p.nombre, p.linea, pr.precio as costo,
@@ -1305,11 +1299,11 @@ def estudio():
                (cp.precio_retail - pr.precio) as diff,
                ROUND((cp.precio_retail - pr.precio) * 100.0 / cp.precio_retail, 1) as margen
         FROM products p
-        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
         JOIN cosmetic_products cp ON p.sku = cp.sku
         WHERE cp.precio_retail > 0
         ORDER BY margen DESC LIMIT 30
-    ''', [latest]).fetchall()
+    ''').fetchall()
 
     opportunities_mm = _query(db, '''
         SELECT p.sku, p.nombre, p.linea, pr.precio as costo,
@@ -1317,20 +1311,20 @@ def estudio():
                (mp.precio_retail - pr.precio) as diff,
                ROUND((mp.precio_retail - pr.precio) * 100.0 / mp.precio_retail, 1) as margen
         FROM products p
-        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
         JOIN multimarca_matches mm ON p.sku = mm.sku_wholesale
         JOIN multimarca_products mp ON mm.sku_mm = mp.sku
         WHERE mp.precio_retail > 0
         ORDER BY margen DESC LIMIT 30
-    ''', [latest]).fetchall()
+    ''').fetchall()
 
     top_cost = _query(db, '''
         SELECT p.sku, p.nombre, p.linea, pr.precio, cp.imagen
         FROM products p
-        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
         JOIN cosmetic_products cp ON p.sku = cp.sku
         ORDER BY pr.precio DESC LIMIT 10
-    ''', [latest]).fetchall()
+    ''').fetchall()
 
     db.close()
     return render_template('estudio.html',
@@ -1355,15 +1349,15 @@ def export_xlsx():
         return redirect(url_for('admin_productos'))
 
     db = get_db()
-    latest = _query(db, 'SELECT MAX(import_date) as max_date FROM imports').fetchone()['max_date']
+
     placeholders = ','.join(['%s'] * len(skus))
     rows = _query(db, f'''
         SELECT p.sku, p.nombre, p.linea, p.ean, p.genero, p.formato, pr.precio
         FROM products p
-        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = %s
+        JOIN prices pr ON p.sku = pr.sku AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
         WHERE p.sku IN ({placeholders})
         ORDER BY p.linea, p.nombre
-    ''', [latest] + skus).fetchall()
+    ''', skus).fetchall()
     db.close()
 
     from openpyxl import Workbook
@@ -1501,7 +1495,7 @@ def _tienda_sql():
                      COALESCE(cp.aromas, mp.aromas) AS aromas
               FROM products p
               JOIN prices pr ON p.sku = pr.sku
-                   AND pr.import_date = (SELECT MAX(import_date) FROM imports)
+                   AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
               LEFT JOIN cosmetic_products cp ON cp.sku = p.sku
               LEFT JOIN multimarca_matches mmk ON mmk.sku_wholesale = p.sku
               LEFT JOIN multimarca_products mp ON mp.sku = mmk.sku_mm
@@ -1657,7 +1651,7 @@ def _catalogo_response(preset_genero=None):
     bounds = _query(db, '''SELECT (ROUND((MIN(pr.precio) * %s + 10) / 1000) * 1000 - 10) AS pmin, (ROUND((MAX(pr.precio) * %s + 10) / 1000) * 1000 - 10) AS pmax
                            FROM products p JOIN prices pr ON pr.sku = p.sku
                            WHERE p.is_active = 1 AND p.stock > 0
-                           AND pr.import_date = (SELECT MAX(import_date) FROM imports)''',
+                           AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)''',
                     [factor, factor]).fetchone()
     db.close()
 
@@ -1748,7 +1742,7 @@ def api_pedido():
                                        (ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10) AS precio_venta
                                 FROM products p
                                 JOIN prices pr ON p.sku = pr.sku
-                                     AND pr.import_date = (SELECT MAX(import_date) FROM imports)
+                                     AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
                                 WHERE p.sku = %s AND p.is_active = 1 AND p.stock > 0''',
                          [factor, sku]).fetchone()
             if not row:
@@ -1819,7 +1813,7 @@ def admin_inventario():
                     (ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10) AS precio_venta
              FROM products p
              LEFT JOIN prices pr ON pr.sku = p.sku
-                  AND pr.import_date = (SELECT MAX(import_date) FROM imports)'''
+                  AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)'''
     params = [factor]
     if query:
         sql += ' WHERE (p.nombre LIKE %s OR p.sku LIKE %s OR p.linea LIKE %s)'
