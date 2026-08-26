@@ -368,6 +368,32 @@ def parse_excel(filepath):
 def inject_tunnel_url():
     return dict(tunnel_url='')
 
+@app.context_processor
+def inject_nav_data():
+    # Only run DB queries if we are not serving static files
+    if request.path.startswith('/static/'):
+        return {}
+        
+    try:
+        db = get_db()
+        # Fetch top 6 brands with an image
+        marcas = _query(db, '''SELECT p.linea, COUNT(*) AS n,
+                                      MAX(COALESCE(NULLIF(cp.imagen, ''), NULLIF(mp.imagen, ''), NULLIF(sp.imagen, ''))) AS imagen
+                               FROM products p
+                               LEFT JOIN cosmetic_products cp ON cp.sku = p.sku
+                               LEFT JOIN multimarca_matches mmk ON mmk.sku_wholesale = p.sku
+                               LEFT JOIN multimarca_products mp ON mp.sku = mmk.sku_mm
+                               LEFT JOIN silk_matches smk ON smk.sku_wholesale = p.sku
+                               LEFT JOIN silk_products sp ON sp.sku = smk.sku_silk
+                               WHERE p.is_active = 1 AND p.stock > 0
+                               GROUP BY p.linea 
+                               HAVING imagen IS NOT NULL
+                               ORDER BY n DESC LIMIT 6''').fetchall()
+        return dict(nav_marcas=marcas)
+    except Exception:
+        return dict(nav_marcas=[])
+
+
 
 def _query(db, sql, params=None):
     cur = db.cursor(dictionary=True)
