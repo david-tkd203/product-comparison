@@ -123,10 +123,14 @@
     <a href="/perfumes?genero=Unisex" class="px-6 py-3 text-[10px] tracking-widest2 uppercase transition-colors {{ 'bg-brand-black text-brand-white' if (not preset and genero == 'Unisex') else 'border border-brand-300 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">Unisex</a>
   </div>
 
-  <div class="lg:grid lg:grid-cols-[240px_1fr] lg:gap-12">
+  </div> <!-- Cierra el max-w-7xl temporalmente -->
+  
+  <div class="bg-brand-50/50 border-t border-brand-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+      <div class="lg:grid lg:grid-cols-[250px_1fr] lg:gap-16">
 
-    <!-- ====== FILTROS ====== -->
-    <aside class="mb-8 lg:mb-0">
+        <!-- ====== FILTROS ====== -->
+        <aside class="mb-8 lg:mb-0">
       <details class="lg:hidden border border-brand-200 mb-6">
         <summary class="px-5 py-4 text-[10px] tracking-widest2 uppercase cursor-pointer flex items-center justify-between">
           Filtros
@@ -192,6 +196,8 @@
         <a href="{{ '/hombre' if preset == 'Hombre' else '/mujer' if preset == 'Mujer' else '/perfumes' }}" class="inline-block px-8 py-3 bg-brand-black text-brand-white text-[10px] tracking-widest2 uppercase hover:bg-brand-700 transition-colors">Ver todo</a>
       </div>
       {% endif %}
+    </div>
+      </div>
     </div>
   </div>
 </div>
