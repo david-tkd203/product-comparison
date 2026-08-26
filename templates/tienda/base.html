@@ -144,9 +144,68 @@
       <img src="/static/img/LogoSiyash-02-t.png" alt="Siyash" class="h-8 sm:h-12 w-auto object-contain">
     </a>
 
-    <nav class="hidden md:flex items-center gap-8">
+    <nav class="hidden md:flex items-center gap-8 h-full">
       <a href="/" class="text-xs tracking-widest2 uppercase text-brand-200 hover:text-white transition-colors">Inicio</a>
-      <a href="/perfumes" class="text-xs tracking-widest2 uppercase text-brand-200 hover:text-white transition-colors">Colección completa</a>
+      <a href="/nosotros" class="text-xs tracking-widest2 uppercase text-brand-200 hover:text-white transition-colors">Nosotros</a>
+      
+      <div class="group h-full flex items-center">
+        <a href="/perfumes" class="text-xs tracking-widest2 uppercase text-brand-200 hover:text-white transition-colors flex items-center gap-1 py-6">
+          Catálogo
+          <svg class="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 9l-7 7-7-7"/></svg>
+        </a>
+        
+        <div class="absolute top-full left-0 w-full bg-brand-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 border-t border-brand-100 text-brand-black z-50 cursor-default">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-4 gap-8">
+            
+            <!-- Col 1 -->
+            <div>
+              <h4 class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-6">Para Ti</h4>
+              <ul class="space-y-4">
+                <li><a href="/mujer" class="font-serif text-2xl hover:text-brand-500 transition-colors">Para Ella</a></li>
+                <li><a href="/hombre" class="font-serif text-2xl hover:text-brand-500 transition-colors">Para Él</a></li>
+                <li><a href="/perfumes?genero=Unisex" class="font-serif text-2xl hover:text-brand-500 transition-colors">Unisex</a></li>
+                <li><a href="/perfumes" class="font-serif text-2xl hover:text-brand-500 transition-colors">Ver Todo</a></li>
+              </ul>
+            </div>
+            
+            <!-- Col 2 -->
+            <div>
+              <h4 class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-6">Casas Exclusivas</h4>
+              <ul class="space-y-3">
+                <li><a href="/perfumes?linea=Lattafa" class="text-sm text-brand-700 hover:text-brand-black transition-colors">Lattafa</a></li>
+                <li><a href="/perfumes?linea=Armaf" class="text-sm text-brand-700 hover:text-brand-black transition-colors">Armaf</a></li>
+                <li><a href="/perfumes?linea=Maison+Alhambra" class="text-sm text-brand-700 hover:text-brand-black transition-colors">Maison Alhambra</a></li>
+                <li><a href="/perfumes?linea=Afnan" class="text-sm text-brand-700 hover:text-brand-black transition-colors">Afnan</a></li>
+                <li><a href="/perfumes?linea=Al+Haramain" class="text-sm text-brand-700 hover:text-brand-black transition-colors">Al Haramain</a></li>
+                <li><a href="/perfumes?linea=Paris+Corner" class="text-sm text-brand-700 hover:text-brand-black transition-colors">Paris Corner</a></li>
+              </ul>
+            </div>
+
+            <!-- Col 3 -->
+            <div>
+              <h4 class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-6">Familias Olfativas</h4>
+              <ul class="space-y-3">
+                <li><a href="/perfumes?familia=Amaderada" class="text-sm text-brand-700 hover:text-brand-black transition-colors">Amaderada</a></li>
+                <li><a href="/perfumes?familia=Floral" class="text-sm text-brand-700 hover:text-brand-black transition-colors">Floral</a></li>
+                <li><a href="/perfumes?familia=Cítrica" class="text-sm text-brand-700 hover:text-brand-black transition-colors">Cítrica</a></li>
+                <li><a href="/perfumes?familia=Oriental" class="text-sm text-brand-700 hover:text-brand-black transition-colors">Oriental</a></li>
+                <li><a href="/perfumes?familia=Dulce" class="text-sm text-brand-700 hover:text-brand-black transition-colors">Dulce</a></li>
+                <li><a href="/perfumes?familia=Fresco" class="text-sm text-brand-700 hover:text-brand-black transition-colors">Fresco</a></li>
+              </ul>
+            </div>
+            
+            <!-- Col 4 -->
+            <div class="relative overflow-hidden group/img aspect-[4/5] bg-brand-black flex items-center justify-center border border-brand-100">
+              <img src="https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=800&auto=format&fit=crop" alt="Colección Exclusiva" class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover/img:scale-105 transition-transform duration-700">
+              <div class="relative z-10 text-center p-4">
+                <h4 class="font-serif text-2xl text-brand-white italic mb-3">La Esencia de<br>la Exclusividad</h4>
+                <a href="/perfumes" class="inline-block px-4 py-2 border border-brand-white text-[9px] tracking-widest2 uppercase text-brand-white hover:bg-brand-white hover:text-brand-black transition-colors">Descubrir</a>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
     </nav>
 
     <div class="flex items-center gap-3 sm:gap-5">
