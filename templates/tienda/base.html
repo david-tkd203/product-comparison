@@ -135,12 +135,10 @@
 
 
 <!-- Announcement bar -->
-<div class="bg-brand-white border-b border-brand-100 text-center py-2 px-4">
-  <p class="text-[10px] tracking-widest2 uppercase text-brand-600">Envíos a todo Chile · Perfumería original garantizada</p>
-</div>
+
 
 <!-- Header -->
-<header class="bg-brand-black text-brand-white sticky top-0 z-40">
+<header id="main-header" class="fixed top-0 w-full z-50 transition-all duration-500 {{ 'bg-transparent py-2' if request.path == '/' else 'bg-brand-black shadow-md' }} text-brand-white">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16 sm:h-20">
     <a href="/" class="flex items-center shrink-0" aria-label="Siyash — Inicio">
       <img src="/static/img/LogoSiyash-02-t.png" alt="Siyash" class="h-8 sm:h-12 w-auto object-contain">
@@ -278,10 +276,10 @@ function updateCartBadge() {
     badge.classList.remove('flex');
   }
 }
-function addToCart(sku, nombre, precio, linea) {
+function addToCart(sku, nombre, precio, linea, imagen) {
   var cart = getCart();
   if (cart[sku]) { cart[sku].qty += 1; }
-  else { cart[sku] = { sku: sku, nombre: nombre, precio: parseInt(precio, 10), linea: linea || '', qty: 1 }; }
+  else { cart[sku] = { sku: sku, nombre: nombre, precio: parseInt(precio, 10), linea: linea || '', qty: 1, imagen: imagen || '' }; }
   saveCart(cart);
   updateCartBadge();
   openCart();
@@ -316,7 +314,9 @@ function renderCart() {
     count++;
     var item = cart[sku], sub = item.qty * item.precio;
     total += sub;
+    var imgHtml = item.imagen ? '<img src="' + item.imagen + '" class="w-16 h-20 object-contain bg-brand-50 mr-4 border border-brand-100">' : '<div class="w-16 h-20 bg-brand-50 mr-4 flex items-center justify-center text-[8px] text-brand-300">SIN FOTO</div>';
     html += '<div class="flex py-5 border-b border-brand-100 last:border-0">' +
+      imgHtml +
       '<div class="flex-1 min-w-0 pr-4">' +
         (item.linea ? '<p class="text-[9px] tracking-widest2 uppercase text-brand-400 mb-0.5">' + item.linea + '</p>' : '') +
         '<h4 class="text-sm text-brand-black leading-snug mb-2">' + item.nombre + '</h4>' +
@@ -454,6 +454,22 @@ updateCartBadge();
   });
 </script>
 {% block scripts %}{% endblock %}
+
+<script>
+  // Script para Header Transparente Dinámico
+  window.addEventListener('scroll', () => {
+    const header = document.getElementById('main-header');
+    if (window.location.pathname === '/') {
+      if (window.scrollY > 50) {
+        header.classList.remove('bg-transparent', 'py-2');
+        header.classList.add('bg-brand-black', 'shadow-md');
+      } else {
+        header.classList.add('bg-transparent', 'py-2');
+        header.classList.remove('bg-brand-black', 'shadow-md');
+      }
+    }
+  });
+</script>
 </body>
 
 

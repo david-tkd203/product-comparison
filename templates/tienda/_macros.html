@@ -21,7 +21,7 @@
   </a>
   <div class="flex items-center justify-between">
     <span class="text-base font-medium text-brand-900">{{ precio_clp(p['precio_venta']) }}</span>
-    <button onclick="event.preventDefault(); event.stopPropagation(); addToCart('{{ p['sku'] }}', '{{ p['nombre'] | replace("'", "\\'") }}', {{ p['precio_venta']|int }}, '{{ p['linea'] | replace("'", "\\'") }}')" class="w-10 h-10 border border-brand-900 text-brand-900 flex items-center justify-center hover:bg-brand-black hover:text-brand-white transition-colors" aria-label="Agregar {{ p['nombre'] }} al carrito">
+    <button onclick="event.preventDefault(); event.stopPropagation(); addToCart('{{ p['sku'] }}', '{{ p['nombre'] | replace("'", "\\'") }}', {{ p['precio_venta']|int }}, '{{ p['linea'] | replace("'", "\\'") }}', '{{ p['imagen'] or "" }}')" class="w-10 h-10 border border-brand-900 text-brand-900 flex items-center justify-center hover:bg-brand-black hover:text-brand-white transition-colors" aria-label="Agregar {{ p['nombre'] }} al carrito">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v12m6-6H6"/></svg>
     </button>
   </div>

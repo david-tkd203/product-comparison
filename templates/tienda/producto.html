@@ -18,7 +18,7 @@
     <!-- Imagen -->
     <div class="bg-brand-50 border border-brand-100 aspect-[4/5] flex items-center justify-center overflow-hidden">
       {% if p['imagen'] %}
-      <img src="{{ p['imagen'] }}" alt="{{ p['nombre'] }}" class="w-full h-full object-contain p-8 sm:p-14">
+      <img src="{{ p['imagen'] }}" alt="{{ p['nombre'] }}" class="w-full h-full object-contain p-8 sm:p-14 hover:scale-125 transition-transform duration-700 cursor-zoom-in">
       {% else %}
       <div class="text-center px-6">
         <span class="font-serif text-5xl italic text-brand-300">{{ p['linea'] }}</span>
@@ -71,9 +71,18 @@
             <input id="pqty" type="text" value="1" readonly class="w-12 text-center text-sm border-x border-brand-900 py-3.5 focus:outline-none">
             <button onclick="qtyDelta(1)" class="px-4 py-3.5 text-brand-500 hover:bg-brand-50 transition-colors" aria-label="Más">+</button>
           </div>
-          <button onclick="addThisToCart()" class="flex-1 py-3.5 bg-brand-black text-brand-white text-xs tracking-widest2 uppercase hover:bg-brand-700 transition-colors">Agregar a la selección</button>
+          <button onclick="addThisToCart()" class="flex-1 py-3.5 bg-brand-black text-brand-white text-xs font-semibold tracking-widest2 uppercase hover:bg-brand-800 transition-all duration-300 hover:scale-[1.02] shadow-[0_4px_14px_0_rgba(0,0,0,0.25)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.23)]">Agregar a la selección</button>
         </div>
-        <p class="text-[10px] text-brand-400 text-center tracking-wide">Pedido coordinado por WhatsApp · Envíos a todo Chile</p>
+        <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-brand-100">
+          <div class="flex items-center justify-center gap-2 text-brand-500">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            <span class="text-[9px] tracking-widest uppercase">Pago Seguro</span>
+          </div>
+          <div class="flex items-center justify-center gap-2 text-brand-500">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+            <span class="text-[9px] tracking-widest uppercase">Envío Garantizado</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -94,6 +103,7 @@ var PRECIO = {{ p['precio_venta'] | int }};
 var SKU = '{{ p['sku'] }}';
 var NOMBRE = '{{ p['nombre'] | replace("'", "\\'") }}';
 var LINEA = '{{ p['linea'] | replace("'", "\\'") }}';
+var IMAGEN = '{{ p['imagen'] or "" }}';
 
 function qtyDelta(d) {
   var el = document.getElementById('pqty');
@@ -104,7 +114,7 @@ function addThisToCart() {
   var qty = parseInt(document.getElementById('pqty').value, 10) || 1;
   var cart = getCart();
   if (cart[SKU]) { cart[SKU].qty = Math.min(99, cart[SKU].qty + qty); }
-  else { cart[SKU] = { sku: SKU, nombre: NOMBRE, precio: PRECIO, linea: LINEA, qty: qty }; }
+  else { cart[SKU] = { sku: SKU, nombre: NOMBRE, precio: PRECIO, linea: LINEA, qty: qty, imagen: IMAGEN }; }
   saveCart(cart);
   updateCartBadge();
   openCart();

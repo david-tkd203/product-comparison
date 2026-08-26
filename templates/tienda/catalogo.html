@@ -10,26 +10,30 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
 
   <!-- Encabezado -->
-  <div class="mb-8 sm:mb-12">
-    <p class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-2">
-      <a href="/" class="hover:text-brand-black transition-colors">Inicio</a> · Catálogo
-    </p>
-    <h1 class="font-serif text-4xl sm:text-6xl text-brand-black">
-      {% if preset == 'Hombre' %}Para Él
-      {% elif preset == 'Mujer' %}Para Ella
-      {% elif genero == 'Hombre' %}Para Él
-      {% elif genero == 'Mujer' %}Para Ella
-      {% else %}La Colección{% endif %}
-    </h1>
-    <p class="text-xs text-brand-400 mt-2 tracking-wide">{{ total }} fragancia{{ 's' if total != 1 }}</p>
+  <div class="mb-10 sm:mb-16 text-center lg:text-left flex flex-col lg:flex-row lg:items-end justify-between border-b border-brand-100 pb-8">
+    <div>
+      <p class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-3">
+        <a href="/" class="hover:text-brand-black transition-colors">Inicio</a> <span class="mx-1">/</span> Catálogo
+      </p>
+      <h1 class="font-serif text-4xl sm:text-6xl text-brand-black">
+        {% if preset == 'Hombre' %}Para Él
+        {% elif preset == 'Mujer' %}Para Ella
+        {% elif genero == 'Hombre' %}Para Él
+        {% elif genero == 'Mujer' %}Para Ella
+        {% else %}La Colección{% endif %}
+      </h1>
+    </div>
+    <div class="mt-4 lg:mt-0">
+      <p class="text-[10px] tracking-widest2 uppercase text-brand-400">Mostrando {{ products | length }} de {{ total }} resultados</p>
+    </div>
   </div>
 
   <!-- Pills rápidos de género -->
   <div class="flex flex-wrap gap-2 mb-8">
-    <a href="/perfumes{% if q %}?q={{ q | urlencode }}{% endif %}" class="px-5 py-2.5 text-[10px] tracking-widest2 uppercase transition-colors {{ 'bg-brand-black text-brand-white' if (not preset and not genero) else 'border border-brand-300 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">Todos</a>
-    <a href="/mujer" class="px-5 py-2.5 text-[10px] tracking-widest2 uppercase transition-colors {{ 'bg-brand-black text-brand-white' if (preset == 'Mujer' or genero == 'Mujer') else 'border border-brand-300 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">Para Ella</a>
-    <a href="/hombre" class="px-5 py-2.5 text-[10px] tracking-widest2 uppercase transition-colors {{ 'bg-brand-black text-brand-white' if (preset == 'Hombre' or genero == 'Hombre') else 'border border-brand-300 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">Para Él</a>
-    <a href="/perfumes?genero=Unisex" class="px-5 py-2.5 text-[10px] tracking-widest2 uppercase transition-colors {{ 'bg-brand-black text-brand-white' if (not preset and genero == 'Unisex') else 'border border-brand-300 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">Unisex</a>
+    <a href="/perfumes{% if q %}?q={{ q | urlencode }}{% endif %}" class="px-6 py-3 text-[10px] tracking-widest2 uppercase transition-colors {{ 'bg-brand-black text-brand-white' if (not preset and not genero) else 'border border-brand-300 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">Todos</a>
+    <a href="/mujer" class="px-6 py-3 text-[10px] tracking-widest2 uppercase transition-colors {{ 'bg-brand-black text-brand-white' if (preset == 'Mujer' or genero == 'Mujer') else 'border border-brand-300 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">Para Ella</a>
+    <a href="/hombre" class="px-6 py-3 text-[10px] tracking-widest2 uppercase transition-colors {{ 'bg-brand-black text-brand-white' if (preset == 'Hombre' or genero == 'Hombre') else 'border border-brand-300 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">Para Él</a>
+    <a href="/perfumes?genero=Unisex" class="px-6 py-3 text-[10px] tracking-widest2 uppercase transition-colors {{ 'bg-brand-black text-brand-white' if (not preset and genero == 'Unisex') else 'border border-brand-300 text-brand-600 hover:border-brand-black hover:text-brand-black' }}">Unisex</a>
   </div>
 
   <div class="lg:grid lg:grid-cols-[240px_1fr] lg:gap-12">
@@ -52,9 +56,7 @@
     <div>
       <!-- Toolbar -->
       <div class="flex items-center justify-between gap-4 mb-6 border-b border-brand-100 pb-4">
-        <p class="text-[10px] tracking-widest2 uppercase text-brand-400 hidden sm:block">
-          Mostrando {{ products | length }} de {{ total }}
-        </p>
+        
         <form method="get" class="flex items-center gap-2 ml-auto">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
           <input type="hidden" name="q" value="{{ q }}">
