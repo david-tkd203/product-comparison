@@ -150,9 +150,9 @@
     </nav>
 
     <div class="flex items-center gap-3 sm:gap-5">
-      <a href="/perfumes" class="text-brand-200 hover:text-white transition-colors" aria-label="Buscar">
+      <button onclick="openSearch()" class="text-brand-200 hover:text-white transition-colors" aria-label="Buscar">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-5.2-5.2m2.2-5.3a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z"/></svg>
-      </a>
+      </button>
       <button onclick="openCart()" class="relative text-brand-200 hover:text-white transition-colors" aria-label="Carrito">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
         <span id="cart-badge" class="absolute -top-1.5 -right-2 bg-brand-white text-brand-black text-[9px] font-semibold w-4 h-4 rounded-full items-center justify-center hidden">0</span>
@@ -217,6 +217,32 @@
     </div>
   </div>
 </footer>
+
+
+<!-- Búsqueda en vivo (Live Search) -->
+<div id="search-modal" class="fixed inset-0 bg-brand-white z-[60] flex flex-col hidden opacity-0 transition-opacity duration-300">
+  <div class="px-4 sm:px-6 py-6 sm:py-8 border-b border-brand-100 flex items-center justify-between">
+    <div class="flex-1 max-w-4xl mx-auto flex items-center gap-4">
+      <svg class="w-6 h-6 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-5.2-5.2m2.2-5.3a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z"/></svg>
+      <input type="text" id="live-search-input" placeholder="Buscar por marca, aroma o nombre..." class="w-full text-xl sm:text-3xl font-serif text-brand-black bg-transparent focus:outline-none placeholder-brand-300" autocomplete="off">
+    </div>
+    <button onclick="closeSearch()" class="text-brand-500 hover:text-brand-black transition-colors ml-4">
+      <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="flex-1 overflow-y-auto bg-brand-50/50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+      <div id="search-loading" class="hidden text-center text-brand-400 text-xs tracking-widest2 uppercase mt-10">Buscando...</div>
+      <div id="search-results" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+        <!-- Resultados inyectados por JS -->
+      </div>
+      <div id="search-empty" class="hidden text-center text-brand-400 mt-20">
+        <p class="font-serif italic text-2xl text-brand-300 mb-4">No encontramos fragancias que coincidan.</p>
+        <p class="text-[10px] tracking-widest2 uppercase">Intenta con otra palabra clave</p>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Cart drawer -->
 <div id="cart-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 hidden" onclick="closeCart()"></div>
@@ -469,6 +495,70 @@ updateCartBadge();
       }
     }
   });
+
+// --- LIVE SEARCH ---
+let searchTimeout;
+function openSearch() {
+  const m = document.getElementById('search-modal');
+  m.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  // delay opacity for transition
+  setTimeout(() => { 
+    m.classList.remove('opacity-0'); 
+    document.getElementById('live-search-input').focus();
+  }, 10);
+}
+function closeSearch() {
+  const m = document.getElementById('search-modal');
+  m.classList.add('opacity-0');
+  document.body.style.overflow = '';
+  setTimeout(() => { m.classList.add('hidden'); }, 300);
+}
+
+document.getElementById('live-search-input').addEventListener('input', function(e) {
+  clearTimeout(searchTimeout);
+  const q = e.target.value.trim();
+  const res = document.getElementById('search-results');
+  const empty = document.getElementById('search-empty');
+  const loader = document.getElementById('search-loading');
+  
+  if (q.length < 2) {
+    res.innerHTML = '';
+    empty.classList.add('hidden');
+    loader.classList.add('hidden');
+    return;
+  }
+  
+  loader.classList.remove('hidden');
+  res.innerHTML = '';
+  empty.classList.add('hidden');
+  
+  searchTimeout = setTimeout(() => {
+    fetch('/api/search?q=' + encodeURIComponent(q))
+      .then(r => r.json())
+      .then(data => {
+        loader.classList.add('hidden');
+        if (data.length === 0) {
+          empty.classList.remove('hidden');
+        } else {
+          let html = '';
+          data.forEach(p => {
+            const img = p.imagen ? '<img src="'+p.imagen+'" class="w-full h-full object-contain p-4">' : '<div class="w-full h-full flex items-center justify-center text-brand-300 font-serif italic text-sm">Sin foto</div>';
+            html += `
+              <a href="/producto/${p.sku}" class="group block bg-brand-white border border-brand-100 p-2 hover:border-brand-black transition-colors">
+                <div class="aspect-[4/5] bg-brand-50 mb-3 overflow-hidden relative">${img}</div>
+                <p class="text-[8px] tracking-widest uppercase text-brand-400 mb-1 line-clamp-1">${p.linea}</p>
+                <h4 class="font-serif text-sm text-brand-black leading-tight line-clamp-1 mb-2">${p.nombre}</h4>
+                <p class="text-xs font-semibold text-brand-900">$${new Intl.NumberFormat('es-CL').format(p.precio_venta)}</p>
+              </a>
+            `;
+          });
+          res.innerHTML = html;
+        }
+      });
+  }, 300);
+});
+
 </script>
 </body>
 

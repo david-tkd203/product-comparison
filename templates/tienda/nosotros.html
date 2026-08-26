@@ -1,0 +1,74 @@
+{% extends "tienda/base.html" %}
+
+{% block title %}Nuestra Esencia | Siyash Perfumería{% endblock %}
+
+{% block content %}
+<!-- Cabecera -->
+<section class="relative h-[60vh] min-h-[400px] flex items-center justify-center bg-brand-black overflow-hidden">
+  <img src="https://images.unsplash.com/photo-1615486511484-92e172fc4fe0?q=80&w=2000&auto=format&fit=crop" 
+       alt="Siyash Alta Perfumería" 
+       class="absolute inset-0 w-full h-full object-cover opacity-30 fixed-bg">
+  <div class="relative z-10 text-center px-4 max-w-3xl mx-auto gsap-reveal">
+    <h1 class="font-serif text-5xl md:text-7xl text-brand-white mb-6">Nuestra Esencia</h1>
+    <p class="text-[10px] tracking-widest2 uppercase text-brand-200">El legado detrás de Siyash</p>
+  </div>
+</section>
+
+<!-- Contenido Editorial -->
+<section class="max-w-4xl mx-auto px-4 sm:px-6 py-20 sm:py-32">
+  <div class="grid md:grid-cols-2 gap-12 items-center mb-24 gsap-reveal">
+    <div>
+      <h2 class="font-serif text-3xl md:text-5xl text-brand-black mb-6 leading-tight">Más que una fragancia,<br>una declaración de intenciones.</h2>
+      <p class="text-brand-500 mb-6 font-light leading-relaxed">
+        En Siyash, creemos que el perfume es el accesorio más poderoso que una persona puede usar. Es la forma más intensa del recuerdo, un aura invisible que precede tu llegada y perdura mucho después de tu partida.
+      </p>
+      <p class="text-brand-500 font-light leading-relaxed">
+        Nacimos con una misión clara: traer a Chile la selección más exclusiva y original de alta perfumería. Desde las casas de diseñador más icónicas hasta los tesoros árabes y de nicho que están redefiniendo el lujo moderno.
+      </p>
+    </div>
+    <div class="bg-brand-50 p-8 sm:p-12 text-center border border-brand-100">
+      <svg class="w-12 h-12 text-brand-200 mx-auto mb-6" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
+      <p class="font-serif italic text-2xl text-brand-black leading-snug">
+        "El lujo no es tener las cosas más caras, sino elegir aquello que resuena con tu alma."
+      </p>
+    </div>
+  </div>
+
+  <div class="border-t border-brand-100 pt-24 text-center gsap-reveal">
+    <h3 class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-4">Nuestra Promesa</h3>
+    <h2 class="font-serif text-3xl md:text-4xl text-brand-black mb-12">Garantía Siyash</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div class="p-6">
+        <div class="w-12 h-12 rounded-full border border-brand-200 mx-auto flex items-center justify-center mb-6 text-brand-black">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <h4 class="text-sm font-semibold text-brand-black tracking-widest2 uppercase mb-3">Autenticidad</h4>
+        <p class="text-xs text-brand-500 leading-relaxed">Cada botella es 100% original. Importamos directamente asegurando la trazabilidad de cada esencia.</p>
+      </div>
+      <div class="p-6">
+        <div class="w-12 h-12 rounded-full border border-brand-200 mx-auto flex items-center justify-center mb-6 text-brand-black">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"></path></svg>
+        </div>
+        <h4 class="text-sm font-semibold text-brand-black tracking-widest2 uppercase mb-3">Curaduría Global</h4>
+        <p class="text-xs text-brand-500 leading-relaxed">Seleccionamos las fragancias que están marcando pauta en las capitales del mundo.</p>
+      </div>
+      <div class="p-6">
+        <div class="w-12 h-12 rounded-full border border-brand-200 mx-auto flex items-center justify-center mb-6 text-brand-black">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+        </div>
+        <h4 class="text-sm font-semibold text-brand-black tracking-widest2 uppercase mb-3">Servicio Exclusivo</h4>
+        <p class="text-xs text-brand-500 leading-relaxed">Entendemos que comprar perfume es personal. Te asesoramos en cada paso.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Banner Final -->
+<section class="bg-brand-50 border-t border-brand-100 py-24 text-center">
+  <div class="max-w-2xl mx-auto px-4 gsap-reveal">
+    <h2 class="font-serif text-3xl md:text-5xl text-brand-black mb-8">Encuentra tu firma personal</h2>
+    <a href="/perfumes" class="inline-block px-10 py-4 bg-brand-black text-brand-white text-xs tracking-widest2 uppercase hover:bg-brand-800 transition-colors">Explorar Colección</a>
+  </div>
+</section>
+
+{% endblock %}
