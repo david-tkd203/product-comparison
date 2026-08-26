@@ -9,14 +9,63 @@
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
 
-  <!-- Encabezado -->
-  <div class="mb-10 sm:mb-16 text-center lg:text-left flex flex-col lg:flex-row lg:items-end justify-between border-b border-brand-100 pb-8">
+  {% set brand_context = {
+    'Lattafa': {
+      'bg': 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=2000&auto=format&fit=crop',
+      'title': 'El Universo Lattafa',
+      'desc': 'Descubre la opulencia y el misterio del medio oriente en cada gota. Fragancias intensas, inolvidables y de proyección absoluta.'
+    },
+    'Armaf': {
+      'bg': 'https://images.unsplash.com/photo-1595508316104-58a43f050e63?q=80&w=2000&auto=format&fit=crop',
+      'title': 'La Vanguardia de Armaf',
+      'desc': 'Aromas modernos, metálicos y audaces. Para quienes dictan las reglas del juego y dejan una huella imborrable.'
+    },
+    'Maison Alhambra': {
+      'bg': 'https://images.unsplash.com/photo-1615486511484-92e172fc4fe0?q=80&w=2000&auto=format&fit=crop',
+      'title': 'La Elegancia de Alhambra',
+      'desc': 'Inspiraciones maestras y diseño de alta gama. Una experiencia sensorial que redefine los límites de la perfumería clásica.'
+    },
+    'Afnan': {
+      'bg': 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=2000&auto=format&fit=crop',
+      'title': 'La Excelencia de Afnan',
+      'desc': 'Tradición y modernidad embotelladas. Aromas sofisticados que proyectan un éxito indiscutible.'
+    },
+    'Al Haramain': {
+      'bg': 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?q=80&w=2000&auto=format&fit=crop',
+      'title': 'El Prestigio de Al Haramain',
+      'desc': 'La máxima expresión del lujo árabe. Esencias puras y potentes para coleccionistas de lo extraordinario.'
+    },
+    'Paris Corner': {
+      'bg': 'https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?q=80&w=2000&auto=format&fit=crop',
+      'title': 'El Arte de Paris Corner',
+      'desc': 'Exclusividad accesible. Mezclas innovadoras que capturan la esencia de las capitales mundiales de la moda.'
+    }
+  } %}
+
+  {% if linea and linea in brand_context %}
+  <!-- BRAND BOUTIQUE HEADER -->
+  </div> <!-- Close the max-w-7xl container temporarily for full width -->
+  <section class="relative h-[450px] flex flex-col justify-end overflow-hidden bg-brand-black mb-12 w-full mt-[-80px] pt-[80px]">
+    <img src="{{ brand_context[linea].bg }}" alt="{{ linea }}" class="absolute inset-0 w-full h-full object-cover opacity-30 transform hover:scale-105 transition-transform duration-[10000ms]">
+    <div class="absolute inset-0 bg-gradient-to-t from-brand-black via-transparent to-transparent opacity-90"></div>
+    <div class="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 pb-12">
+      <p class="text-[10px] tracking-widest2 uppercase text-brand-300 mb-3">Boutique Siyash</p>
+      <h1 class="font-serif text-5xl sm:text-7xl text-brand-white mb-4">{{ brand_context[linea].title }}</h1>
+      <p class="text-brand-300 max-w-xl text-sm leading-relaxed mb-6">{{ brand_context[linea].desc }}</p>
+      <p class="text-[10px] tracking-widest2 uppercase text-brand-400 border-l pl-3 border-brand-500">{{ total }} creaciones disponibles</p>
+    </div>
+  </section>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6"> <!-- Reopen the container -->
+  {% else %}
+  <!-- ESTANDAR HEADER -->
+  <div class="mb-10 sm:mb-16 text-center lg:text-left flex flex-col lg:flex-row lg:items-end justify-between border-b border-brand-100 pb-8 mt-4">
     <div>
       <p class="text-[10px] tracking-widest2 uppercase text-brand-400 mb-3">
         <a href="/" class="hover:text-brand-black transition-colors">Inicio</a> <span class="mx-1">/</span> Catálogo
       </p>
       <h1 class="font-serif text-4xl sm:text-6xl text-brand-black">
-        {% if preset == 'Hombre' %}Para Él
+        {% if linea %}Casa {{ linea }}
+        {% elif preset == 'Hombre' %}Para Él
         {% elif preset == 'Mujer' %}Para Ella
         {% elif genero == 'Hombre' %}Para Él
         {% elif genero == 'Mujer' %}Para Ella
@@ -27,6 +76,8 @@
       <p class="text-[10px] tracking-widest2 uppercase text-brand-400">Mostrando {{ products | length }} de {{ total }} resultados</p>
     </div>
   </div>
+  {% endif %}
+
 
   <!-- Pills rápidos de género -->
   <div class="flex flex-wrap gap-2 mb-8">
