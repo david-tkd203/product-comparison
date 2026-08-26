@@ -42,6 +42,26 @@
     }
   } %}
 
+
+  {% set gender_context = {
+    'Mujer': {
+      'bg': 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?q=80&w=2000&auto=format&fit=crop',
+      'title': 'Esencia Femenina',
+      'desc': 'Un tributo a la elegancia y la sofisticación. Descubre aromas que capturan la delicadeza, la pasión y la belleza atemporal de la mujer moderna.'
+    },
+    'Hombre': {
+      'bg': 'https://images.unsplash.com/photo-1595508316104-58a43f050e63?q=80&w=2000&auto=format&fit=crop',
+      'title': 'Carácter Masculino',
+      'desc': 'Fragancias forjadas con intensidad y distinción. El sello invisible del hombre que lidera con confianza y deja una huella inconfundible.'
+    },
+    'Unisex': {
+      'bg': 'https://images.unsplash.com/photo-1615486511484-92e172fc4fe0?q=80&w=2000&auto=format&fit=crop',
+      'title': 'Aromas Sin Fronteras',
+      'desc': 'La perfumería en su estado más libre y puro. Composiciones maestras que trascienden las etiquetas y celebran la individualidad por encima del género.'
+    }
+  } %}
+  {% set current_gender = preset if preset else (genero if genero else None) %}
+
   {% if linea and linea in brand_context %}
   <!-- BRAND BOUTIQUE HEADER -->
   </div> <!-- Close the max-w-7xl container temporarily for full width -->
@@ -52,10 +72,26 @@
       <p class="text-[10px] tracking-widest2 uppercase text-brand-300 mb-3">Boutique Siyash</p>
       <h1 class="font-serif text-5xl sm:text-7xl text-brand-white mb-4">{{ brand_context[linea].title }}</h1>
       <p class="text-brand-300 max-w-xl text-sm leading-relaxed mb-6">{{ brand_context[linea].desc }}</p>
+      <p class="text-[10px] tracking-widest2 uppercase text-brand-400 border-l pl-3 border-brand-500">{{ total }} creaciones exclusivas</p>
+    </div>
+  </section>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6"> <!-- Reopen the container -->
+  
+  {% elif current_gender and current_gender in gender_context and not linea %}
+  <!-- GENDER BOUTIQUE HEADER -->
+  </div> <!-- Close the max-w-7xl container temporarily for full width -->
+  <section class="relative h-[450px] flex flex-col justify-end overflow-hidden bg-brand-black mb-12 w-full mt-[-80px] pt-[80px]">
+    <img src="{{ gender_context[current_gender].bg }}" alt="{{ current_gender }}" class="absolute inset-0 w-full h-full object-cover opacity-35 transform hover:scale-105 transition-transform duration-[10000ms]">
+    <div class="absolute inset-0 bg-gradient-to-t from-brand-black via-transparent to-transparent opacity-80"></div>
+    <div class="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 pb-12">
+      <p class="text-[10px] tracking-widest2 uppercase text-brand-300 mb-3">Colección Siyash</p>
+      <h1 class="font-serif text-5xl sm:text-7xl text-brand-white mb-4">{{ gender_context[current_gender].title }}</h1>
+      <p class="text-brand-200 max-w-xl text-sm leading-relaxed mb-6">{{ gender_context[current_gender].desc }}</p>
       <p class="text-[10px] tracking-widest2 uppercase text-brand-400 border-l pl-3 border-brand-500">{{ total }} creaciones disponibles</p>
     </div>
   </section>
   <div class="max-w-7xl mx-auto px-4 sm:px-6"> <!-- Reopen the container -->
+  
   {% else %}
   <!-- ESTANDAR HEADER -->
   <div class="mb-10 sm:mb-16 text-center lg:text-left flex flex-col lg:flex-row lg:items-end justify-between border-b border-brand-100 pb-8 mt-4">
