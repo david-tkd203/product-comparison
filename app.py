@@ -385,7 +385,7 @@ def inject_nav_data():
                                LEFT JOIN multimarca_products mp ON mp.sku = mmk.sku_mm
                                LEFT JOIN silk_matches smk ON smk.sku_wholesale = p.sku
                                LEFT JOIN silk_products sp ON sp.sku = smk.sku_silk
-                               WHERE p.is_active = 1 AND p.stock > 0
+                               WHERE p.is_active = 1 AND p.stock > 0 AND p.linea IS NOT NULL AND p.linea != ''
                                GROUP BY p.linea 
                                HAVING imagen IS NOT NULL
                                ORDER BY n DESC LIMIT 6''').fetchall()
