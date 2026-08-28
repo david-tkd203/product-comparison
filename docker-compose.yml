@@ -41,6 +41,14 @@ services:
       - "traefik.http.routers.siyash-web-http.middlewares=siyash-web-redirect"
       - "traefik.http.services.siyash-web.loadbalancer.server.port=80"
     deploy:
+      update_config:
+        order: start-first
+        failure_action: rollback
+        delay: 10s
+        parallelism: 1
+      rollback_config:
+        order: start-first
+        parallelism: 1
       # Labels a nivel de servicio Swarm (provider Swarm de Traefik)
       labels:
         - "traefik.enable=true"
