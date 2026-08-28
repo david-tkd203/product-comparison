@@ -53,16 +53,16 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=dokploy-network"
-        - "traefik.http.routers.siyash-web.rule=Host(`siyash.cl`) || Host(`www.siyash.cl`)"
-        - "traefik.http.routers.siyash-web.entrypoints=websecure"
-        - "traefik.http.routers.siyash-web.tls.certresolver=letsencrypt"
-        - "traefik.http.routers.siyash-web.service=siyash-web"
-        - "traefik.http.routers.siyash-web-http.rule=Host(`siyash.cl`) || Host(`www.siyash.cl`)"
-        - "traefik.http.routers.siyash-web-http.entrypoints=web"
-        - "traefik.http.routers.siyash-web-http.service=siyash-web"
-        - "traefik.http.middlewares.siyash-web-redirect.redirectscheme.scheme=https"
-        - "traefik.http.routers.siyash-web-http.middlewares=siyash-web-redirect"
-        - "traefik.http.services.siyash-web.loadbalancer.server.port=80"
+        - "traefik.http.routers.siyash-web-swarm.rule=Host(`siyash.cl`) || Host(`www.siyash.cl`)"
+        - "traefik.http.routers.siyash-web-swarm.entrypoints=websecure"
+        - "traefik.http.routers.siyash-web-swarm.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.siyash-web-swarm.service=siyash-web-swarm"
+        - "traefik.http.routers.siyash-web-swarm-http.rule=Host(`siyash.cl`) || Host(`www.siyash.cl`)"
+        - "traefik.http.routers.siyash-web-swarm-http.entrypoints=web"
+        - "traefik.http.routers.siyash-web-swarm-http.service=siyash-web-swarm"
+        - "traefik.http.middlewares.siyash-web-swarm-redirect.redirectscheme.scheme=https"
+        - "traefik.http.routers.siyash-web-swarm-http.middlewares=siyash-web-swarm-redirect"
+        - "traefik.http.services.siyash-web-swarm.loadbalancer.server.port=80"
       resources:
         limits:
           cpus: '1.0'
