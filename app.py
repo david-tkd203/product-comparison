@@ -374,6 +374,7 @@ def inject_nav_data():
     if request.path.startswith('/static/'):
         return {}
         
+    db = None
     try:
         db = get_db()
         # Fetch top 6 brands with an image
@@ -392,6 +393,9 @@ def inject_nav_data():
         return dict(nav_marcas=marcas)
     except Exception:
         return dict(nav_marcas=[])
+    finally:
+        if db:
+            db.close()
 
 
 
@@ -1492,21 +1496,24 @@ def api_search():
     if not q:
         return jsonify([])
     db = get_db()
-    margen_pct = _query(db, "SELECT valor FROM settings WHERE clave='margen_pct'").fetchone()
-    factor = 1.0 + (float(margen_pct['valor']) / 100.0) if margen_pct else 1.3
-    
-    sql = _tienda_sql() + " AND (p.nombre LIKE %s OR p.linea LIKE %s OR p.sku LIKE %s) ORDER BY p.stock DESC LIMIT 6"
-    lq = f"%{q}%"
-    results = _query(db, sql, [factor, lq, lq, lq]).fetchall()
-    _enrich_products(results)
-    
-    return jsonify([{
-        'sku': r['sku'],
-        'nombre': r['nombre'],
-        'linea': r['linea'],
-        'precio_venta': r['precio_venta'],
-        'imagen': r['imagen'] or ''
-    } for r in results])
+    try:
+        margen_pct = _query(db, "SELECT valor FROM settings WHERE clave='margen_pct'").fetchone()
+        factor = 1.0 + (float(margen_pct['valor']) / 100.0) if margen_pct else 1.3
+        
+        sql = _tienda_sql() + " AND (p.nombre LIKE %s OR p.linea LIKE %s OR p.sku LIKE %s) ORDER BY p.stock DESC LIMIT 6"
+        lq = f"%{q}%"
+        results = _query(db, sql, [factor, lq, lq, lq]).fetchall()
+        _enrich_products(results)
+        
+        return jsonify([{
+            'sku': r['sku'],
+            'nombre': r['nombre'],
+            'linea': r['linea'],
+            'precio_venta': r['precio_venta'],
+            'imagen': r['imagen'] or ''
+        } for r in results])
+    finally:
+        db.close()
 
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit('5 per minute')
