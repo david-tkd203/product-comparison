@@ -15,7 +15,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
 
-from flask import Flask, render_template, request, redirect, url_for, flash, make_response, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, make_response, jsonify, session, g, has_app_context
 from werkzeug.security import generate_password_hash, check_password_hash
 import pandas as pd
 
@@ -46,7 +46,21 @@ HEADER_ROW = 6
 
 
 def get_db():
-    return mysql.connector.connect(**DB_CONFIG)
+    if has_app_context():
+        if not hasattr(g, '_database'):
+            g._database = mysql.connector.connect(**DB_CONFIG)
+        return g._database
+    else:
+        return mysql.connector.connect(**DB_CONFIG)
+
+@app.teardown_appcontext
+def close_db_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        try:
+            db.close()
+        except:
+            pass
 
 
 def _add_column_if_missing(cur, table, column, col_type):
