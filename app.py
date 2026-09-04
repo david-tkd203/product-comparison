@@ -71,6 +71,31 @@ def _add_column_if_missing(cur, table, column, col_type):
         pass  # column already exists
 
 
+def rebuild_storefront_cache(db):
+    '''Materialize heavy joins into the products table directly for 0% CPU on storefront.'''
+    factor = 1 + _get_margen(db) / 100.0
+    cur = db.cursor()
+    
+    cur.execute('''
+        UPDATE products p
+        LEFT JOIN cosmetic_products cp ON cp.sku = p.sku
+        LEFT JOIN multimarca_matches mmk ON mmk.sku_wholesale = p.sku
+        LEFT JOIN multimarca_products mp ON mp.sku = mmk.sku_mm
+        LEFT JOIN silk_matches smk ON smk.sku_wholesale = p.sku
+        LEFT JOIN silk_products sp ON sp.sku = smk.sku_silk
+        SET p.imagen = COALESCE(NULLIF(cp.imagen, ''), NULLIF(mp.imagen, ''), NULLIF(sp.imagen, '')),
+            p.aromas = COALESCE(cp.aromas, mp.aromas)
+    ''')
+    
+    cur.execute('''
+        UPDATE products p
+        JOIN (SELECT sku, MAX(import_date) AS max_date FROM prices GROUP BY sku) latest ON latest.sku = p.sku
+        JOIN prices pr ON pr.sku = latest.sku AND pr.import_date = latest.max_date
+        SET p.precio_mayorista = pr.precio,
+            p.precio_venta = (ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10)
+    ''', [factor])
+    db.commit()
+
 def init_db():
     db = get_db()
     cur = db.cursor()
@@ -85,8 +110,7 @@ def init_db():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
     _add_column_if_missing(cur, 'products', 'stock', 'INT DEFAULT 0')
-        _add_column_if_missing(cur, 'products', 'is_active', 'TINYINT(1) DEFAULT 0')
-    _add_column_if_missing(cur, 'products', 'aroma_family', 'VARCHAR(50) DEFAULT NULL')
+    _add_column_if_missing(cur, 'products', 'is_active', 'TINYINT(1) DEFAULT 0')
     try:
         cur.execute('ALTER TABLE products ADD INDEX idx_active_stock (is_active, stock)')
     except Exception:
@@ -1519,7 +1543,6 @@ def pedido_status(order_id):
 def nosotros():
     return render_template('tienda/nosotros.html')
 
-@app.route('/api/search')
 _SEARCH_CACHE = {}
 
 @app.route('/api/search')
@@ -1545,7 +1568,7 @@ def api_search():
         
         sql = _tienda_sql() + " AND (p.nombre LIKE %s OR p.linea LIKE %s OR p.sku LIKE %s) ORDER BY p.stock DESC LIMIT 6"
         lq = f"%{q}%"
-        results = _query(db, sql, [factor, lq, lq, lq]).fetchall()
+        results = _query(db, sql, [lq, lq, lq]).fetchall()
         _enrich_products(results)
         
         data = [{
@@ -1593,23 +1616,10 @@ _HAS_IMG_SQL = "(COALESCE(NULLIF(cp.imagen, ''), NULLIF(mp.imagen, ''), NULLIF(s
 
 
 def _tienda_sql():
-    """Base SQL for storefront products. First param must be the margin factor."""
+    """Base SQL for storefront products. Now 100% denormalized and modularized (0 JOINs)."""
     return '''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato, p.aroma_family, p.stock,
-                     pr.precio AS precio_mayorista,
-                     (ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10) AS precio_venta,
-                     COALESCE(NULLIF(cp.imagen, ''), NULLIF(mp.imagen, ''), NULLIF(sp.imagen, '')) AS imagen,
-                     COALESCE(cp.aromas, mp.aromas) AS aromas
+                     p.precio_mayorista, p.precio_venta, p.imagen, p.aromas
               FROM products p
-              JOIN (
-                  SELECT sku, MAX(import_date) AS max_date 
-                  FROM prices GROUP BY sku
-              ) latest ON latest.sku = p.sku
-              JOIN prices pr ON pr.sku = latest.sku AND pr.import_date = latest.max_date
-              LEFT JOIN cosmetic_products cp ON cp.sku = p.sku
-              LEFT JOIN multimarca_matches mmk ON mmk.sku_wholesale = p.sku
-              LEFT JOIN multimarca_products mp ON mp.sku = mmk.sku_mm
-              LEFT JOIN silk_matches smk ON smk.sku_wholesale = p.sku
-              LEFT JOIN silk_products sp ON sp.sku = smk.sku_silk
               WHERE p.is_active = 1 AND p.stock > 0'''
 
 
@@ -1726,7 +1736,7 @@ def _catalogo_response(preset_genero=None):
                                                 ORDER BY p.linea''').fetchall()]
 
     sql = _tienda_sql()
-    params = [factor]
+    params = []
     conditions = []
     if q:
         conditions.append('(p.nombre LIKE %s OR p.linea LIKE %s OR p.sku LIKE %s)')
@@ -1748,20 +1758,18 @@ def _catalogo_response(preset_genero=None):
             params.append(f'%{kw}%')
         conditions.append('(' + ' OR '.join(fam_conds) + ')')
     if pmin:
-        conditions.append('(ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10) >= %s')
-        params.append(factor)
+        conditions.append('p.precio_venta >= %s')
         params.append(pmin)
     if pmax:
-        conditions.append('(ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10) <= %s')
-        params.append(factor)
+        conditions.append('p.precio_venta <= %s')
         params.append(pmax)
     if conditions:
         sql += ' AND ' + ' AND '.join(conditions)
 
     sort_map = {
-        'destacados': f'{_HAS_IMG_SQL} DESC, pr.precio DESC',
-        'precio_asc': 'pr.precio ASC',
-        'precio_desc': 'pr.precio DESC',
+        'destacados': '(p.imagen IS NOT NULL) DESC, p.precio_venta DESC',
+        'precio_asc': 'p.precio_venta ASC',
+        'precio_desc': 'p.precio_venta DESC',
         'nombre': 'p.nombre ASC',
         'marca': 'p.linea ASC, p.nombre ASC',
     }
@@ -1773,11 +1781,9 @@ def _catalogo_response(preset_genero=None):
     total_pages = (total + per_page - 1) // per_page if total else 1
     _enrich_products(products)
 
-    bounds = _query(db, '''SELECT (ROUND((MIN(pr.precio) * %s + 10) / 1000) * 1000 - 10) AS pmin, (ROUND((MAX(pr.precio) * %s + 10) / 1000) * 1000 - 10) AS pmax
-                           FROM products p JOIN prices pr ON pr.sku = p.sku
-                           WHERE p.is_active = 1 AND p.stock > 0
-                           AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)''',
-                    [factor, factor]).fetchone()
+    bounds = _query(db, '''SELECT MIN(p.precio_venta) AS pmin, MAX(p.precio_venta) AS pmax
+                           FROM products p
+                           WHERE p.is_active = 1 AND p.stock > 0''').fetchone()
     db.close()
 
     return render_template('tienda/catalogo.html', products=products, q=q,
@@ -1809,23 +1815,23 @@ def tienda_mujer():
 def tienda_producto(sku):
     db = get_db()
     factor = 1 + _get_margen(db) / 100.0
-    product = _query(db, _tienda_sql() + ' AND p.sku = %s', [factor, sku]).fetchone()
+    product = _query(db, _tienda_sql() + ' AND p.sku = %s', [sku]).fetchone()
     if not product:
         db.close()
         return render_template('tienda/404.html'), 404
     _enrich_products([product])
 
     relacionados = _query(db, _tienda_sql() + ' AND p.sku != %s AND p.linea = %s '
-                        + f'ORDER BY {_HAS_IMG_SQL} DESC, pr.precio DESC LIMIT 4',
-                        [factor, sku, product['linea']]).fetchall()
+                        + 'ORDER BY (p.imagen IS NOT NULL) DESC, p.precio_venta DESC LIMIT 4',
+                        [sku, product['linea']]).fetchall()
     if len(relacionados) < 4:
         conds, pats = _genero_sql_conds(product['genero_norm'])
         extra_sql = _tienda_sql() + ' AND p.sku != %s AND p.linea != %s'
-        extra_params = [factor, sku, product['linea']]
+        extra_params = [sku, product['linea']]
         if conds:
             extra_sql += ' AND (' + ' OR '.join(conds) + ')'
             extra_params.extend(pats)
-        extra_sql += f' ORDER BY {_HAS_IMG_SQL} DESC, pr.precio DESC LIMIT %s'
+        extra_sql += ' ORDER BY (p.imagen IS NOT NULL) DESC, p.precio_venta DESC LIMIT %s'
         extra_params.append(4 - len(relacionados))
         relacionados.extend(_query(db, extra_sql, extra_params).fetchall())
     _enrich_products(relacionados)
@@ -1863,13 +1869,10 @@ def api_pedido():
                 qty = 1
             if not sku:
                 continue
-            row = _query(db, '''SELECT p.sku, p.nombre, p.linea, p.stock,
-                                       (ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10) AS precio_venta
+            row = _query(db, '''SELECT p.sku, p.nombre, p.linea, p.stock, p.precio_venta
                                 FROM products p
-                                JOIN prices pr ON p.sku = pr.sku
-                                     AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
                                 WHERE p.sku = %s AND p.is_active = 1 AND p.stock > 0''',
-                         [factor, sku]).fetchone()
+                         [sku]).fetchone()
             if not row:
                 errors.append(f'{sku}: producto no disponible')
                 continue
@@ -1939,7 +1942,7 @@ def admin_inventario():
              FROM products p
              LEFT JOIN prices pr ON pr.sku = p.sku
                   AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)'''
-    params = [factor]
+    params = []
     if query:
         sql += ' WHERE (p.nombre LIKE %s OR p.sku LIKE %s OR p.linea LIKE %s)'
         like = f'%{query}%'
