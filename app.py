@@ -85,8 +85,16 @@ def init_db():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
     _add_column_if_missing(cur, 'products', 'stock', 'INT DEFAULT 0')
-    _add_column_if_missing(cur, 'products', 'is_active', 'TINYINT(1) DEFAULT 0')
+        _add_column_if_missing(cur, 'products', 'is_active', 'TINYINT(1) DEFAULT 0')
     _add_column_if_missing(cur, 'products', 'aroma_family', 'VARCHAR(50) DEFAULT NULL')
+    try:
+        cur.execute('ALTER TABLE products ADD INDEX idx_active_stock (is_active, stock)')
+    except Exception:
+        pass
+    try:
+        cur.execute('ALTER TABLE products ADD INDEX idx_linea (linea)')
+    except Exception:
+        pass
     cur.execute('''
         CREATE TABLE IF NOT EXISTS prices (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1654,7 +1662,23 @@ def tienda_home():
                            n_unisex=n_unisex, marcas=marcas, familias=familias)
 
 
+_CATALOGO_CACHE = {}
+
 def _catalogo_response(preset_genero=None):
+    global _CATALOGO_CACHE
+    now = time.time()
+    
+    # Simple garbage collection
+    if len(_CATALOGO_CACHE) > 500:
+        _CATALOGO_CACHE.clear()
+        
+    cache_key = request.full_path
+    if preset_genero:
+        cache_key = f"preset_{preset_genero}_{cache_key}"
+        
+    if cache_key in _CATALOGO_CACHE and (now - _CATALOGO_CACHE[cache_key]['time']) < 300:
+        return _CATALOGO_CACHE[cache_key]['html']
+
     q = request.args.get('q', '').strip()
     genero_raw = preset_genero or (request.args.get('genero', '').strip() or None)
     genero = _norm_genero(genero_raw) if genero_raw else None
