@@ -111,6 +111,11 @@ def init_db():
     ''')
     _add_column_if_missing(cur, 'products', 'stock', 'INT DEFAULT 0')
     _add_column_if_missing(cur, 'products', 'is_active', 'TINYINT(1) DEFAULT 0')
+    _add_column_if_missing(cur, 'products', 'aroma_family', 'VARCHAR(50) DEFAULT NULL')
+    _add_column_if_missing(cur, 'products', 'imagen', 'TEXT')
+    _add_column_if_missing(cur, 'products', 'aromas', 'TEXT')
+    _add_column_if_missing(cur, 'products', 'precio_mayorista', 'INT')
+    _add_column_if_missing(cur, 'products', 'precio_venta', 'INT')
     try:
         cur.execute('ALTER TABLE products ADD INDEX idx_active_stock (is_active, stock)')
     except Exception:
