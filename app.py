@@ -382,13 +382,21 @@ def parse_excel(filepath):
 def inject_tunnel_url():
     return dict(tunnel_url='')
 
+import time
+_NAV_CACHE = None
+_NAV_CACHE_TIME = 0
+
 @app.context_processor
 def inject_nav_data():
+    global _NAV_CACHE, _NAV_CACHE_TIME
     # Only run DB queries if we are not serving static files
     if request.path.startswith('/static/'):
         return {}
         
-    db = None
+    now = time.time()
+    if _NAV_CACHE is not None and (now - _NAV_CACHE_TIME) < 300: # Cache por 5 minutos
+        return dict(nav_marcas=_NAV_CACHE)
+        
     try:
         db = get_db()
         # Fetch top 6 brands with an image
@@ -404,12 +412,11 @@ def inject_nav_data():
                                GROUP BY p.linea 
                                HAVING imagen IS NOT NULL
                                ORDER BY n DESC LIMIT 6''').fetchall()
+        _NAV_CACHE = marcas
+        _NAV_CACHE_TIME = now
         return dict(nav_marcas=marcas)
     except Exception:
         return dict(nav_marcas=[])
-    finally:
-        if db:
-            db.close()
 
 
 
