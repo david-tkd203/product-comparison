@@ -1520,10 +1520,24 @@ def nosotros():
     return render_template('tienda/nosotros.html')
 
 @app.route('/api/search')
+_SEARCH_CACHE = {}
+
+@app.route('/api/search')
 def api_search():
+    global _SEARCH_CACHE
     q = request.args.get('q', '').strip()
     if not q:
         return jsonify([])
+        
+    now = time.time()
+    # Garbage collection simple
+    if len(_SEARCH_CACHE) > 2000:
+        _SEARCH_CACHE.clear()
+        
+    cache_key = q.lower()
+    if cache_key in _SEARCH_CACHE and (now - _SEARCH_CACHE[cache_key]['time']) < 300:
+        return jsonify(_SEARCH_CACHE[cache_key]['data'])
+
     db = get_db()
     try:
         margen_pct = _query(db, "SELECT valor FROM settings WHERE clave='margen_pct'").fetchone()
@@ -1534,15 +1548,18 @@ def api_search():
         results = _query(db, sql, [factor, lq, lq, lq]).fetchall()
         _enrich_products(results)
         
-        return jsonify([{
+        data = [{
             'sku': r['sku'],
             'nombre': r['nombre'],
             'linea': r['linea'],
             'precio_venta': r['precio_venta'],
             'imagen': r['imagen'] or ''
-        } for r in results])
+        } for r in results]
+        
+        _SEARCH_CACHE[cache_key] = {'time': now, 'data': data}
+        return jsonify(data)
     finally:
-        db.close()
+        pass # db connection handled by global teardown
 
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit('5 per minute')
@@ -1583,8 +1600,11 @@ def _tienda_sql():
                      COALESCE(NULLIF(cp.imagen, ''), NULLIF(mp.imagen, ''), NULLIF(sp.imagen, '')) AS imagen,
                      COALESCE(cp.aromas, mp.aromas) AS aromas
               FROM products p
-              JOIN prices pr ON p.sku = pr.sku
-                   AND pr.import_date = (SELECT MAX(import_date) FROM prices pr2 WHERE pr2.sku = p.sku)
+              JOIN (
+                  SELECT sku, MAX(import_date) AS max_date 
+                  FROM prices GROUP BY sku
+              ) latest ON latest.sku = p.sku
+              JOIN prices pr ON pr.sku = latest.sku AND pr.import_date = latest.max_date
               LEFT JOIN cosmetic_products cp ON cp.sku = p.sku
               LEFT JOIN multimarca_matches mmk ON mmk.sku_wholesale = p.sku
               LEFT JOIN multimarca_products mp ON mp.sku = mmk.sku_mm
