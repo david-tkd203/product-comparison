@@ -1653,8 +1653,8 @@ def tienda_home():
     factor = 1 + _get_margen(db) / 100.0
 
     destacados = _query(db, _tienda_sql() + f'''
-        ORDER BY {_HAS_IMG_SQL} DESC, pr.precio DESC
-        LIMIT 8''', [factor]).fetchall()
+        ORDER BY (p.imagen IS NOT NULL) DESC, p.precio_venta DESC
+        LIMIT 8''').fetchall()
     _enrich_products(destacados)
 
     total = _query(db, 'SELECT COUNT(*) AS cnt FROM products p WHERE p.is_active = 1 AND p.stock > 0').fetchone()['cnt']
