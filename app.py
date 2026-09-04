@@ -281,6 +281,7 @@ def init_db():
     ''')
 
     cur.close()
+    rebuild_storefront_cache(db)
     db.close()
 
 
