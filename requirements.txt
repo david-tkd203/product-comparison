@@ -3,6 +3,5 @@ pandas
 openpyxl
 gunicorn
 mysql-connector-python
-reportlab
 Flask-Limiter
 Flask-WTF
