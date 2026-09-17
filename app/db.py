@@ -49,6 +49,19 @@ def _get_margen(db):
             return 30.0
     return 30.0
 
+def set_setting(db, key, value):
+    """Insert or update a key-value pair in the settings table."""
+    cur = db.cursor()
+    try:
+        cur.execute('''
+            INSERT INTO settings (setting_key, setting_value) 
+            VALUES (%s, %s) 
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+        ''', [key, str(value)])
+        db.commit()
+    finally:
+        cur.close()
+
 def rebuild_storefront_cache(db):
     '''Materialize heavy joins into the products table directly for 0% CPU on storefront.'''
     factor = 1 + _get_margen(db) / 100.0
