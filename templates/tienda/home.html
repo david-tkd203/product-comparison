@@ -145,7 +145,7 @@
       <a href="/perfumes?linea={{ m['linea'] | urlencode }}" class="group bg-brand-white border border-brand-100 p-6 flex flex-col items-center justify-center text-center hover:shadow-lg hover:border-brand-300 transition-all duration-300 transform hover:-translate-y-1">
         {% if m['imagen'] %}
         <div class="w-16 h-16 mb-4 rounded-full overflow-hidden border border-brand-50 shadow-inner">
-          <img src="{{ m['imagen'] }}" alt="{{ m['linea'] }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+          <img src="{{ m['imagen'] | resize_img(150) }}" alt="{{ m['linea'] }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
         </div>
         {% else %}
         <div class="w-16 h-16 mb-4 rounded-full bg-brand-50 flex items-center justify-center text-brand-300 border border-brand-100">

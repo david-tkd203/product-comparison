@@ -18,7 +18,7 @@
     <!-- Imagen -->
     <div class="bg-brand-50 border border-brand-100 aspect-[4/5] flex items-center justify-center overflow-hidden">
       {% if p['imagen'] %}
-      <img src="{{ p['imagen'] }}" alt="{{ p['nombre'] }}" class="w-full h-full object-contain p-8 sm:p-14 hover:scale-125 transition-transform duration-700 cursor-zoom-in">
+      <img src="{{ p['imagen'] | resize_img(800) }}" alt="{{ p['nombre'] }}" class="w-full h-full object-contain p-8 sm:p-14 hover:scale-125 transition-transform duration-700 cursor-zoom-in">
       {% else %}
       <div class="text-center px-6">
         <span class="font-serif text-5xl italic text-brand-300">{{ p['linea'] }}</span>

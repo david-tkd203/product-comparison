@@ -117,8 +117,11 @@ _CATALOGO_CACHE = {}
 def _catalogo_response(preset_genero=None):
     global _CATALOGO_CACHE
     now = time.time()
-    if len(_CATALOGO_CACHE) > 500:
-        _CATALOGO_CACHE.clear()
+    if len(_CATALOGO_CACHE) > 200:
+        # Remove oldest 50 entries to avoid full cache miss spikes
+        oldest = sorted(_CATALOGO_CACHE.keys(), key=lambda k: _CATALOGO_CACHE[k]['time'])[:50]
+        for k in oldest:
+            _CATALOGO_CACHE.pop(k, None)
         
     cache_key = request.full_path
     if preset_genero:
@@ -262,6 +265,30 @@ def tienda_producto(sku):
     db.close()
 
     return render_template('tienda/producto.html', p=product, relacionados=relacionados)
+
+@store_bp.route('/api/search')
+def api_search():
+    q = request.args.get('q', '').strip()
+    if not q or len(q) < 2:
+        return jsonify([])
+    
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    
+    sql = """
+        SELECT sku, nombre, linea, precio_venta, imagen 
+        FROM products 
+        WHERE is_active = 1 AND stock > 0 
+        AND (nombre LIKE %s OR linea LIKE %s OR sku LIKE %s)
+        ORDER BY (imagen IS NOT NULL) DESC, precio_venta DESC
+        LIMIT 10
+    """
+    like = f'%{q}%'
+    cur.execute(sql, [like, like, like])
+    results = cur.fetchall()
+    db.close()
+    
+    return jsonify(results)
 
 @store_bp.route('/api/pedido', methods=['POST'])
 def api_pedido():

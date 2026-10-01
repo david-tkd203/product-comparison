@@ -5,7 +5,7 @@
   <a href="/producto/{{ p['sku'] }}" class="block">
     <div class="aspect-[4/5] bg-brand-50 overflow-hidden relative mb-4 border border-brand-100">
       {% if p['imagen'] %}
-      <img src="{{ p['imagen'] }}" alt="{{ p['nombre'] }}" loading="lazy" class="card-img w-full h-full object-contain p-5">
+      <img src="{{ p['imagen'] | resize_img(400) }}" alt="{{ p['nombre'] }}" loading="lazy" class="card-img w-full h-full object-contain p-5">
       {% else %}
       <div class="w-full h-full flex flex-col items-center justify-center text-brand-300 text-center px-4">
         <span class="font-serif text-2xl italic">{{ p['linea'] }}</span>

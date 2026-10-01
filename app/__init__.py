@@ -24,6 +24,13 @@ def create_app():
     
     app.teardown_appcontext(close_db_connection)
     
+    @app.template_filter('resize_img')
+    def resize_img(url, width=400):
+        if not url: return url
+        if '?' in url:
+            return f"{url}&width={width}"
+        return f"{url}?width={width}"
+    
     # Context processors
     from .routes.store import inject_nav_data
     app.context_processor(inject_nav_data)

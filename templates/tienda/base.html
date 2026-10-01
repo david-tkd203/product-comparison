@@ -187,7 +187,7 @@
                   <a href="/perfumes?linea={{ m['linea'] | urlencode }}" class="group block p-3 border border-brand-100 hover:border-brand-300 transition-colors text-center bg-brand-white hover:shadow-sm">
                     <div class="aspect-square bg-brand-50 mb-3 overflow-hidden flex items-center justify-center p-2 rounded-full mx-auto w-16 h-16 border border-brand-100">
                       {% if m['imagen'] %}
-                        <img src="{{ m['imagen'] }}" alt="{{ m['linea'] }}" class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500">
+                        <img src="{{ m['imagen'] | resize_img(150) }}" alt="{{ m['linea'] }}" class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500">
                       {% else %}
                         <span class="font-serif italic text-brand-300 text-xs">{{ m['linea'][:3] }}</span>
                       {% endif %}
@@ -406,7 +406,8 @@ function renderCart() {
     count++;
     var item = cart[sku], sub = item.qty * item.precio;
     total += sub;
-    var imgHtml = item.imagen ? '<img src="' + item.imagen + '" class="w-16 h-20 object-contain bg-brand-50 mr-4 border border-brand-100">' : '<div class="w-16 h-20 bg-brand-50 mr-4 flex items-center justify-center text-[8px] text-brand-300">SIN FOTO</div>';
+    var cartImgUrl = item.imagen ? (item.imagen.indexOf('?') > -1 ? item.imagen + '&width=150' : item.imagen + '?width=150') : '';
+    var imgHtml = item.imagen ? '<img src="' + cartImgUrl + '" class="w-16 h-20 object-contain bg-brand-50 mr-4 border border-brand-100">' : '<div class="w-16 h-20 bg-brand-50 mr-4 flex items-center justify-center text-[8px] text-brand-300">SIN FOTO</div>';
     html += '<div class="flex py-5 border-b border-brand-100 last:border-0">' +
       imgHtml +
       '<div class="flex-1 min-w-0 pr-4">' +
@@ -609,7 +610,8 @@ document.getElementById('live-search-input').addEventListener('input', function(
         } else {
           let html = '';
           data.forEach(p => {
-            const img = p.imagen ? '<img src="'+p.imagen+'" class="w-full h-full object-contain p-4">' : '<div class="w-full h-full flex items-center justify-center text-brand-300 font-serif italic text-sm">Sin foto</div>';
+            const imgUrl = p.imagen ? (p.imagen.includes('?') ? p.imagen + '&width=150' : p.imagen + '?width=150') : '';
+            const img = p.imagen ? '<img src="'+imgUrl+'" class="w-full h-full object-contain p-4">' : '<div class="w-full h-full flex items-center justify-center text-brand-300 font-serif italic text-sm">Sin foto</div>';
             html += `
               <a href="/producto/${p.sku}" class="group block bg-brand-white border border-brand-100 p-2 hover:border-brand-black transition-colors">
                 <div class="aspect-[4/5] bg-brand-50 mb-3 overflow-hidden relative">${img}</div>
