@@ -66,8 +66,15 @@ def _enrich_products(products):
     return products
 
 
+_HOME_CACHE = {'time': 0, 'html': None}
+
 @store_bp.route('/')
 def tienda_home():
+    global _HOME_CACHE
+    now = time.time()
+    if _HOME_CACHE['html'] and (now - _HOME_CACHE['time']) < 60:
+        return _HOME_CACHE['html']
+
     db = get_db()
     cur = db.cursor(dictionary=True)
     
@@ -81,6 +88,10 @@ def tienda_home():
     total = cur.fetchone()['cnt']
 
     def _count_genero(genero_norm):
+        cur.execute('SELECT COUNT(*) AS cnt FROM products WHERE is_active = 1 AND stock > 0 AND genero = %s', [genero_norm])
+        cnt = cur.fetchone()['cnt']
+        if cnt > 0:
+            return cnt
         conds, pats = _genero_sql_conds(genero_norm)
         if not conds: return 0
         sql = 'SELECT COUNT(*) AS cnt FROM products p WHERE is_active = 1 AND stock > 0 AND (' + ' OR '.join(conds) + ')'
@@ -106,10 +117,11 @@ def tienda_home():
                    GROUP BY aroma_family ORDER BY n DESC''')
     familias = cur.fetchall()
     
-    db.close()
-    return render_template('tienda/home.html', destacados=destacados,
+    html = render_template('tienda/home.html', destacados=destacados,
                            total=total, n_hombre=n_hombre, n_mujer=n_mujer,
                            n_unisex=n_unisex, marcas=marcas, familias=familias)
+    _HOME_CACHE = {'time': now, 'html': html}
+    return html
 
 
 _CATALOGO_CACHE = {}
@@ -210,7 +222,6 @@ def _catalogo_response(preset_genero=None):
                    FROM products
                    WHERE is_active = 1 AND stock > 0''')
     bounds = cur.fetchone()
-    db.close()
 
     html = render_template('tienda/catalogo.html', products=products, q=q,
                            genero=genero, linea=linea, familia=familia, sort=sort,
@@ -242,7 +253,6 @@ def tienda_producto(sku):
     cur.execute(_tienda_sql() + ' AND p.sku = %s', [sku])
     product = cur.fetchone()
     if not product:
-        db.close()
         return render_template('tienda/404.html'), 404
     _enrich_products([product])
 
@@ -262,7 +272,6 @@ def tienda_producto(sku):
         cur.execute(extra_sql, extra_params)
         relacionados.extend(cur.fetchall())
     _enrich_products(relacionados)
-    db.close()
 
     return render_template('tienda/producto.html', p=product, relacionados=relacionados)
 
@@ -286,7 +295,6 @@ def api_search():
     like = f'%{q}%'
     cur.execute(sql, [like, like, like])
     results = cur.fetchall()
-    db.close()
     
     return jsonify(results)
 
@@ -356,4 +364,3 @@ def api_pedido():
         return jsonify({'ok': False, 'error': str(e)}), 500
     finally:
         db.autocommit = autocommit
-        db.close()

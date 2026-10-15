@@ -1,32 +1,63 @@
 import os
 import mysql.connector
+from mysql.connector import pooling
 from flask import g, has_app_context
 from werkzeug.security import generate_password_hash
 
 DB_CONFIG = {
     'host': os.environ.get('MYSQL_HOST', 'db'),
-    'user': 'perfumes',
-    'password': 'perfumes',
-    'database': 'perfumes',
+    'user': os.environ.get('MYSQL_USER', 'perfumes'),
+    'password': os.environ.get('MYSQL_PASSWORD', 'perfumes'),
+    'database': os.environ.get('MYSQL_DATABASE', 'perfumes'),
     'charset': 'utf8mb4',
     'autocommit': True,
 }
 
+_connection_pool = None
+
+def _get_pool():
+    global _connection_pool
+    if _connection_pool is None:
+        try:
+            _connection_pool = pooling.MySQLConnectionPool(
+                pool_name="siyash_pool",
+                pool_size=10,
+                pool_reset_session=True,
+                **DB_CONFIG
+            )
+        except Exception:
+            _connection_pool = None
+    return _connection_pool
+
 def get_db():
     if has_app_context():
-        if not hasattr(g, '_database'):
-            g._database = mysql.connector.connect(**DB_CONFIG)
+        if not hasattr(g, '_database') or g._database is None or not g._database.is_connected():
+            pool = _get_pool()
+            if pool:
+                try:
+                    g._database = pool.get_connection()
+                except Exception:
+                    g._database = mysql.connector.connect(**DB_CONFIG)
+            else:
+                g._database = mysql.connector.connect(**DB_CONFIG)
         return g._database
     else:
+        pool = _get_pool()
+        if pool:
+            try:
+                return pool.get_connection()
+            except Exception:
+                return mysql.connector.connect(**DB_CONFIG)
         return mysql.connector.connect(**DB_CONFIG)
 
-def close_db_connection(exception):
+def close_db_connection(exception=None):
     db = getattr(g, '_database', None)
     if db is not None:
         try:
             db.close()
-        except:
+        except Exception:
             pass
+        g._database = None
 
 def _query(db, sql, params=None):
     cur = db.cursor(dictionary=True)
@@ -115,6 +146,18 @@ def init_db():
         pass
     try:
         cur.execute('ALTER TABLE products ADD INDEX idx_linea (linea)')
+    except Exception:
+        pass
+    try:
+        cur.execute('ALTER TABLE products ADD INDEX idx_active_stock_gen (is_active, stock, genero)')
+    except Exception:
+        pass
+    try:
+        cur.execute('ALTER TABLE products ADD INDEX idx_active_stock_price (is_active, stock, precio_venta)')
+    except Exception:
+        pass
+    try:
+        cur.execute('ALTER TABLE products ADD INDEX idx_active_stock_fam (is_active, stock, aroma_family)')
     except Exception:
         pass
     cur.execute('''
