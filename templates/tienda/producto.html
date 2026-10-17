@@ -65,6 +65,7 @@
       {% endif %}
 
       <div class="mt-auto space-y-3">
+        {% if p['stock'] and p['stock'] > 0 and p.get('is_active', 1) %}
         <div class="flex gap-3">
           <div class="flex items-center border border-brand-900">
             <button onclick="qtyDelta(-1)" class="px-4 py-3.5 text-brand-500 hover:bg-brand-50 transition-colors" aria-label="Menos">−</button>
@@ -73,6 +74,12 @@
           </div>
           <button onclick="addThisToCart()" class="flex-1 py-3.5 bg-brand-black text-brand-white text-xs font-semibold tracking-widest2 uppercase hover:bg-brand-800 transition-all duration-300 hover:scale-[1.02] shadow-[0_4px_14px_0_rgba(0,0,0,0.25)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.23)]">Agregar a la selección</button>
         </div>
+        {% else %}
+        <div class="py-4 bg-brand-50 border border-brand-200 text-center">
+          <span class="text-xs font-semibold tracking-widest2 uppercase text-brand-800">Agotado temporalmente</span>
+          <p class="text-[11px] text-brand-500 mt-1">Próximamente disponible o consulta por WhatsApp</p>
+        </div>
+        {% endif %}
         <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-brand-100">
           <div class="flex items-center justify-center gap-2 text-brand-500">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>

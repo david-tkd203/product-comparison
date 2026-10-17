@@ -246,11 +246,33 @@ def tienda_hombre():
 def tienda_mujer():
     return _catalogo_response('Mujer')
 
-@store_bp.route('/producto/<sku>')
+@store_bp.route('/nosotros')
+def tienda_nosotros():
+    return render_template('tienda/nosotros.html')
+
+@store_bp.route('/catalogo')
+def tienda_catalogo_alias():
+    return _catalogo_response(None)
+
+@store_bp.route('/unisex')
+def tienda_unisex():
+    return _catalogo_response('Unisex')
+
+@store_bp.route('/c/<path:subpath>')
+def legacy_catalog(subpath=None):
+    return _catalogo_response(None)
+
+@store_bp.route('/producto/<path:sku>')
 def tienda_producto(sku):
+    clean_sku = (sku or '').strip()
     db = get_db()
     cur = db.cursor(dictionary=True)
-    cur.execute(_tienda_sql() + ' AND p.sku = %s', [sku])
+    # Search for product in catalog (case-insensitive)
+    cur.execute('''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato, p.aroma_family, p.stock,
+                          p.precio_mayorista, p.precio_venta, p.imagen, p.aromas, p.is_active
+                   FROM products p
+                   WHERE LOWER(p.sku) = LOWER(%s)
+                   LIMIT 1''', [clean_sku])
     product = cur.fetchone()
     if not product:
         return render_template('tienda/404.html'), 404
@@ -258,12 +280,12 @@ def tienda_producto(sku):
 
     cur.execute(_tienda_sql() + ' AND p.sku != %s AND p.linea = %s '
                 + 'ORDER BY (p.imagen IS NOT NULL) DESC, p.precio_venta DESC LIMIT 4',
-                [sku, product['linea']])
+                [product['sku'], product['linea']])
     relacionados = cur.fetchall()
     if len(relacionados) < 4:
         conds, pats = _genero_sql_conds(product['genero_norm'])
         extra_sql = _tienda_sql() + ' AND p.sku != %s AND p.linea != %s'
-        extra_params = [sku, product['linea']]
+        extra_params = [product['sku'], product['linea']]
         if conds:
             extra_sql += ' AND (' + ' OR '.join(conds) + ')'
             extra_params.extend(pats)

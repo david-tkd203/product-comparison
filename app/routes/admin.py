@@ -199,6 +199,17 @@ def admin_inventario():
                            margen_tienda=margen, activos=activos,
                            familias=sorted(AROMA_FAMILIES.keys()))
 
+@admin_bp.route('/admin/activar-todo')
+@require_login
+def admin_activar_todo():
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("UPDATE products SET is_active = 1, stock = CASE WHEN stock <= 0 THEN 5 ELSE stock END WHERE precio_venta > 0")
+    db.commit()
+    rebuild_storefront_cache(db)
+    flash('Todo el catálogo con precio ha sido activado y publicado.', 'success')
+    return redirect(url_for('admin.admin_inventario'))
+
 @admin_bp.route('/api/update_inventory', methods=['POST'])
 @require_login
 def update_inventory():
