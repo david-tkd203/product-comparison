@@ -140,6 +140,7 @@ def init_db():
     _add_column_if_missing(cur, 'products', 'aromas', 'TEXT')
     _add_column_if_missing(cur, 'products', 'precio_mayorista', 'INT')
     _add_column_if_missing(cur, 'products', 'precio_venta', 'INT')
+    _add_column_if_missing(cur, 'products', 'shopify_variant_id', 'VARCHAR(50) DEFAULT NULL')
     try:
         cur.execute('ALTER TABLE products ADD INDEX idx_active_stock (is_active, stock)')
     except Exception:
