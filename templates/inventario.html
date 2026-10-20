@@ -10,10 +10,20 @@
     </p>
     
     <p class="text-[11px] text-slate-400 mt-1">Un producto aparece en la tienda solo si está <b>activo</b> y con <b>stock &gt; 0</b>. La cantidad nunca se muestra al cliente.</p>
-    <a href="/admin/activar-todo" class="mt-3 inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded hover:bg-emerald-700 transition-colors">
-      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-      Activar catálogo completo
-    </a>
+    <div class="mt-3 flex flex-wrap gap-2">
+      <a href="/admin/activar-todo" class="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white text-xs font-medium rounded hover:bg-emerald-700 transition-colors">
+        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        Activar catálogo completo
+      </a>
+      <a href="/admin/sync-shopify" onclick="return confirm('¿Iniciar sincronización automática por API a Shopify?')" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-xs font-medium rounded hover:bg-indigo-700 transition-colors">
+        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        Sincronizar API Shopify
+      </a>
+      <a href="/admin/export/shopify-csv" class="inline-flex items-center justify-center px-4 py-2 bg-slate-800 text-white text-xs font-medium rounded hover:bg-slate-900 transition-colors">
+        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        Descargar CSV Shopify
+      </a>
+    </div>
 
   </div>
 

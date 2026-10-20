@@ -14,6 +14,9 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SHOPIFY_CLIENT_ID=${SHOPIFY_CLIENT_ID:-c7c86c013557a82ada1098651381f1fb}
+      - SHOPIFY_CLIENT_SECRET=${SHOPIFY_CLIENT_SECRET}
+      - SHOPIFY_SHOP=${SHOPIFY_SHOP:-dcw11w-0p.myshopify.com}
     restart: always
     depends_on:
       db:

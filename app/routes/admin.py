@@ -8,8 +8,39 @@ admin_bp = Blueprint('admin', __name__)
 
 @admin_bp.route('/admin')
 @admin_bp.route('/admin/')
-@require_login
 def admin_redirect():
+    code = request.args.get('code')
+    if code:
+        import urllib.request, json
+        shop = request.args.get('shop', 'dcw11w-0p.myshopify.com')
+        url = f"https://{shop}/admin/oauth/access_token"
+        client_id = os.environ.get('SHOPIFY_CLIENT_ID') or 'c7c86c013557a82ada1098651381f1fb'
+        client_secret = os.environ.get('SHOPIFY_CLIENT_SECRET', '')
+        if not client_secret:
+            cur_s = get_db().cursor(dictionary=True)
+            cur_s.execute("SELECT setting_value FROM settings WHERE setting_key = 'shopify_client_secret'")
+            r_s = cur_s.fetchone()
+            client_secret = r_s['setting_value'] if r_s else ''
+        payload = json.dumps({
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "code": code
+        }).encode("utf-8")
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req) as resp:
+                res_data = json.loads(resp.read().decode())
+                token = res_data.get('access_token')
+                if token:
+                    db = get_db()
+                    set_setting(db, 'shopify_access_token', token)
+                    set_setting(db, 'shopify_shop', shop)
+                    flash('¡Shopify conectado exitosamente! Token de acceso guardado.', 'success')
+        except Exception as e:
+            flash(f'Error al conectar con Shopify: {e}', 'error')
+
+    if 'user_id' not in session:
+        return redirect(url_for('admin.login'))
     return redirect(url_for('admin.admin_productos'))
 
 @admin_bp.route('/admin/productos')
@@ -329,3 +360,132 @@ def export_xlsx():
 
 from .admin_extra import *
 from .admin_retail import *
+
+
+@admin_bp.route('/admin/sync-shopify')
+@require_login
+def sync_shopify():
+    import urllib.request, json, time
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    cur.execute("SELECT setting_value FROM settings WHERE setting_key = 'shopify_access_token'")
+    t_row = cur.fetchone()
+    token = t_row['setting_value'] if t_row else None
+    
+    cur.execute("SELECT setting_value FROM settings WHERE setting_key = 'shopify_shop'")
+    s_row = cur.fetchone()
+    shop = s_row['setting_value'] if s_row else 'dcw11w-0p.myshopify.com'
+    
+    if not token:
+        flash('Primero conecta Shopify abriendo el enlace de instalación.', 'error')
+        return redirect(url_for('admin.admin_inventario'))
+        
+    cur.execute('''SELECT sku, nombre, linea, precio_venta, stock, imagen, aroma_family
+                   FROM products
+                   WHERE is_active = 1 AND stock > 0 AND precio_venta > 0''')
+    prods = cur.fetchall()
+    
+    success = 0
+    errors = 0
+    
+    for p in prods:
+        sku = p['sku']
+        title = p['nombre']
+        vendor = p['linea'] or 'Siyash'
+        price = str(p['precio_venta'])
+        image_url = p['imagen']
+        
+        payload = {
+            "product": {
+                "title": title,
+                "vendor": vendor,
+                "product_type": "Perfume",
+                "status": "active",
+                "published_scope": "global",
+                "variants": [
+                    {
+                        "sku": sku,
+                        "price": price,
+                        "requires_shipping": True
+                    }
+                ]
+            }
+        }
+        if image_url and image_url.startswith('http'):
+            payload["product"]["images"] = [{"src": image_url}]
+            
+        req = urllib.request.Request(
+            f"https://{shop}/admin/api/2024-01/products.json",
+            data=json.dumps(payload).encode('utf-8'),
+            headers={
+                "Content-Type": "application/json",
+                "X-Shopify-Access-Token": token
+            }
+        )
+        try:
+            with urllib.request.urlopen(req) as resp:
+                if resp.status in (200, 201):
+                    success += 1
+            time.sleep(0.5)
+        except Exception:
+            errors += 1
+            
+    flash(f'Sincronización completada: {success} productos creados en Shopify ({errors} errores).', 'success')
+    return redirect(url_for('admin.admin_inventario'))
+
+@admin_bp.route('/admin/export/shopify-csv')
+@require_login
+def export_shopify_csv():
+    import csv, io
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    cur.execute('''SELECT sku, nombre, linea, precio_venta, stock, imagen, aroma_family
+                   FROM products
+                   WHERE is_active = 1 AND stock > 0 AND precio_venta > 0
+                   ORDER BY linea, nombre''')
+    products = cur.fetchall()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    headers = [
+        'Handle', 'Title', 'Body (HTML)', 'Vendor', 'Product Category', 'Type', 'Tags',
+        'Published', 'Option1 Name', 'Option1 Value', 'Variant SKU', 'Variant Grams',
+        'Variant Inventory Tracker', 'Variant Qty', 'Variant Inventory Policy',
+        'Variant Fulfillment Service', 'Variant Price', 'Variant Compare At Price',
+        'Variant Requires Shipping', 'Variant Taxable', 'Image Src', 'Image Position',
+        'Status'
+    ]
+    writer.writerow(headers)
+
+    for p in products:
+        handle = re.sub(r'[^a-z0-9]+', '-', (p['nombre'] or p['sku']).lower()).strip('-')
+        writer.writerow([
+            handle,
+            p['nombre'],
+            f"<p>Perfume original {p['linea']}. Familia: {p['aroma_family'] or 'Exclusiva'}.</p>",
+            p['linea'] or 'Siyash',
+            'Health & Beauty > Personal Care > Cosmetics > Perfumes & Colognes',
+            'Perfume',
+            f"{p['linea']}, {p['aroma_family'] or ''}".strip(', '),
+            'TRUE',
+            'Title', 'Default Title',
+            p['sku'],
+            '500',
+            'shopify',
+            p['stock'],
+            'deny',
+            'manual',
+            p['precio_venta'],
+            '',
+            'TRUE',
+            'TRUE',
+            p['imagen'] or '',
+            '1' if p['imagen'] else '',
+            'active'
+        ])
+
+    output.seek(0)
+    resp = make_response(output.getvalue())
+    resp.headers['Content-Type'] = 'text/csv; charset=utf-8'
+    resp.headers['Content-Disposition'] = 'attachment; filename=productos_siyash_shopify.csv'
+    return resp
