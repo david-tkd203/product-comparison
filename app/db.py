@@ -281,6 +281,51 @@ def init_db():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
 
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS rewards (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(200) NOT NULL,
+            descripcion TEXT,
+            puntos_requeridos INT NOT NULL,
+            imagen VARCHAR(500),
+            stock INT NOT NULL DEFAULT 999,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_reward_active (is_active, puntos_requeridos)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ''')
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS customer_reward_redemptions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            customer_id INT NOT NULL,
+            reward_id INT NOT NULL,
+            puntos_gastados INT NOT NULL,
+            codigo_canje VARCHAR(32) NOT NULL UNIQUE,
+            estado VARCHAR(20) NOT NULL DEFAULT 'disponible',
+            order_id INT DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_crr_customer (customer_id, estado)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ''')
+
+    try:
+        cur.execute('SELECT COUNT(*) FROM rewards')
+        if cur.fetchone()[0] == 0:
+            initial_rewards = [
+                ("Decant de Lujo 5ml (Perfume Árabe)", "Muestra exclusiva en atomizador de vidrio.", 200, "/static/img/LogoSiyash-01-t.png", 100),
+                ("Envío Gratis a todo Chile", "Cupón válido para despacho sin costo en tu próxima compra.", 350, "/static/img/LogoSiyash-01-t.png", 500),
+                ("Miniatura Colección 10ml", "Formato viaje de alta concentración.", 600, "/static/img/LogoSiyash-01-t.png", 50),
+                ("Perfume Árabe 100ml Full Size", "Frasco completo a elección del catálogo Club Siyash.", 1500, "/static/img/LogoSiyash-01-t.png", 20),
+            ]
+            cur.executemany(
+                '''INSERT INTO rewards (nombre, descripcion, puntos_requeridos, imagen, stock, is_active)
+                   VALUES (%s, %s, %s, %s, %s, 1)''',
+                initial_rewards
+            )
+    except Exception:
+        pass
+
     try:
         cur.execute('''SELECT COUNT(*) FROM (
             SELECT sku, import_date, COUNT(*) as cnt FROM prices

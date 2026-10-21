@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, make_response
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, make_response, session
 from ..db import get_db, rebuild_storefront_cache, set_setting
 from ..utils import require_login, _norm_genero, parse_excel, AROMA_FAMILIES, _classify_family
 
@@ -536,3 +536,103 @@ def export_shopify_csv():
     resp.headers['Content-Type'] = 'text/csv; charset=utf-8'
     resp.headers['Content-Disposition'] = 'attachment; filename=productos_siyash_shopify.csv'
     return resp
+
+
+@admin_bp.route('/admin/premios', methods=['GET', 'POST'])
+@require_login
+def admin_premios():
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        nombre = (request.form.get('nombre') or '').strip()
+        descripcion = (request.form.get('descripcion') or '').strip()
+        imagen = (request.form.get('imagen') or '').strip()
+        try:
+            puntos_requeridos = int(request.form.get('puntos_requeridos', 0))
+        except (ValueError, TypeError):
+            puntos_requeridos = 0
+        try:
+            stock = int(request.form.get('stock', 999))
+        except (ValueError, TypeError):
+            stock = 999
+
+        if not nombre:
+            flash('El nombre del premio es obligatorio.', 'error')
+            return redirect(url_for('admin.admin_premios'))
+        if puntos_requeridos <= 0:
+            flash('Los puntos requeridos deben ser un número positivo.', 'error')
+            return redirect(url_for('admin.admin_premios'))
+        if stock < 0:
+            stock = 0
+
+        cur.execute(
+            '''INSERT INTO rewards (nombre, descripcion, puntos_requeridos, imagen, stock, is_active)
+               VALUES (%s, %s, %s, %s, %s, 1)''',
+            [nombre, descripcion, puntos_requeridos, imagen or '/static/img/LogoSiyash-01-t.png', stock]
+        )
+        if hasattr(db, 'commit'):
+            db.commit()
+        flash(f"Premio '{nombre}' creado correctamente.", 'success')
+        return redirect(url_for('admin.admin_premios'))
+
+    # GET: List rewards with redemption stats
+    cur.execute(
+        '''SELECT r.*,
+                  COUNT(crr.id) AS total_canjes,
+                  SUM(CASE WHEN crr.estado = 'disponible' THEN 1 ELSE 0 END) AS canjes_disponibles,
+                  SUM(CASE WHEN crr.estado = 'aplicado_en_pedido' THEN 1 ELSE 0 END) AS canjes_aplicados
+           FROM rewards r
+           LEFT JOIN customer_reward_redemptions crr ON crr.reward_id = r.id
+           GROUP BY r.id
+           ORDER BY r.puntos_requeridos ASC, r.id DESC'''
+    )
+    rewards = cur.fetchall()
+
+    # General redemption stats
+    cur.execute(
+        '''SELECT COUNT(*) AS total_canjes,
+                  SUM(CASE WHEN estado = 'disponible' THEN 1 ELSE 0 END) AS disponibles,
+                  SUM(CASE WHEN estado = 'aplicado_en_pedido' THEN 1 ELSE 0 END) AS aplicados,
+                  COALESCE(SUM(puntos_gastados), 0) AS total_puntos_canjeados
+           FROM customer_reward_redemptions'''
+    )
+    stats = cur.fetchone() or {'total_canjes': 0, 'disponibles': 0, 'aplicados': 0, 'total_puntos_canjeados': 0}
+
+    # Recent redemptions list (last 30)
+    cur.execute(
+        '''SELECT crr.id, crr.codigo_canje, crr.puntos_gastados, crr.estado, crr.order_id, crr.created_at,
+                  c.nombre AS cliente_nombre, c.email AS cliente_email,
+                  r.nombre AS premio_nombre
+           FROM customer_reward_redemptions crr
+           JOIN customers c ON c.id = crr.customer_id
+           JOIN rewards r ON r.id = crr.reward_id
+           ORDER BY crr.created_at DESC LIMIT 30'''
+    )
+    recent_redemptions = cur.fetchall()
+
+    return render_template('admin_premios.html', rewards=rewards, stats=stats, recent_redemptions=recent_redemptions)
+
+
+@admin_bp.route('/admin/premios/<int:reward_id>/toggle', methods=['POST'])
+@require_login
+def admin_premio_toggle(reward_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('UPDATE rewards SET is_active = 1 - is_active WHERE id = %s', [reward_id])
+    if hasattr(db, 'commit'):
+        db.commit()
+    flash('Estado del premio actualizado.', 'success')
+    return redirect(url_for('admin.admin_premios'))
+
+
+@admin_bp.route('/admin/premios/<int:reward_id>/eliminar', methods=['POST'])
+@require_login
+def admin_premio_eliminar(reward_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('DELETE FROM rewards WHERE id = %s', [reward_id])
+    if hasattr(db, 'commit'):
+        db.commit()
+    flash('Premio eliminado exitosamente.', 'success')
+    return redirect(url_for('admin.admin_premios'))

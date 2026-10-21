@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Premios y Fidelización · Club Siyash</h1>
+    <p class="text-sm text-slate-500 mt-1">Configura el catálogo de recompensas, stock y revisa el canje de puntos de los clientes.</p>
+  </div>
+  <div>
+    <button onclick="document.getElementById('modal-nuevo-premio').classList.remove('hidden')" class="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-slate-800 transition-colors shadow-sm flex items-center gap-1.5">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      Crear Nuevo Premio
+    </button>
+  </div>
+</div>
+
+<!-- KPI Stats Cards -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Premios Totales</p>
+    <p class="text-2xl font-bold text-slate-900 mt-1">{{ rewards|length }}</p>
+    <p class="text-[11px] text-slate-400 mt-0.5">En catálogo de recompensas</p>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Canjes Realizados</p>
+    <p class="text-2xl font-bold text-slate-900 mt-1">{{ stats.total_canjes or 0 }}</p>
+    <p class="text-[11px] text-emerald-600 mt-0.5">{{ stats.aplicados or 0 }} aplicados en pedidos</p>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Cupones Disponibles</p>
+    <p class="text-2xl font-bold text-indigo-700 mt-1">{{ stats.disponibles or 0 }}</p>
+    <p class="text-[11px] text-slate-400 mt-0.5">Por canjear en el carrito</p>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Puntos Canjeados</p>
+    <p class="text-2xl font-bold text-slate-900 mt-1">{{ "{:,}".format(stats.total_puntos_canjeados or 0).replace(',', '.') }}</p>
+    <p class="text-[11px] text-slate-400 mt-0.5">Puntos gastados por clientes</p>
+  </div>
+</div>
+
+<!-- Table: Catálogo de Premios -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+  <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+    <div>
+      <h2 class="text-base font-semibold text-slate-900">Catálogo de Premios</h2>
+      <p class="text-xs text-slate-500">Premios que los clientes pueden canjear desde su cuenta personal.</p>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm text-slate-600">
+      <thead class="bg-slate-50 text-[11px] font-medium uppercase tracking-wider text-slate-500 border-b border-slate-100">
+        <tr>
+          <th class="py-3 px-4">Premio</th>
+          <th class="py-3 px-4">Puntos Requeridos</th>
+          <th class="py-3 px-4">Stock</th>
+          <th class="py-3 px-4">Canjes</th>
+          <th class="py-3 px-4">Estado</th>
+          <th class="py-3 px-4 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% if rewards %}
+          {% for r in rewards %}
+          <tr class="hover:bg-slate-50/70 transition-colors">
+            <td class="py-3.5 px-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                  {% if r.imagen %}
+                    <img src="{{ r.imagen }}" alt="{{ r.nombre }}" class="w-full h-full object-contain p-0.5" onerror="this.onerror=null;this.src='/static/img/LogoSiyash-01-t.png'">
+                  {% else %}
+                    <span class="text-xs text-slate-400">🎁</span>
+                  {% endif %}
+                </div>
+                <div>
+                  <div class="font-medium text-slate-900">{{ r.nombre }}</div>
+                  <div class="text-xs text-slate-400 max-w-sm truncate">{{ r.descripcion or 'Sin descripción' }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="py-3.5 px-4 font-semibold text-slate-900">
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700">
+                ✦ {{ "{:,}".format(r.puntos_requeridos).replace(',', '.') }} pts
+              </span>
+            </td>
+            <td class="py-3.5 px-4 font-medium {{ 'text-red-600' if r.stock <= 5 else 'text-slate-700' }}">
+              {{ r.stock }} unid.
+            </td>
+            <td class="py-3.5 px-4 text-xs text-slate-500">
+              <span class="font-medium text-slate-800">{{ r.total_canjes or 0 }}</span>
+              <span class="text-[11px] text-slate-400">({{ r.canjes_disponibles or 0 }} activos)</span>
+            </td>
+            <td class="py-3.5 px-4">
+              {% if r.is_active %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Activo
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Inactivo
+                </span>
+              {% endif %}
+            </td>
+            <td class="py-3.5 px-4 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <form method="POST" action="/admin/premios/{{ r.id }}/toggle" class="inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                  <button type="submit" class="px-2.5 py-1 text-xs font-medium rounded border {{ 'border-amber-200 text-amber-700 hover:bg-amber-50' if r.is_active else 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' }} transition-colors">
+                    {{ 'Desactivar' if r.is_active else 'Activar' }}
+                  </button>
+                </form>
+                <form method="POST" action="/admin/premios/{{ r.id }}/eliminar" class="inline" onsubmit="return confirm('¿Seguro que deseas eliminar el premio {{ r.nombre }}?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                  <button type="submit" class="p-1 text-slate-400 hover:text-red-600 transition-colors" title="Eliminar premio">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="text-center py-8 text-slate-400 text-xs">
+              No hay premios registrados. Haz clic en "Crear Nuevo Premio" para agregar el primero.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section: Historial de Canjes Recientes -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+  <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+    <div>
+      <h2 class="text-base font-semibold text-slate-900">Historial de Canjes Recientes</h2>
+      <p class="text-xs text-slate-500">Últimos códigos generados por clientes para premios del club.</p>
+    </div>
+    <span class="text-xs text-slate-400">{{ recent_redemptions|length }} registros</span>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm text-slate-600">
+      <thead class="bg-slate-50 text-[11px] font-medium uppercase tracking-wider text-slate-500 border-b border-slate-100">
+        <tr>
+          <th class="py-3 px-4">Fecha</th>
+          <th class="py-3 px-4">Código</th>
+          <th class="py-3 px-4">Cliente</th>
+          <th class="py-3 px-4">Premio</th>
+          <th class="py-3 px-4">Puntos</th>
+          <th class="py-3 px-4">Estado</th>
+          <th class="py-3 px-4">Pedido Asoc.</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% if recent_redemptions %}
+          {% for canje in recent_redemptions %}
+          <tr class="hover:bg-slate-50/70 transition-colors text-xs">
+            <td class="py-3 px-4 text-slate-500 whitespace-nowrap">
+              {{ canje.created_at.strftime('%d/%m/%Y %H:%M') if canje.created_at else '' }}
+            </td>
+            <td class="py-3 px-4 font-mono font-semibold text-slate-900">
+              <span class="px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
+                {{ canje.codigo_canje }}
+              </span>
+            </td>
+            <td class="py-3 px-4">
+              <div class="font-medium text-slate-900">{{ canje.cliente_nombre }}</div>
+              <div class="text-[11px] text-slate-400">{{ canje.cliente_email }}</div>
+            </td>
+            <td class="py-3 px-4 font-medium text-slate-800">
+              {{ canje.premio_nombre }}
+            </td>
+            <td class="py-3 px-4 font-semibold text-slate-700">
+              -{{ canje.puntos_gastados }} pts
+            </td>
+            <td class="py-3 px-4">
+              {% if canje.estado == 'disponible' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700">
+                  Disponible
+                </span>
+              {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700">
+                  Aplicado en Pedido
+                </span>
+              {% endif %}
+            </td>
+            <td class="py-3 px-4 text-slate-600">
+              {% if canje.order_id %}
+                <a href="/pedidos" class="text-indigo-600 hover:underline font-medium">Pedido #{{ canje.order_id }}</a>
+              {% else %}
+                <span class="text-slate-400">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" class="text-center py-8 text-slate-400 text-xs">
+              Aún no se han registrado canjes de premios.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Crear Nuevo Premio -->
+<div id="modal-nuevo-premio" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+  <div class="bg-white rounded-xl shadow-xl border border-slate-200 max-w-lg w-full p-6 relative">
+    <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+      <h3 class="text-base font-semibold text-slate-900">Agregar Nuevo Premio</h3>
+      <button onclick="document.getElementById('modal-nuevo-premio').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <form method="POST" action="/admin/premios" class="space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Nombre del Premio *</label>
+        <input type="text" name="nombre" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-900" placeholder="Ej: Decant Exclusivo 5ml">
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Descripción</label>
+        <textarea name="descripcion" rows="2" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-900" placeholder="Detalle del premio, cómo se entrega o condiciones"></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">Puntos Requeridos *</label>
+          <input type="number" name="puntos_requeridos" min="1" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-900" placeholder="Ej: 250">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">Stock Disponible *</label>
+          <input type="number" name="stock" min="0" value="999" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-900" placeholder="999">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">URL de Imagen (opcional)</label>
+        <input type="text" name="imagen" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-900" placeholder="/static/img/LogoSiyash-01-t.png">
+        <p class="text-[11px] text-slate-400 mt-1">Si se deja vacío se usará la imagen institucional Siyash.</p>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('modal-nuevo-premio').classList.add('hidden')" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50 transition-colors">
+          Cancelar
+        </button>
+        <button type="submit" class="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-medium hover:bg-slate-800 transition-colors shadow-sm">
+          Guardar Premio
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

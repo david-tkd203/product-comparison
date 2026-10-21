@@ -1,5 +1,6 @@
 import json
 import re
+import secrets
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -178,9 +179,96 @@ def cuenta():
         except Exception:
             order['items'] = []
 
+    cur.execute(
+        """SELECT id, nombre, descripcion, puntos_requeridos, imagen, stock, is_active
+           FROM rewards
+           WHERE is_active = 1
+           ORDER BY puntos_requeridos ASC"""
+    )
+    catalog_rewards = cur.fetchall()
+
+    cur.execute(
+        """SELECT crr.id, crr.reward_id, crr.puntos_gastados, crr.codigo_canje, crr.estado, crr.order_id, crr.created_at,
+                  r.nombre, r.descripcion, r.imagen
+           FROM customer_reward_redemptions crr
+           JOIN rewards r ON r.id = crr.reward_id
+           WHERE crr.customer_id = %s
+           ORDER BY crr.created_at DESC""",
+        [customer_id]
+    )
+    my_redemptions = cur.fetchall()
+
     return render_template(
         'tienda/cliente_cuenta.html',
         customer=customer,
         points_history=points_history,
-        orders=orders
+        orders=orders,
+        catalog_rewards=catalog_rewards,
+        my_redemptions=my_redemptions
     )
+
+
+@customer_bp.route('/cliente/premios/canjear/<int:reward_id>', methods=['POST'])
+@customer_login_required
+def canjear_premio(reward_id):
+    customer_id = session['customer_id']
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    cur.execute(
+        "SELECT id, nombre, descripcion, puntos_requeridos, stock, is_active FROM rewards WHERE id = %s",
+        [reward_id]
+    )
+    reward = cur.fetchone()
+
+    if not reward or not reward['is_active']:
+        flash('El premio solicitado no está disponible actualmente.', 'error')
+        return redirect(url_for('customer.cuenta'))
+
+    if reward['stock'] <= 0:
+        flash(f"El premio '{reward['nombre']}' se encuentra agotado temporalmente.", 'error')
+        return redirect(url_for('customer.cuenta'))
+
+    puntos_req = int(reward['puntos_requeridos'])
+
+    # Atomic points check and deduction
+    cur.execute(
+        "UPDATE customers SET puntos = puntos - %s WHERE id = %s AND puntos >= %s",
+        [puntos_req, customer_id, puntos_req]
+    )
+    if cur.rowcount == 0:
+        flash('No tienes suficientes puntos para este premio.', 'error')
+        return redirect(url_for('customer.cuenta'))
+
+    # Decrement reward stock
+    cur.execute(
+        "UPDATE rewards SET stock = stock - 1 WHERE id = %s AND stock > 0",
+        [reward_id]
+    )
+
+    # Generate unique redemption code (REW-XXXXXX)
+    codigo_canje = f"REW-{secrets.token_hex(3).upper()}"
+    for _ in range(5):
+        cur.execute("SELECT id FROM customer_reward_redemptions WHERE codigo_canje = %s", [codigo_canje])
+        if not cur.fetchone():
+            break
+        codigo_canje = f"REW-{secrets.token_hex(3).upper()}"
+
+    cur.execute(
+        """INSERT INTO customer_reward_redemptions (customer_id, reward_id, puntos_gastados, codigo_canje, estado)
+           VALUES (%s, %s, %s, %s, 'disponible')""",
+        [customer_id, reward_id, puntos_req, codigo_canje]
+    )
+
+    cur.execute(
+        """INSERT INTO customer_points_history (customer_id, puntos, motivo)
+           VALUES (%s, %s, %s)""",
+        [customer_id, -puntos_req, f"Canje de premio: {reward['nombre']}"]
+    )
+
+    if hasattr(db, 'commit'):
+        db.commit()
+
+    flash(f"¡Canjeaste '{reward['nombre']}' con éxito! Tu código es {codigo_canje}.", 'success')
+    return redirect(url_for('customer.cuenta'))
+

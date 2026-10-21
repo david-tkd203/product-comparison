@@ -371,10 +371,37 @@ def api_pedido():
             db.rollback()
             return jsonify({'ok': False, 'error': 'Carrito vacío o sin stock'}), 400
 
+        customer_id = session.get('customer_id')
+        codigo_canje = str(data.get('codigo_canje') or '').strip().upper()
+        valid_redemption = None
+
+        if codigo_canje:
+            if not customer_id:
+                db.rollback()
+                return jsonify({'ok': False, 'error': 'Debes iniciar sesión como cliente para canjear un código de regalo.'}), 400
+            cur.execute(
+                '''SELECT crr.id, crr.reward_id, r.nombre 
+                   FROM customer_reward_redemptions crr
+                   JOIN rewards r ON r.id = crr.reward_id
+                   WHERE crr.codigo_canje = %s AND crr.customer_id = %s AND crr.estado = 'disponible' ''',
+                [codigo_canje, customer_id]
+            )
+            valid_redemption = cur.fetchone()
+            if not valid_redemption:
+                db.rollback()
+                return jsonify({'ok': False, 'error': 'El código de regalo ingresado no es válido o ya fue utilizado.'}), 400
+
+            final_items.append({
+                'sku': f"REW-{valid_redemption['reward_id']}",
+                'nombre': f"🎁 PREMIO: {valid_redemption['nombre']} (Cupón: {codigo_canje})",
+                'linea': 'Club Siyash',
+                'precio': 0,
+                'qty': 1
+            })
+
         total = sum(i['precio'] * i['qty'] for i in final_items)
         items_json = json.dumps(final_items, ensure_ascii=False)
 
-        customer_id = session.get('customer_id')
         if customer_id:
             puntos_ganados = int(total // 100)
             cur.execute('''INSERT INTO orders (link_token, customer_id, nombre, telefono, items_json, total, puntos_ganados, status)
@@ -389,9 +416,17 @@ def api_pedido():
             cur.execute('''INSERT INTO orders (link_token, customer_id, nombre, telefono, items_json, total, puntos_ganados, status)
                            VALUES (%s, NULL, %s, %s, %s, %s, 0, 'nuevo')''',
                         ['WEB', nombre, telefono, items_json, total])
+            order_id = cur.lastrowid
         
+        if valid_redemption:
+            cur.execute(
+                "UPDATE customer_reward_redemptions SET estado = 'aplicado_en_pedido', order_id = %s WHERE id = %s",
+                [order_id, valid_redemption['id']]
+            )
+
         for i in final_items:
-            cur.execute('UPDATE products SET stock = stock - %s WHERE sku = %s', [i['qty'], i['sku']])
+            if not str(i['sku']).startswith('REW-'):
+                cur.execute('UPDATE products SET stock = stock - %s WHERE sku = %s', [i['qty'], i['sku']])
             
         db.commit()
         return jsonify({'ok': True, 'msg': 'Pedido registrado correctamente'})

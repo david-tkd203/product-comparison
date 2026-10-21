@@ -123,6 +123,135 @@
       </div>
     </div>
 
+    <!-- Section: Mis Premios Canjeados -->
+    {% if my_redemptions %}
+    <div class="mb-10 bg-brand-white border border-brand-100 p-8 shadow-[0_2px_20px_rgba(0,0,0,0.02)]">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-brand-100">
+        <div>
+          <span class="text-[10px] tracking-widest2 uppercase text-brand-400 block mb-1">Cupones & Recompensas</span>
+          <h2 class="font-serif text-2xl sm:text-3xl text-brand-black">Mis Premios Canjeados</h2>
+          <p class="text-xs text-brand-400 font-light mt-0.5">Usa estos códigos en el carrito de compras para recibir tus regalos exclusivos.</p>
+        </div>
+        <span class="text-xs text-brand-500 font-medium">{{ my_redemptions|length }} premio{{ 's' if my_redemptions|length != 1 else '' }} canjeado{{ 's' if my_redemptions|length != 1 else '' }}</span>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for red in my_redemptions %}
+        <div class="border {{ 'border-brand-900 bg-brand-50/50' if red.estado == 'disponible' else 'border-brand-200 bg-brand-50/20 opacity-75' }} p-5 flex flex-col justify-between relative overflow-hidden transition-all">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="text-[9px] uppercase tracking-widest2 font-semibold px-2 py-0.5 {{ 'bg-brand-black text-brand-white' if red.estado == 'disponible' else 'bg-brand-200 text-brand-700' }}">
+                {{ 'Disponible para tu próximo pedido' if red.estado == 'disponible' else 'Aplicado en pedido #' ~ red.order_id }}
+              </span>
+              <span class="text-[10px] text-brand-400 font-light">
+                {{ red.created_at.strftime('%d/%m/%Y') if red.created_at else '' }}
+              </span>
+            </div>
+
+            <h4 class="font-serif text-lg font-medium text-brand-black mb-1 leading-snug">{{ red.nombre }}</h4>
+            <p class="text-[11px] text-brand-500 font-light mb-4 line-clamp-2">{{ red.descripcion }}</p>
+          </div>
+
+          <div class="pt-3 border-t border-brand-200/60 flex items-center justify-between gap-2">
+            <div>
+              <span class="text-[9px] uppercase tracking-wider text-brand-400 block">Código de canje</span>
+              <span class="font-mono text-sm font-bold text-brand-black select-all tracking-wider">{{ red.codigo_canje }}</span>
+            </div>
+            {% if red.estado == 'disponible' %}
+            <button
+              type="button"
+              onclick="navigator.clipboard.writeText('{{ red.codigo_canje }}'); this.textContent='¡Copiado!'; setTimeout(() => this.textContent='Copiar', 2000);"
+              class="px-3 py-1.5 border border-brand-900 text-brand-black text-[10px] uppercase tracking-wider font-medium hover:bg-brand-black hover:text-brand-white transition-colors"
+            >
+              Copiar
+            </button>
+            {% else %}
+            <span class="text-[10px] text-brand-400 italic">Canjeado</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Section: Catálogo de Premios -->
+    <div class="mb-10 bg-brand-white border border-brand-100 p-8 shadow-[0_2px_20px_rgba(0,0,0,0.02)]">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-brand-100">
+        <div>
+          <span class="text-[10px] tracking-widest2 uppercase text-brand-400 block mb-1">Recompensas Exclusivas</span>
+          <h2 class="font-serif text-2xl sm:text-3xl text-brand-black">Catálogo de Premios</h2>
+          <p class="text-xs text-brand-400 font-light mt-0.5">Canjea tus Puntos Siyash por decants de lujo, formatos de viaje, envíos gratis y perfumes árabes completos.</p>
+        </div>
+        <div class="text-xs text-brand-600 bg-brand-50 px-3 py-1.5 border border-brand-100 font-medium">
+          Tu saldo: <span class="font-bold text-brand-black font-serif text-sm">{{ customer.puntos }} pts</span>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {% for rew in catalog_rewards %}
+        {% set can_redeem = (customer.puntos >= rew.puntos_requeridos) and (rew.stock > 0) %}
+        {% set pct = [((customer.puntos / rew.puntos_requeridos) * 100)|round|int, 100]|min %}
+        <div class="border border-brand-200 bg-brand-white flex flex-col justify-between hover:border-brand-400 transition-all duration-300 group">
+          <!-- Top image & points badge -->
+          <div>
+            <div class="h-44 bg-brand-50 flex items-center justify-center p-4 relative overflow-hidden border-b border-brand-100">
+              {% if rew.imagen %}
+              <img src="{{ rew.imagen }}" alt="{{ rew.nombre }}" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500" onerror="this.onerror=null;this.src='/static/img/LogoSiyash-01-t.png'">
+              {% else %}
+              <div class="text-3xl">🎁</div>
+              {% endif %}
+              <span class="absolute top-3 right-3 bg-brand-black text-brand-white text-[9px] uppercase tracking-widest px-2.5 py-1 font-semibold">
+                ✦ {{ "{:,}".format(rew.puntos_requeridos).replace(',', '.') }} pts
+              </span>
+            </div>
+
+            <!-- Body info -->
+            <div class="p-5">
+              <h3 class="font-serif text-lg font-medium text-brand-black mb-1.5 leading-snug">{{ rew.nombre }}</h3>
+              <p class="text-xs text-brand-500 font-light leading-relaxed mb-4">{{ rew.descripcion }}</p>
+              {% if rew.stock <= 10 %}
+              <p class="text-[10px] text-amber-700 font-medium mb-3">Quedan pocas unidades ({{ rew.stock }} disponibles)</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Footer / Redemption Action -->
+          <div class="p-5 pt-0">
+            {% if rew.stock <= 0 %}
+              <button disabled class="w-full py-3 bg-brand-100 text-brand-400 text-[10px] font-semibold tracking-widest2 uppercase cursor-not-allowed">
+                Agotado Temporalmente
+              </button>
+            {% elif can_redeem %}
+              <form method="POST" action="/cliente/premios/canjear/{{ rew.id }}" onsubmit="return confirm('¿Confirmas el canje de {{ rew.puntos_requeridos }} puntos por {{ rew.nombre }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button
+                  type="submit"
+                  class="w-full py-3 bg-brand-black text-brand-white text-[10px] font-semibold tracking-widest2 uppercase hover:bg-brand-800 transition-colors shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <span>Canjear por {{ rew.puntos_requeridos }} pts</span>
+                </button>
+              </form>
+            {% else %}
+              <div class="space-y-1.5 pt-1">
+                <div class="flex justify-between items-center text-[10px] text-brand-500 font-light">
+                  <span>Progreso de puntos</span>
+                  <span class="font-medium text-brand-800">{{ customer.puntos }} / {{ rew.puntos_requeridos }} pts</span>
+                </div>
+                <div class="w-full bg-brand-100 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-brand-black h-full transition-all duration-500" style="width: {{ pct }}%"></div>
+                </div>
+                <p class="text-[10px] text-brand-400 text-center font-light pt-0.5">
+                  Te faltan <strong>{{ rew.puntos_requeridos - customer.puntos }} pts</strong> para desbloquearlo
+                </p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
     <!-- Card 3: Mis Compras (Pedidos) -->
     <div class="bg-brand-white border border-brand-100 p-8 shadow-[0_2px_20px_rgba(0,0,0,0.02)]">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-brand-100">
