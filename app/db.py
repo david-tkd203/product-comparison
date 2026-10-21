@@ -248,6 +248,38 @@ def init_db():
             INDEX idx_status (status)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
+    _add_column_if_missing(cur, 'orders', 'customer_id', 'INT DEFAULT NULL')
+    _add_column_if_missing(cur, 'orders', 'puntos_ganados', 'INT DEFAULT 0')
+    try:
+        cur.execute('ALTER TABLE orders ADD INDEX idx_orders_customer (customer_id)')
+    except Exception:
+        pass
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS customers (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(191) NOT NULL UNIQUE,
+            password_hash VARCHAR(255) NOT NULL,
+            nombre VARCHAR(120) NOT NULL,
+            telefono VARCHAR(50),
+            puntos INT NOT NULL DEFAULT 0,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_customer_email (email)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ''')
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS customer_points_history (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            customer_id INT NOT NULL,
+            puntos INT NOT NULL,
+            motivo VARCHAR(255) NOT NULL,
+            order_id INT DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_cph_customer (customer_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ''')
 
     try:
         cur.execute('''SELECT COUNT(*) FROM (

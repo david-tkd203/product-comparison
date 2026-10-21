@@ -1,0 +1,223 @@
+{% extends "tienda/base.html" %}
+
+{% block title %}Mi Cuenta · Siyash Perfumería{% endblock %}
+
+{% block content %}
+<div class="pt-24 sm:pt-32 pb-20 px-4 sm:px-6">
+  <div class="max-w-6xl mx-auto">
+
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-brand-100">
+      <div>
+        <span class="text-[10px] tracking-widest2 uppercase text-brand-400 block mb-1">Club Siyash · Panel Personal</span>
+        <h1 class="font-serif text-3xl sm:text-5xl text-brand-black tracking-tight mb-2">
+          Hola, {{ customer.nombre }}
+        </h1>
+        <div class="flex flex-wrap items-center gap-3 text-xs text-brand-500 font-light">
+          <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            {{ customer.email }}
+          </span>
+          {% if customer.telefono %}
+          <span>•</span>
+          <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+            {{ customer.telefono }}
+          </span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a
+          href="/perfumes"
+          class="px-5 py-2.5 bg-brand-black text-brand-white text-[10px] tracking-widest2 uppercase hover:bg-brand-800 transition-colors"
+        >
+          Explorar Catálogo
+        </a>
+        <a
+          href="{{ url_for('customer.logout') }}"
+          class="px-5 py-2.5 border border-brand-200 text-brand-600 text-[10px] tracking-widest2 uppercase hover:bg-brand-50 hover:text-brand-black transition-colors"
+        >
+          Cerrar Sesión
+        </a>
+      </div>
+    </div>
+
+    <!-- Grid: Points Summary & Points Details -->
+    <div class="grid lg:grid-cols-3 gap-8 my-10">
+
+      <!-- Card 1: Puntos Siyash (Balance) -->
+      <div class="bg-brand-black text-brand-white p-8 relative overflow-hidden flex flex-col justify-between shadow-sm">
+        <div class="relative z-10">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-[10px] tracking-widest2 uppercase text-brand-300">Puntos Siyash</span>
+            <span class="inline-block px-2.5 py-0.5 text-[9px] uppercase tracking-widest bg-brand-800 text-brand-100 rounded">
+              Miembro Activo
+            </span>
+          </div>
+          <div class="my-6">
+            <span class="font-serif text-5xl sm:text-6xl font-light text-brand-white block tracking-tight">
+              {{ customer.puntos }}
+            </span>
+            <span class="text-xs uppercase tracking-widest text-brand-300 block mt-1">Puntos acumulados</span>
+          </div>
+        </div>
+
+        <div class="relative z-10 pt-6 border-t border-brand-800 text-xs text-brand-300 space-y-2">
+          <p class="flex items-center gap-2">
+            <span class="text-brand-white">✦</span> Acumulas <strong>1 punto por cada $100 CLP</strong> gastados.
+          </p>
+          <p class="flex items-center gap-2">
+            <span class="text-brand-white">✦</span> Puntos canjeables por descuentos y regalos exclusivos.
+          </p>
+        </div>
+
+        <!-- Decorative background subtle glow -->
+        <div class="absolute -right-8 -bottom-8 w-40 h-40 bg-brand-800/40 rounded-full blur-2xl pointer-events-none"></div>
+      </div>
+
+      <!-- Card 2: Historial de Puntos -->
+      <div class="lg:col-span-2 bg-brand-white border border-brand-100 p-8 shadow-[0_2px_20px_rgba(0,0,0,0.02)] flex flex-col">
+        <div class="flex items-center justify-between mb-6 pb-4 border-b border-brand-100">
+          <div>
+            <h3 class="font-serif text-2xl text-brand-black">Historial de Puntos</h3>
+            <p class="text-xs text-brand-400 font-light mt-0.5">Movimientos de tus puntos acumulados y bonificaciones</p>
+          </div>
+          <span class="text-xs text-brand-500 font-medium">{{ points_history|length }} movimiento{{ 's' if points_history|length != 1 else '' }}</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto max-h-[260px] pr-2 space-y-3">
+          {% if points_history %}
+            {% for item in points_history %}
+            <div class="flex items-center justify-between p-3.5 bg-brand-50/70 border border-brand-100 hover:border-brand-200 transition-colors">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-brand-white border border-brand-200 flex items-center justify-center text-xs font-semibold text-brand-black">
+                  {% if item.puntos > 0 %}+{% endif %}
+                </div>
+                <div>
+                  <p class="text-xs font-medium text-brand-900">
+                    {{ item.motivo }}
+                    {% if item.order_id %}
+                      <span class="text-brand-400 text-[11px] font-normal">(Pedido #{{ item.order_id }})</span>
+                    {% endif %}
+                  </p>
+                  <p class="text-[10px] text-brand-400">
+                    {{ item.created_at.strftime('%d/%m/%Y · %H:%M') if item.created_at else '' }}
+                  </p>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-xs font-semibold tracking-wider text-brand-black">
+                  {% if item.puntos > 0 %}+{% endif %}{{ item.puntos }} pts
+                </span>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="py-12 text-center">
+              <p class="text-xs text-brand-400">Aún no tienes movimientos de puntos registrados.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Mis Compras (Pedidos) -->
+    <div class="bg-brand-white border border-brand-100 p-8 shadow-[0_2px_20px_rgba(0,0,0,0.02)]">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-brand-100">
+        <div>
+          <h2 class="font-serif text-2xl sm:text-3xl text-brand-black">Mis Compras</h2>
+          <p class="text-xs text-brand-400 font-light mt-0.5">Historial completo de tus pedidos realizados en Siyash</p>
+        </div>
+        {% if orders %}
+        <span class="text-xs text-brand-500 font-medium">{{ orders|length }} pedido{{ 's' if orders|length != 1 else '' }} registrado{{ 's' if orders|length != 1 else '' }}</span>
+        {% endif %}
+      </div>
+
+      {% if orders %}
+        <div class="space-y-6">
+          {% for order in orders %}
+          <div class="border border-brand-200 p-6 bg-brand-50/30">
+            <!-- Order Header -->
+            <div class="flex flex-wrap items-center justify-between gap-4 pb-4 mb-4 border-b border-brand-100">
+              <div class="flex items-center gap-4">
+                <span class="font-serif text-xl font-medium text-brand-black">Pedido #{{ order['id'] }}</span>
+                <span class="text-xs text-brand-400">
+                  {{ order['created_at'].strftime('%d/%m/%Y · %H:%M') if order['created_at'] else '' }}
+                </span>
+              </div>
+              <div class="flex items-center gap-3">
+                {% if order['puntos_ganados'] and order['puntos_ganados'] > 0 %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] uppercase tracking-wider bg-brand-white border border-brand-200 text-brand-800">
+                  <span>✦</span> +{{ order['puntos_ganados'] }} pts ganados
+                </span>
+                {% endif %}
+                <span class="inline-block px-3 py-1 text-[10px] uppercase tracking-widest2 font-medium {{ 'bg-brand-black text-brand-white' if order['status'] == 'entregado' else 'bg-brand-100 text-brand-800' }}">
+                  {{ order['status']|capitalize }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Order Items List -->
+            <div class="space-y-3 mb-5">
+              {% for item in order['items'] %}
+              <div class="flex items-center justify-between text-xs py-1.5 border-b border-brand-100/60 last:border-b-0">
+                <div class="flex items-center gap-3">
+                  <span class="w-6 h-6 flex items-center justify-center bg-brand-100 text-brand-800 text-[11px] font-semibold">
+                    {{ item.qty or 1 }}x
+                  </span>
+                  <div>
+                    <span class="font-medium text-brand-900">{{ item.nombre or item.sku }}</span>
+                    {% if item.linea %}
+                    <span class="text-brand-400 text-[11px] block sm:inline sm:ml-1">· {{ item.linea }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="text-right font-medium text-brand-800">
+                  ${{ '{:,}'.format(item.precio * (item.qty or 1)).replace(',', '.') }}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+
+            <!-- Order Total & Coordination Footer -->
+            <div class="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-brand-100">
+              <div class="text-xs text-brand-400">
+                Destinatario: <span class="text-brand-700 font-medium">{{ order['nombre'] }}</span> ({{ order['telefono'] }})
+              </div>
+              <div class="text-right">
+                <span class="text-xs text-brand-400 mr-2 uppercase tracking-wider">Total:</span>
+                <span class="font-serif text-2xl font-bold text-brand-black">
+                  ${{ '{:,}'.format(order['total']).replace(',', '.') }} CLP
+                </span>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-16 px-4 bg-brand-50/50 border border-brand-100">
+          <div class="w-16 h-16 mx-auto mb-4 bg-brand-white rounded-full border border-brand-200 flex items-center justify-center text-brand-400">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+            </svg>
+          </div>
+          <h3 class="font-serif text-2xl text-brand-black mb-2">Aún no tienes compras realizadas</h3>
+          <p class="text-xs sm:text-sm text-brand-500 max-w-md mx-auto mb-6 font-light leading-relaxed">
+            Explora nuestro catálogo de perfumes originales de diseñador, árabes y de nicho para comenzar a sumar puntos Siyash.
+          </p>
+          <a
+            href="/perfumes"
+            class="inline-block px-8 py-3.5 bg-brand-black text-brand-white text-xs font-semibold tracking-widest2 uppercase hover:bg-brand-800 transition-colors shadow-sm"
+          >
+            Ver Perfumes Disponibles
+          </a>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

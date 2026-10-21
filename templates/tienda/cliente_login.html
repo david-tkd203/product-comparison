@@ -1,0 +1,87 @@
+{% extends "tienda/base.html" %}
+
+{% block title %}Iniciar Sesión · Siyash Perfumería{% endblock %}
+
+{% block content %}
+<div class="pt-24 sm:pt-32 pb-20 px-4 sm:px-6">
+  <div class="max-w-md mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-10">
+      <span class="text-[10px] tracking-widest2 uppercase text-brand-400 block mb-2">Club Siyash</span>
+      <h1 class="font-serif text-3xl sm:text-4xl text-brand-black tracking-tight mb-3">Acceso Clientes</h1>
+      <p class="text-xs sm:text-sm text-brand-500 font-light leading-relaxed">
+        Ingresa para revisar tu saldo de puntos, beneficios y el estado de tus compras.
+      </p>
+    </div>
+
+    <!-- Login Card -->
+    <div class="bg-brand-white border border-brand-100 p-8 sm:p-10 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
+      <form method="POST" action="{{ url_for('customer.login', next=next_url) }}" class="space-y-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div>
+          <label for="email" class="block text-[10px] tracking-widest uppercase text-brand-600 mb-2 font-medium">Correo Electrónico</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            autocomplete="email"
+            value="{{ email or '' }}"
+            placeholder="ejemplo@correo.cl"
+            class="w-full px-4 py-3 bg-brand-50/50 border border-brand-200 text-sm text-brand-900 placeholder-brand-300 focus:outline-none focus:border-brand-black focus:bg-brand-white transition-all duration-200"
+          >
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label for="password" class="block text-[10px] tracking-widest uppercase text-brand-600 font-medium">Contraseña</label>
+          </div>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            autocomplete="current-password"
+            placeholder="••••••••"
+            class="w-full px-4 py-3 bg-brand-50/50 border border-brand-200 text-sm text-brand-900 placeholder-brand-300 focus:outline-none focus:border-brand-black focus:bg-brand-white transition-all duration-200"
+          >
+        </div>
+
+        <button
+          type="submit"
+          class="w-full py-3.5 bg-brand-black text-brand-white text-xs font-medium tracking-widest2 uppercase hover:bg-brand-800 active:scale-[0.99] transition-all duration-300 flex items-center justify-center gap-2"
+        >
+          <span>Ingresar</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+          </svg>
+        </button>
+      </form>
+
+      <div class="mt-8 pt-6 border-t border-brand-100 text-center">
+        <p class="text-xs text-brand-500 mb-3">¿Aún no tienes una cuenta?</p>
+        <a
+          href="{{ url_for('customer.registro') }}"
+          class="inline-block w-full py-3 border border-brand-200 text-brand-black text-[11px] tracking-widest uppercase font-medium hover:bg-brand-50 hover:border-brand-300 transition-colors"
+        >
+          Crear cuenta (+100 puntos de regalo)
+        </a>
+      </div>
+    </div>
+
+    <!-- Small Trust Indicator -->
+    <div class="mt-8 flex items-center justify-center gap-6 text-[10px] tracking-wider uppercase text-brand-400">
+      <span class="flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        100% Originales
+      </span>
+      <span>•</span>
+      <span class="flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Puntos Siyash
+      </span>
+    </div>
+  </div>
+</div>
+{% endblock %}

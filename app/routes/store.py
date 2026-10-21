@@ -1,6 +1,6 @@
 import json
 import time
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, session
 from .. import csrf
 
 from ..db import get_db
@@ -374,9 +374,21 @@ def api_pedido():
         total = sum(i['precio'] * i['qty'] for i in final_items)
         items_json = json.dumps(final_items, ensure_ascii=False)
 
-        cur.execute('''INSERT INTO orders (link_token, nombre, telefono, items_json, total, status)
-                       VALUES (%s, %s, %s, %s, %s, 'nuevo')''',
-                    ['WEB', nombre, telefono, items_json, total])
+        customer_id = session.get('customer_id')
+        if customer_id:
+            puntos_ganados = int(total // 100)
+            cur.execute('''INSERT INTO orders (link_token, customer_id, nombre, telefono, items_json, total, puntos_ganados, status)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, 'nuevo')''',
+                        ['WEB', customer_id, nombre, telefono, items_json, total, puntos_ganados])
+            order_id = cur.lastrowid
+            cur.execute('UPDATE customers SET puntos = puntos + %s WHERE id = %s', [puntos_ganados, customer_id])
+            cur.execute('''INSERT INTO customer_points_history (customer_id, puntos, motivo, order_id)
+                           VALUES (%s, %s, %s, %s)''',
+                        [customer_id, puntos_ganados, 'Compra de perfumes', order_id])
+        else:
+            cur.execute('''INSERT INTO orders (link_token, customer_id, nombre, telefono, items_json, total, puntos_ganados, status)
+                           VALUES (%s, NULL, %s, %s, %s, %s, 0, 'nuevo')''',
+                        ['WEB', nombre, telefono, items_json, total])
         
         for i in final_items:
             cur.execute('UPDATE products SET stock = stock - %s WHERE sku = %s', [i['qty'], i['sku']])

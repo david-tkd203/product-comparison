@@ -219,6 +219,19 @@
       <button onclick="openSearch()" class="text-brand-200 hover:text-white transition-colors" aria-label="Buscar">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-5.2-5.2m2.2-5.3a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z"/></svg>
       </button>
+
+      {% if session.get('customer_id') %}
+      <a href="/cliente/cuenta" class="flex items-center gap-1.5 text-brand-200 hover:text-white transition-colors text-xs tracking-wider" aria-label="Mi Cuenta">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <span class="hidden sm:inline font-medium text-[11px]">{{ session['customer_nombre'].split()[0] }}</span>
+      </a>
+      {% else %}
+      <a href="/cliente/login" class="flex items-center gap-1.5 text-brand-200 hover:text-white transition-colors text-xs tracking-wider" aria-label="Iniciar Sesión">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <span class="hidden sm:inline font-medium text-[11px]">Mi cuenta</span>
+      </a>
+      {% endif %}
+
       <button onclick="openCart()" class="relative text-brand-200 hover:text-white transition-colors" aria-label="Carrito">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
         <span id="cart-badge" class="absolute -top-1.5 -right-2 bg-brand-white text-brand-black text-[9px] font-semibold w-4 h-4 rounded-full items-center justify-center hidden">0</span>
@@ -235,6 +248,22 @@
       <a href="/mujer" class="text-xs tracking-widest2 uppercase text-brand-200">Para Ella</a>
       <a href="/hombre" class="text-xs tracking-widest2 uppercase text-brand-200">Para Él</a>
       <a href="/perfumes" class="text-xs tracking-widest2 uppercase text-brand-200">Todos los perfumes</a>
+      <div class="pt-3 border-t border-brand-800/80 flex flex-col gap-2">
+        {% if session.get('customer_id') %}
+        <a href="/cliente/cuenta" class="flex items-center gap-2 text-xs tracking-widest2 uppercase text-brand-white font-medium py-1">
+          <svg class="w-4 h-4 text-brand-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          Mi Cuenta ({{ session['customer_nombre'].split()[0] }})
+        </a>
+        <a href="/cliente/logout" class="text-[10px] tracking-widest uppercase text-brand-400 py-1 hover:text-white transition-colors">
+          Cerrar Sesión
+        </a>
+        {% else %}
+        <a href="/cliente/login" class="flex items-center gap-2 text-xs tracking-widest2 uppercase text-brand-white font-medium py-1">
+          <svg class="w-4 h-4 text-brand-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          Mi cuenta / Iniciar Sesión
+        </a>
+        {% endif %}
+      </div>
     </div>
   </div>
 </header>
@@ -270,6 +299,7 @@
     <div>
       <h4 class="text-[10px] tracking-widest2 uppercase text-brand-500 mb-4">Siyash</h4>
       <div class="flex flex-col gap-2.5">
+        <a href="/cliente/cuenta" class="text-sm text-brand-200 hover:text-white transition-colors">Mi Cuenta (Club Siyash)</a>
         <span class="text-sm text-brand-200">Pedidos por WhatsApp y teléfono</span>
         <span class="text-sm text-brand-200">Envíos a todo Chile</span>
         <a href="/admin" class="text-[11px] text-brand-600 hover:text-brand-300 transition-colors uppercase tracking-widest mt-2">Acceso administración</a>

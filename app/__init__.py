@@ -92,9 +92,11 @@ def create_app():
     from .routes.store import store_bp
     from .routes.admin import admin_bp
     from .routes.sync import sync_bp
+    from .routes.customer import customer_bp
     
     app.register_blueprint(store_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(sync_bp)
+    app.register_blueprint(customer_bp)
     
     return app

@@ -1,0 +1,116 @@
+{% extends "tienda/base.html" %}
+
+{% block title %}Crear Cuenta · Siyash Perfumería{% endblock %}
+
+{% block content %}
+<div class="pt-24 sm:pt-32 pb-20 px-4 sm:px-6">
+  <div class="max-w-lg mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <span class="text-[10px] tracking-widest2 uppercase text-brand-400 block mb-2">Club Siyash</span>
+      <h1 class="font-serif text-3xl sm:text-4xl text-brand-black tracking-tight mb-3">Únete a Siyash</h1>
+      <p class="text-xs sm:text-sm text-brand-500 font-light leading-relaxed">
+        Forma parte de nuestra comunidad selecta y disfruta de beneficios exclusivos en cada fragancia.
+      </p>
+    </div>
+
+    <!-- Welcome Bonus Banner -->
+    <div class="mb-8 p-4 sm:p-5 bg-brand-50 border border-brand-200 flex items-center gap-4">
+      <div class="w-12 h-12 bg-brand-black text-brand-white flex items-center justify-center shrink-0 rounded-full font-serif text-lg font-semibold">
+        +100
+      </div>
+      <div>
+        <h4 class="text-xs font-semibold uppercase tracking-wider text-brand-black">Bono de Bienvenida Inmediato</h4>
+        <p class="text-xs text-brand-600 mt-0.5 font-light">
+          Crea tu cuenta hoy y recibe <strong>100 puntos Siyash</strong> automáticamente para tus próximas compras.
+        </p>
+      </div>
+    </div>
+
+    <!-- Register Card -->
+    <div class="bg-brand-white border border-brand-100 p-8 sm:p-10 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
+      <form method="POST" action="{{ url_for('customer.registro') }}" class="space-y-5">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div>
+          <label for="nombre" class="block text-[10px] tracking-widest uppercase text-brand-600 mb-2 font-medium">Nombre y Apellido *</label>
+          <input
+            type="text"
+            id="nombre"
+            name="nombre"
+            required
+            autocomplete="name"
+            value="{{ nombre or '' }}"
+            placeholder="Ej: Constanza Valenzuela"
+            class="w-full px-4 py-3 bg-brand-50/50 border border-brand-200 text-sm text-brand-900 placeholder-brand-300 focus:outline-none focus:border-brand-black focus:bg-brand-white transition-all duration-200"
+          >
+        </div>
+
+        <div>
+          <label for="email" class="block text-[10px] tracking-widest uppercase text-brand-600 mb-2 font-medium">Correo Electrónico *</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            autocomplete="email"
+            value="{{ email or '' }}"
+            placeholder="ejemplo@correo.cl"
+            class="w-full px-4 py-3 bg-brand-50/50 border border-brand-200 text-sm text-brand-900 placeholder-brand-300 focus:outline-none focus:border-brand-black focus:bg-brand-white transition-all duration-200"
+          >
+        </div>
+
+        <div>
+          <label for="telefono" class="block text-[10px] tracking-widest uppercase text-brand-600 mb-2 font-medium">Teléfono / WhatsApp</label>
+          <input
+            type="tel"
+            id="telefono"
+            name="telefono"
+            autocomplete="tel"
+            value="{{ telefono or '' }}"
+            placeholder="+56 9 1234 5678"
+            class="w-full px-4 py-3 bg-brand-50/50 border border-brand-200 text-sm text-brand-900 placeholder-brand-300 focus:outline-none focus:border-brand-black focus:bg-brand-white transition-all duration-200"
+          >
+          <p class="text-[10px] text-brand-400 mt-1">Lo usaremos para coordinar la entrega rápida de tus pedidos.</p>
+        </div>
+
+        <div>
+          <label for="password" class="block text-[10px] tracking-widest uppercase text-brand-600 mb-2 font-medium">Contraseña *</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            minlength="6"
+            autocomplete="new-password"
+            placeholder="Mínimo 6 caracteres"
+            class="w-full px-4 py-3 bg-brand-50/50 border border-brand-200 text-sm text-brand-900 placeholder-brand-300 focus:outline-none focus:border-brand-black focus:bg-brand-white transition-all duration-200"
+          >
+        </div>
+
+        <div class="pt-2">
+          <button
+            type="submit"
+            class="w-full py-3.5 bg-brand-black text-brand-white text-xs font-medium tracking-widest2 uppercase hover:bg-brand-800 active:scale-[0.99] transition-all duration-300 flex items-center justify-center gap-2"
+          >
+            <span>Crear cuenta y recibir 100 puntos</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+            </svg>
+          </button>
+        </div>
+      </form>
+
+      <div class="mt-8 pt-6 border-t border-brand-100 text-center">
+        <p class="text-xs text-brand-500 mb-2">¿Ya estás registrado en Siyash?</p>
+        <a
+          href="{{ url_for('customer.login') }}"
+          class="text-xs font-semibold tracking-wider uppercase text-brand-black underline underline-offset-4 hover:text-brand-600 transition-colors"
+        >
+          Iniciar sesión aquí
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
