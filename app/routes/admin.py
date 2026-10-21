@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, make_response, session
@@ -797,3 +798,242 @@ def admin_cupon_eliminar(coupon_id):
         db.commit()
     flash('Cupón eliminado exitosamente.', 'success')
     return redirect(url_for('admin.admin_cupones'))
+
+
+
+@admin_bp.route('/admin/cyber')
+@require_login
+def admin_cyber():
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    # 1. Setting cyber_mode_active
+    cur.execute("SELECT setting_value FROM settings WHERE setting_key = 'cyber_mode_active'")
+    r_mode = cur.fetchone()
+    cyber_mode_active = r_mode['setting_value'] if r_mode and r_mode.get('setting_value') else '0'
+
+    # 2. Total views
+    cur.execute("SELECT COALESCE(SUM(views_count), 0) AS total_views FROM product_views")
+    r_views = cur.fetchone()
+    total_views = int(r_views['total_views']) if r_views else 0
+
+    # 3. Total products in promo cyber
+    cur.execute("SELECT COUNT(*) AS total_cyber FROM products WHERE en_cyber = 1")
+    r_cyber = cur.fetchone()
+    total_cyber_products = int(r_cyber['total_cyber']) if r_cyber else 0
+
+    # 4. Most viewed products (Top 50)
+    cur.execute('''
+        SELECT pv.sku, pv.views_count, pv.last_viewed,
+               p.nombre, p.linea, p.stock, p.precio_venta, p.imagen,
+               COALESCE(p.en_cyber, 0) AS en_cyber,
+               COALESCE(p.descuento_cyber_pct, 0) AS descuento_cyber_pct
+        FROM product_views pv
+        JOIN products p ON p.sku = pv.sku
+        ORDER BY pv.views_count DESC
+        LIMIT 50
+    ''')
+    most_viewed = cur.fetchall()
+    top_viewed = most_viewed[0] if most_viewed else None
+
+    # 5. Best sellers aggregated from orders
+    cur.execute("SELECT items_json FROM orders WHERE status != 'cancelado'")
+    orders_rows = cur.fetchall()
+    sales_by_sku = {}
+    for row in orders_rows:
+        raw = row.get('items_json')
+        if not raw:
+            continue
+        try:
+            items = json.loads(raw) if isinstance(raw, str) else raw
+            if isinstance(items, list):
+                for it in items:
+                    sku = it.get('sku')
+                    if not sku or str(sku).startswith('REW-'):
+                        continue
+                    qty = int(it.get('qty') or 1)
+                    precio = int(it.get('precio') or 0)
+                    if sku not in sales_by_sku:
+                        sales_by_sku[sku] = {
+                            'sku': sku,
+                            'nombre': it.get('nombre', sku),
+                            'linea': it.get('linea', ''),
+                            'units_sold': 0,
+                            'revenue': 0,
+                            'imagen': None,
+                            'stock': 0,
+                            'precio_venta': precio,
+                            'en_cyber': 0,
+                            'descuento_cyber_pct': 0
+                        }
+                    sales_by_sku[sku]['units_sold'] += qty
+                    sales_by_sku[sku]['revenue'] += (precio * qty)
+        except Exception:
+            pass
+
+    # Enrich sales with current product info
+    if sales_by_sku:
+        skus = list(sales_by_sku.keys())
+        format_strings = ','.join(['%s'] * len(skus))
+        cur.execute(f'''
+            SELECT sku, nombre, linea, imagen, stock, precio_venta,
+                   COALESCE(en_cyber, 0) AS en_cyber,
+                   COALESCE(descuento_cyber_pct, 0) AS descuento_cyber_pct
+            FROM products WHERE sku IN ({format_strings})
+        ''', skus)
+        p_map = {p['sku']: p for p in cur.fetchall()}
+        for sku, s in sales_by_sku.items():
+            if sku in p_map:
+                p_info = p_map[sku]
+                s['nombre'] = p_info['nombre'] or s['nombre']
+                s['linea'] = p_info['linea'] or s['linea']
+                s['imagen'] = p_info['imagen']
+                s['stock'] = p_info['stock']
+                s['precio_venta'] = p_info['precio_venta']
+                s['en_cyber'] = p_info['en_cyber']
+                s['descuento_cyber_pct'] = p_info['descuento_cyber_pct']
+
+    top_sellers = sorted(sales_by_sku.values(), key=lambda x: x['units_sold'], reverse=True)[:20]
+    top_seller = top_sellers[0] if top_sellers else None
+
+    # Available brands with active stock
+    cur.execute('''
+        SELECT DISTINCT linea, COUNT(*) AS cnt
+        FROM products 
+        WHERE linea IS NOT NULL AND linea != '' AND is_active = 1 AND stock > 0
+        GROUP BY linea 
+        ORDER BY linea ASC
+    ''')
+    brands = cur.fetchall()
+
+    return render_template(
+        'admin_cyber.html',
+        cyber_mode_active=cyber_mode_active,
+        total_views=total_views,
+        total_cyber_products=total_cyber_products,
+        top_viewed=top_viewed,
+        top_seller=top_seller,
+        most_viewed=most_viewed,
+        top_sellers=top_sellers,
+        brands=brands
+    )
+
+
+@admin_bp.route('/admin/cyber/toggle-modo', methods=['POST'])
+@require_login
+def admin_cyber_toggle_modo():
+    from .store import clear_store_cache, clear_settings_cache
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    cur.execute("SELECT setting_value FROM settings WHERE setting_key = 'cyber_mode_active'")
+    r = cur.fetchone()
+    current = r['setting_value'] if r and r.get('setting_value') else '0'
+    new_val = '0' if current == '1' else '1'
+    set_setting(db, 'cyber_mode_active', new_val)
+    clear_store_cache()
+    clear_settings_cache()
+    msg = '🔥 Modo Cyber GLOBAL ACTIVADO para toda la tienda.' if new_val == '1' else 'Modo Cyber GLOBAL Desactivado.'
+    flash(msg, 'success')
+    return redirect(url_for('admin.admin_cyber'))
+
+
+@admin_bp.route('/admin/cyber/aplicar-masivo', methods=['POST'])
+@require_login
+def admin_cyber_aplicar_masivo():
+    from .store import clear_store_cache
+    target = (request.form.get('target') or '').strip()
+    try:
+        descuento_pct = int(request.form.get('descuento_pct') or 15)
+    except (ValueError, TypeError):
+        descuento_pct = 15
+    descuento_pct = max(1, min(90, descuento_pct))
+
+    db = get_db()
+    cur = db.cursor()
+    updated_count = 0
+
+    if target == 'all':
+        cur.execute('''
+            UPDATE products 
+            SET en_cyber = 1, descuento_cyber_pct = %s 
+            WHERE stock > 0 AND is_active = 1
+        ''', [descuento_pct])
+        updated_count = cur.rowcount
+    elif target == 'top_views':
+        cur_d = db.cursor(dictionary=True)
+        cur_d.execute('''
+            SELECT pv.sku 
+            FROM product_views pv
+            JOIN products p ON p.sku = pv.sku
+            WHERE p.stock > 0 AND p.is_active = 1
+            ORDER BY pv.views_count DESC
+            LIMIT 20
+        ''')
+        skus = [r['sku'] for r in cur_d.fetchall()]
+        cur_d.close()
+        if skus:
+            fmt = ','.join(['%s'] * len(skus))
+            cur.execute(f'''
+                UPDATE products 
+                SET en_cyber = 1, descuento_cyber_pct = %s 
+                WHERE sku IN ({fmt})
+            ''', [descuento_pct] + skus)
+            updated_count = cur.rowcount
+    elif target.startswith('brand:'):
+        brand_name = target[6:]
+        cur.execute('''
+            UPDATE products 
+            SET en_cyber = 1, descuento_cyber_pct = %s 
+            WHERE linea = %s AND stock > 0 AND is_active = 1
+        ''', [descuento_pct, brand_name])
+        updated_count = cur.rowcount
+    else:
+        flash('Selección de objetivo no válida.', 'error')
+        return redirect(url_for('admin.admin_cyber'))
+
+    if hasattr(db, 'commit'):
+        db.commit()
+    clear_store_cache()
+    flash(f'¡Éxito! Se aplicó {descuento_pct}% OFF Cyber a {updated_count} producto(s).', 'success')
+    return redirect(url_for('admin.admin_cyber'))
+
+
+@admin_bp.route('/admin/cyber/producto/<path:sku>', methods=['POST'])
+@require_login
+def admin_cyber_producto_toggle(sku):
+    from .store import clear_store_cache
+    en_cyber = request.form.get('en_cyber', '0')
+    try:
+        descuento_pct = int(request.form.get('descuento_pct') or 15)
+    except (ValueError, TypeError):
+        descuento_pct = 15
+    descuento_pct = max(1, min(90, descuento_pct))
+
+    db = get_db()
+    cur = db.cursor()
+    if en_cyber == '1':
+        cur.execute('UPDATE products SET en_cyber = 1, descuento_cyber_pct = %s WHERE sku = %s', [descuento_pct, sku])
+        flash(f'Producto {sku} agregado a Cyber con {descuento_pct}% OFF.', 'success')
+    else:
+        cur.execute('UPDATE products SET en_cyber = 0, descuento_cyber_pct = 0 WHERE sku = %s', [sku])
+        flash(f'Producto {sku} retirado de la promoción Cyber.', 'success')
+    if hasattr(db, 'commit'):
+        db.commit()
+    clear_store_cache()
+    return redirect(url_for('admin.admin_cyber'))
+
+
+@admin_bp.route('/admin/cyber/limpiar-todo', methods=['POST'])
+@require_login
+def admin_cyber_limpiar_todo():
+    from .store import clear_store_cache, clear_settings_cache
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('UPDATE products SET en_cyber = 0, descuento_cyber_pct = 0')
+    set_setting(db, 'cyber_mode_active', '0')
+    if hasattr(db, 'commit'):
+        db.commit()
+    clear_store_cache()
+    clear_settings_cache()
+    flash('🚨 Campaña Cyber apagada: todos los productos volvieron a sus precios estándar.', 'success')
+    return redirect(url_for('admin.admin_cyber'))

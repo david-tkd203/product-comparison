@@ -81,8 +81,9 @@ def create_app():
         return "\n".join(xml), 200, {'Content-Type': 'application/xml'}
 
     # Context processors
-    from .routes.store import inject_nav_data
+    from .routes.store import inject_nav_data, inject_settings_data
     app.context_processor(inject_nav_data)
+    app.context_processor(inject_settings_data)
     
     @app.context_processor
     def inject_tunnel_url():

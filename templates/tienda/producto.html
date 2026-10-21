@@ -39,7 +39,15 @@
       </div>
 
       <div class="border-y border-brand-100 py-6 mb-8">
+        {% if p.get('en_cyber') and p.get('descuento_cyber_pct', 0) > 0 and p.get('precio_original') %}
+        <div class="flex items-baseline gap-4 flex-wrap">
+          <span class="text-xl sm:text-2xl text-brand-400 line-through font-serif">{{ precio_clp(p['precio_original']) }}</span>
+          <span class="font-serif text-4xl sm:text-5xl text-brand-black">{{ precio_clp(p['precio_venta']) }}</span>
+          <span class="bg-black text-amber-400 border border-amber-400/50 text-xs font-bold tracking-widest uppercase px-2.5 py-1 shadow-sm">CYBER -{{ p['descuento_cyber_pct'] }}%</span>
+        </div>
+        {% else %}
         <span class="font-serif text-4xl sm:text-5xl text-brand-black">{{ precio_clp(p['precio_venta']) }}</span>
+        {% endif %}
       </div>
 
       <!-- Notas olfativas -->

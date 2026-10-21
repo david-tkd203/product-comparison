@@ -48,7 +48,8 @@ def _get_margen(db):
 
 def _tienda_sql():
     return '''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato, p.aroma_family, p.stock,
-                     p.precio_mayorista, p.precio_venta, p.imagen, p.aromas
+                     p.precio_mayorista, p.precio_venta, p.imagen, p.aromas,
+                     p.en_cyber, p.descuento_cyber_pct
               FROM products p
               WHERE p.is_active = 1 AND p.stock > 0'''
 
@@ -66,10 +67,47 @@ def _enrich_products(products):
         if not familias and p.get('aroma_family'):
             familias = [p['aroma_family']]
         p['familias'] = familias
+
+        # Cyber Day pricing calculation
+        if p.get('en_cyber') == 1 and (p.get('descuento_cyber_pct') or 0) > 0:
+            precio_orig = p.get('precio_venta') or 0
+            pct = int(p.get('descuento_cyber_pct') or 0)
+            precio_cyber = int(round((precio_orig * (100 - pct)) / 1000) * 1000)
+            p['precio_original'] = precio_orig
+            p['precio_venta'] = precio_cyber
     return products
 
 
 _HOME_CACHE = {'time': 0, 'html': None}
+_CATALOGO_CACHE = {}
+_SETTINGS_CACHE = None
+_SETTINGS_CACHE_TIME = 0
+
+def clear_store_cache():
+    global _HOME_CACHE, _CATALOGO_CACHE
+    _HOME_CACHE = {'time': 0, 'html': None}
+    _CATALOGO_CACHE = {}
+
+def clear_settings_cache():
+    global _SETTINGS_CACHE, _SETTINGS_CACHE_TIME
+    _SETTINGS_CACHE = None
+    _SETTINGS_CACHE_TIME = 0
+
+def inject_settings_data():
+    global _SETTINGS_CACHE, _SETTINGS_CACHE_TIME
+    now = time.time()
+    if _SETTINGS_CACHE is not None and (now - _SETTINGS_CACHE_TIME) < 15:
+        return dict(settings=_SETTINGS_CACHE)
+    try:
+        db = get_db()
+        cur = db.cursor(dictionary=True)
+        cur.execute("SELECT setting_key, setting_value FROM settings")
+        rows = cur.fetchall()
+        _SETTINGS_CACHE = {r['setting_key']: r['setting_value'] for r in rows}
+        _SETTINGS_CACHE_TIME = now
+        return dict(settings=_SETTINGS_CACHE)
+    except Exception:
+        return dict(settings=_SETTINGS_CACHE or {})
 
 @store_bp.route('/')
 def tienda_home():
@@ -272,13 +310,24 @@ def tienda_producto(sku):
     cur = db.cursor(dictionary=True)
     # Search for product in catalog (case-insensitive)
     cur.execute('''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato, p.aroma_family, p.stock,
-                          p.precio_mayorista, p.precio_venta, p.imagen, p.aromas, p.is_active
+                          p.precio_mayorista, p.precio_venta, p.imagen, p.aromas, p.is_active,
+                          p.en_cyber, p.descuento_cyber_pct
                    FROM products p
                    WHERE LOWER(p.sku) = LOWER(%s)
                    LIMIT 1''', [clean_sku])
     product = cur.fetchone()
     if not product:
         return render_template('tienda/404.html'), 404
+
+    # Tracking Views on Storefront
+    try:
+        cur.execute('''INSERT INTO product_views (sku, views_count)
+                       VALUES (%s, 1)
+                       ON DUPLICATE KEY UPDATE views_count = views_count + 1''',
+                    [product['sku']])
+    except Exception:
+        pass
+
     _enrich_products([product])
 
     cur.execute(_tienda_sql() + ' AND p.sku != %s AND p.linea = %s '
@@ -310,7 +359,7 @@ def api_search():
     cur = db.cursor(dictionary=True)
     
     sql = """
-        SELECT sku, nombre, linea, precio_venta, imagen 
+        SELECT sku, nombre, linea, precio_venta, imagen, en_cyber, descuento_cyber_pct 
         FROM products 
         WHERE is_active = 1 AND stock > 0 
         AND (nombre LIKE %s OR linea LIKE %s OR sku LIKE %s)
@@ -320,6 +369,11 @@ def api_search():
     like = f'%{q}%'
     cur.execute(sql, [like, like, like])
     results = cur.fetchall()
+    for r in results:
+        if r.get('en_cyber') == 1 and (r.get('descuento_cyber_pct') or 0) > 0:
+            pct = int(r['descuento_cyber_pct'])
+            r['precio_original'] = r['precio_venta']
+            r['precio_venta'] = int(round((r['precio_venta'] * (100 - pct)) / 1000) * 1000)
     
     return jsonify(results)
 
@@ -433,7 +487,7 @@ def api_pedido():
                 qty = 1
             if not sku:
                 continue
-            cur.execute('''SELECT sku, nombre, linea, stock, precio_venta
+            cur.execute('''SELECT sku, nombre, linea, stock, precio_venta, en_cyber, descuento_cyber_pct
                            FROM products
                            WHERE sku = %s AND is_active = 1 AND stock > 0''',
                         [sku])
@@ -444,8 +498,12 @@ def api_pedido():
             if int(row['stock']) < qty:
                 errors.append(f"{row['nombre']}: quedan {row['stock']} unidades")
                 continue
+            unit_price = int(row['precio_venta'])
+            if row.get('en_cyber') == 1 and (row.get('descuento_cyber_pct') or 0) > 0:
+                pct = int(row['descuento_cyber_pct'])
+                unit_price = int(round((unit_price * (100 - pct)) / 1000) * 1000)
             final_items.append({'sku': row['sku'], 'nombre': row['nombre'],
-                                'linea': row['linea'], 'precio': int(row['precio_venta']),
+                                'linea': row['linea'], 'precio': unit_price,
                                 'qty': qty})
 
         if errors:

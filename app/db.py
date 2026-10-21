@@ -141,6 +141,12 @@ def init_db():
     _add_column_if_missing(cur, 'products', 'precio_mayorista', 'INT')
     _add_column_if_missing(cur, 'products', 'precio_venta', 'INT')
     _add_column_if_missing(cur, 'products', 'shopify_variant_id', 'VARCHAR(50) DEFAULT NULL')
+    _add_column_if_missing(cur, 'products', 'en_cyber', 'TINYINT(1) NOT NULL DEFAULT 0')
+    _add_column_if_missing(cur, 'products', 'descuento_cyber_pct', 'INT NOT NULL DEFAULT 0')
+    try:
+        cur.execute('ALTER TABLE products ADD INDEX idx_cyber (en_cyber)')
+    except Exception:
+        pass
     try:
         cur.execute('ALTER TABLE products ADD INDEX idx_active_stock (is_active, stock)')
     except Exception:
@@ -421,11 +427,27 @@ def init_db():
                     [generate_password_hash(admin_pass), 'admin'])
 
     cur.execute('''
+        CREATE TABLE IF NOT EXISTS product_views (
+            sku VARCHAR(50) PRIMARY KEY,
+            views_count INT NOT NULL DEFAULT 1,
+            last_viewed TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_pv_count (views_count DESC)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ''')
+
+    cur.execute('''
         CREATE TABLE IF NOT EXISTS settings (
             setting_key VARCHAR(50) PRIMARY KEY,
             setting_value TEXT
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
+
+    try:
+        cur.execute("SELECT COUNT(*) FROM settings WHERE setting_key = 'cyber_mode_active'")
+        if cur.fetchone()[0] == 0:
+            cur.execute("INSERT INTO settings (setting_key, setting_value) VALUES ('cyber_mode_active', '0')")
+    except Exception:
+        pass
 
     cur.close()
     rebuild_storefront_cache(db)

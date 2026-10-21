@@ -15,12 +15,22 @@
       {% if p.get('familias') %}
       <span class="absolute top-3 left-3 bg-brand-white/90 text-brand-700 text-[8px] tracking-widest uppercase px-2 py-1">{{ p['familias'][0] }}</span>
       {% endif %}
+      {% if p.get('en_cyber') and p.get('descuento_cyber_pct', 0) > 0 %}
+      <span class="absolute top-3 right-3 bg-black text-amber-400 border border-amber-400/50 text-[9px] font-bold tracking-widest uppercase px-2 py-1 shadow-sm">CYBER -{{ p['descuento_cyber_pct'] }}%</span>
+      {% endif %}
     </div>
     <p class="text-[9px] tracking-widest2 uppercase text-brand-400 mb-1.5">{{ p['linea'] }}</p>
     <h3 class="font-serif text-lg leading-tight text-brand-black mb-3 line-clamp-2 group-hover:underline underline-offset-4 decoration-brand-200">{{ p['nombre'] }}</h3>
   </a>
   <div class="flex items-center justify-between">
-    <span class="text-base font-medium text-brand-900">{{ precio_clp(p['precio_venta']) }}</span>
+    <div class="flex flex-col">
+      {% if p.get('en_cyber') and p.get('descuento_cyber_pct', 0) > 0 and p.get('precio_original') %}
+        <span class="text-xs text-brand-400 line-through">{{ precio_clp(p['precio_original']) }}</span>
+        <span class="text-base font-semibold text-brand-900">{{ precio_clp(p['precio_venta']) }}</span>
+      {% else %}
+        <span class="text-base font-medium text-brand-900">{{ precio_clp(p['precio_venta']) }}</span>
+      {% endif %}
+    </div>
     <button onclick="event.preventDefault(); event.stopPropagation(); addToCart('{{ p['sku'] }}', '{{ p['nombre'] | replace("'", "\\'") }}', {{ p['precio_venta']|int }}, '{{ p['linea'] | replace("'", "\\'") }}', '{{ p['imagen'] or "" }}')" class="w-10 h-10 border border-brand-900 text-brand-900 flex items-center justify-center hover:bg-brand-black hover:text-brand-white transition-colors" aria-label="Agregar {{ p['nombre'] }} al carrito">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v12m6-6H6"/></svg>
     </button>

@@ -1,0 +1,398 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <div class="flex items-center gap-3">
+      <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Analítica & Gestor de Campañas Cyber</h1>
+      {% if cyber_mode_active == '1' %}
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+        <span class="w-2 h-2 rounded-full bg-amber-500"></span> 🔥 CYBER ACTIVO EN TIENDA
+      </span>
+      {% else %}
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+        <span class="w-2 h-2 rounded-full bg-slate-400"></span> Modo Cyber Inactivo
+      </span>
+      {% endif %}
+    </div>
+    <p class="text-sm text-slate-500 mt-1">Ranking de interés de clientes, más vendidos y panel de orquestación de ofertas masivas para Cyber Day.</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <form method="POST" action="/admin/cyber/toggle-modo">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      {% if cyber_mode_active == '1' %}
+      <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-slate-700 transition-colors shadow-sm flex items-center gap-2">
+        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+        Desactivar Modo Cyber Global
+      </button>
+      {% else %}
+      <button type="submit" class="px-4 py-2 bg-amber-500 text-slate-950 rounded-lg text-xs sm:text-sm font-bold hover:bg-amber-400 transition-colors shadow-sm flex items-center gap-2">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.527.82-1.173 1.55-1.938 2.189a5.976 5.976 0 00-.51.482 1 1 0 00.082 1.485c.34.286.72.52 1.13.696.535.23.856.772.808 1.353a4.015 4.015 0 01-.64 1.83 5.485 5.485 0 01-1.396 1.517 1 1 0 00-.332 1.258c.28.513.71.93 1.242 1.21.56.294.887.89.814 1.515a4.032 4.032 0 01-.61 1.748 5.485 5.485 0 01-1.385 1.528 1 1 0 00-.324 1.268c.29.516.73.93 1.275 1.201a1 1 0 001.373-.55c.383-.873.916-1.66 1.573-2.327a11.96 11.96 0 002.328-3.414c.64-1.46.963-3.03.957-4.62a11.932 11.932 0 00-.97-4.708 11.896 11.896 0 00-2.404-3.52zM6.5 9a1 1 0 00-.8 1.6A3.99 3.99 0 007 14c0 .35.05.69.14 1.01a1 1 0 101.92-.55A1.99 1.99 0 019 14a1.99 1.99 0 01-.7-1.53A2.002 2.002 0 018 11a1 1 0 00-1.5-2z" clip-rule="evenodd"/></svg>
+        🔥 Activar Modo Cyber Global
+      </button>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<!-- KPI Summary Cards -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+  <!-- Card 1: Top Visto -->
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+    <div>
+      <div class="flex items-center justify-between mb-1">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Top Más Visto</p>
+        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700">👁️ Interés</span>
+      </div>
+      {% if top_viewed %}
+      <p class="text-sm font-bold text-slate-900 line-clamp-1 mt-1">{{ top_viewed.nombre }}</p>
+      <p class="text-xs text-slate-500">{{ top_viewed.linea }} · <span class="font-mono text-[11px]">{{ top_viewed.sku }}</span></p>
+      {% else %}
+      <p class="text-sm text-slate-400 mt-1 italic">Sin vistas aún</p>
+      {% endif %}
+    </div>
+    <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+      <span class="text-xs text-slate-500">Vistas registradas:</span>
+      <span class="text-base font-bold text-slate-900">{{ top_viewed.views_count if top_viewed else 0 }}</span>
+    </div>
+  </div>
+
+  <!-- Card 2: Top Vendido -->
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+    <div>
+      <div class="flex items-center justify-between mb-1">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Top Más Vendido</p>
+        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">🏆 Ventas</span>
+      </div>
+      {% if top_seller %}
+      <p class="text-sm font-bold text-slate-900 line-clamp-1 mt-1">{{ top_seller.nombre }}</p>
+      <p class="text-xs text-slate-500">{{ top_seller.linea }} · <span class="font-mono text-[11px]">{{ top_seller.sku }}</span></p>
+      {% else %}
+      <p class="text-sm text-slate-400 mt-1 italic">Sin órdenes aún</p>
+      {% endif %}
+    </div>
+    <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+      <span class="text-xs text-slate-500">Uds. vendidas:</span>
+      <span class="text-base font-bold text-emerald-700">{{ top_seller.units_sold if top_seller else 0 }} uds</span>
+    </div>
+  </div>
+
+  <!-- Card 3: Total Vistas -->
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+    <div>
+      <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Vistas Registradas</p>
+      <p class="text-2xl font-bold text-slate-900 mt-2">{{ "{:,}".format(total_views).replace(',', '.') }}</p>
+      <p class="text-[11px] text-slate-400 mt-0.5">En fichas de producto tienda</p>
+    </div>
+    <div class="mt-3 pt-3 border-t border-slate-100 text-[11px] text-indigo-600 font-medium">
+      Monitoreo en tiempo real
+    </div>
+  </div>
+
+  <!-- Card 4: Productos en Cyber -->
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+    <div>
+      <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Productos en Promo Cyber</p>
+      <p class="text-2xl font-bold text-amber-600 mt-2">{{ total_cyber_products }}</p>
+      <p class="text-[11px] text-slate-400 mt-0.5">Fragancias con descuento activo</p>
+    </div>
+    <div class="mt-3 pt-3 border-t border-slate-100 text-[11px] font-medium {{ 'text-emerald-600' if total_cyber_products > 0 else 'text-slate-400' }}">
+      {{ 'Descuentos listos para clientes' if total_cyber_products > 0 else 'Sin productos en oferta' }}
+    </div>
+  </div>
+</div>
+
+<!-- Section 3: Herramienta de Campaña Cyber (Gestión Masiva de Ofertas) -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+  <div class="p-5 border-b border-slate-100 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="text-lg">⚡</span>
+        <h2 class="text-base font-bold text-white tracking-wide">Orquestador de Campaña Cyber Day</h2>
+      </div>
+      <p class="text-xs text-slate-300 mt-0.5">Aplica descuentos automáticos masivos por marca, segmento más visto o en todo el inventario con un solo clic.</p>
+    </div>
+    <div>
+      <!-- Botón de Emergencia -->
+      <form method="POST" action="/admin/cyber/limpiar-todo" onsubmit="return confirm('⚠️ ¿ESTÁS SEGURO?\n\nEsta acción removerá todos los descuentos Cyber del catálogo y apagará el modo Cyber en la tienda.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <button type="submit" class="px-3.5 py-2 bg-red-600/90 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          Limpiar y Apagar Todo el Cyber
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="p-5 bg-slate-50/50">
+    <form method="POST" action="/admin/cyber/aplicar-masivo" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+      <div class="md:col-span-6">
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+          1. Seleccionar Objetivo de la Campaña
+        </label>
+        <select name="target" required class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900">
+          <option value="" disabled selected>Selecciona a qué productos aplicar...</option>
+          <optgroup label="Segmentos Rápidos">
+            <option value="all">🌟 Todo el catálogo activo con stock disponible</option>
+            <option value="top_views">🔥 Top 20 productos con más visitas de la tienda</option>
+          </optgroup>
+          <optgroup label="Por Casa / Marca (con stock)">
+            {% for b in brands %}
+            <option value="brand:{{ b.linea }}">{{ b.linea }} ({{ b.cnt }} perfumes con stock)</option>
+            {% endfor %}
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="md:col-span-3">
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+          2. Porcentaje Cyber (% OFF)
+        </label>
+        <select name="descuento_pct" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900">
+          <option value="10">10% OFF</option>
+          <option value="15" selected>15% OFF (Recomendado)</option>
+          <option value="20">20% OFF</option>
+          <option value="25">25% OFF</option>
+          <option value="30">30% OFF</option>
+          <option value="35">35% OFF</option>
+          <option value="40">40% OFF</option>
+        </select>
+      </div>
+
+      <div class="md:col-span-3">
+        <button type="submit" class="w-full py-2 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm">
+          <span>🚀 Aplicar Descuentos</span>
+        </button>
+      </div>
+    </form>
+    <div class="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
+      <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <span>Los precios se redondean automáticamente a la centena más cercana. Los clientes verán la insignia de Cyber y el precio tachado.</span>
+    </div>
+  </div>
+</div>
+
+<!-- Section 1: Ranking de Más Vistos -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+  <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <div>
+      <h2 class="text-base font-semibold text-slate-900 flex items-center gap-2">
+        <span>👁️</span> Ranking de Productos Más Vistos (Top Interés)
+      </h2>
+      <p class="text-xs text-slate-500">Mide el interés real de los visitantes en la tienda para armar ofertas con alta probabilidad de compra.</p>
+    </div>
+    <span class="text-xs text-slate-500 font-medium">{{ most_viewed|length }} productos registrados</span>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm text-slate-600">
+      <thead class="bg-slate-50 text-[11px] font-medium uppercase tracking-wider text-slate-500 border-b border-slate-100">
+        <tr>
+          <th class="py-3 px-4">#</th>
+          <th class="py-3 px-4">Perfume</th>
+          <th class="py-3 px-4">Casa / Marca</th>
+          <th class="py-3 px-4 text-center">Stock</th>
+          <th class="py-3 px-4">Precio Venta</th>
+          <th class="py-3 px-4 text-center">Total Vistas</th>
+          <th class="py-3 px-4 text-center">Estado Cyber</th>
+          <th class="py-3 px-4 text-right">Acción Rápida</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% if most_viewed %}
+          {% for p in most_viewed %}
+          <tr class="hover:bg-slate-50/70 transition-colors">
+            <td class="py-3 px-4 text-xs font-bold text-slate-400">{{ loop.index }}</td>
+            <td class="py-3 px-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+                  {% if p.imagen %}
+                    <img src="{{ p.imagen }}" alt="{{ p.nombre }}" class="w-full h-full object-contain p-1">
+                  {% else %}
+                    <span class="text-[9px] text-slate-400 font-serif">Siyash</span>
+                  {% endif %}
+                </div>
+                <div>
+                  <a href="/producto/{{ p.sku }}" target="_blank" class="font-medium text-slate-900 hover:text-indigo-600 line-clamp-1 text-sm">
+                    {{ p.nombre }}
+                  </a>
+                  <span class="font-mono text-[10px] text-slate-400">{{ p.sku }}</span>
+                </div>
+              </div>
+            </td>
+            <td class="py-3 px-4 text-xs font-semibold text-slate-700">{{ p.linea }}</td>
+            <td class="py-3 px-4 text-center">
+              {% if p.stock and p.stock > 0 %}
+                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700">
+                  {{ p.stock }} uds
+                </span>
+              {% else %}
+                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-600">
+                  Agotado
+                </span>
+              {% endif %}
+            </td>
+            <td class="py-3 px-4 text-xs font-semibold text-slate-900">
+              ${{ "{:,}".format(p.precio_venta or 0).replace(',', '.') }}
+            </td>
+            <td class="py-3 px-4 text-center">
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800">
+                👁️ {{ "{:,}".format(p.views_count).replace(',', '.') }}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-center">
+              {% if p.en_cyber and p.descuento_cyber_pct > 0 %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                  -{{ p.descuento_cyber_pct }}% OFF
+                </span>
+              {% else %}
+                <span class="text-xs text-slate-400">Estándar</span>
+              {% endif %}
+            </td>
+            <td class="py-3 px-4 text-right">
+              <form method="POST" action="/admin/cyber/producto/{{ p.sku }}" class="inline-flex items-center gap-1.5">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                {% if p.en_cyber and p.descuento_cyber_pct > 0 %}
+                  <input type="hidden" name="en_cyber" value="0"/>
+                  <button type="submit" class="px-2.5 py-1 text-xs font-medium rounded border border-red-200 text-red-600 hover:bg-red-50 transition-colors">
+                    Quitar
+                  </button>
+                {% else %}
+                  <input type="hidden" name="en_cyber" value="1"/>
+                  <select name="descuento_pct" class="text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                    <option value="10">10%</option>
+                    <option value="15" selected>15%</option>
+                    <option value="20">20%</option>
+                    <option value="25">25%</option>
+                  </select>
+                  <button type="submit" class="px-2.5 py-1 text-xs font-medium rounded bg-slate-900 text-white hover:bg-slate-800 transition-colors">
+                    Activar
+                  </button>
+                {% endif %}
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" class="text-center py-10 text-slate-400 text-sm">
+              Aún no se registran visitas a fichas de productos. A medida que los clientes naveguen la tienda, aparecerán aquí.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 2: Ranking de Más Vendidos -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+  <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <div>
+      <h2 class="text-base font-semibold text-slate-900 flex items-center gap-2">
+        <span>🏆</span> Ranking de Más Vendidos (Top Ventas Históricas)
+      </h2>
+      <p class="text-xs text-slate-500">Basado en el historial de pedidos completados para identificar tus productos estrella.</p>
+    </div>
+    <span class="text-xs text-slate-500 font-medium">Top 20 Productos</span>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm text-slate-600">
+      <thead class="bg-slate-50 text-[11px] font-medium uppercase tracking-wider text-slate-500 border-b border-slate-100">
+        <tr>
+          <th class="py-3 px-4">#</th>
+          <th class="py-3 px-4">Perfume</th>
+          <th class="py-3 px-4">Marca</th>
+          <th class="py-3 px-4 text-center">Uds. Vendidas</th>
+          <th class="py-3 px-4">Ingresos Totales</th>
+          <th class="py-3 px-4 text-center">Stock Actual</th>
+          <th class="py-3 px-4 text-center">Estado Cyber</th>
+          <th class="py-3 px-4 text-right">Acción Rápida</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% if top_sellers %}
+          {% for s in top_sellers %}
+          <tr class="hover:bg-slate-50/70 transition-colors">
+            <td class="py-3 px-4 text-xs font-bold text-slate-400">{{ loop.index }}</td>
+            <td class="py-3 px-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+                  {% if s.imagen %}
+                    <img src="{{ s.imagen }}" alt="{{ s.nombre }}" class="w-full h-full object-contain p-1">
+                  {% else %}
+                    <span class="text-[9px] text-slate-400 font-serif">Siyash</span>
+                  {% endif %}
+                </div>
+                <div>
+                  <a href="/producto/{{ s.sku }}" target="_blank" class="font-medium text-slate-900 hover:text-indigo-600 line-clamp-1 text-sm">
+                    {{ s.nombre }}
+                  </a>
+                  <span class="font-mono text-[10px] text-slate-400">{{ s.sku }}</span>
+                </div>
+              </div>
+            </td>
+            <td class="py-3 px-4 text-xs font-semibold text-slate-700">{{ s.linea }}</td>
+            <td class="py-3 px-4 text-center">
+              <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-100">
+                {{ s.units_sold }} uds
+              </span>
+            </td>
+            <td class="py-3 px-4 text-xs font-bold text-slate-900">
+              ${{ "{:,}".format(s.revenue).replace(',', '.') }}
+            </td>
+            <td class="py-3 px-4 text-center">
+              {% if s.stock and s.stock > 0 %}
+                <span class="text-xs text-slate-800 font-medium">{{ s.stock }} uds</span>
+              {% else %}
+                <span class="text-xs text-red-600 font-medium">0 uds</span>
+              {% endif %}
+            </td>
+            <td class="py-3 px-4 text-center">
+              {% if s.en_cyber and s.descuento_cyber_pct > 0 %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                  -{{ s.descuento_cyber_pct }}% OFF
+                </span>
+              {% else %}
+                <span class="text-xs text-slate-400">Estándar</span>
+              {% endif %}
+            </td>
+            <td class="py-3 px-4 text-right">
+              <form method="POST" action="/admin/cyber/producto/{{ s.sku }}" class="inline-flex items-center gap-1.5">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                {% if s.en_cyber and s.descuento_cyber_pct > 0 %}
+                  <input type="hidden" name="en_cyber" value="0"/>
+                  <button type="submit" class="px-2.5 py-1 text-xs font-medium rounded border border-red-200 text-red-600 hover:bg-red-50 transition-colors">
+                    Quitar
+                  </button>
+                {% else %}
+                  <input type="hidden" name="en_cyber" value="1"/>
+                  <select name="descuento_pct" class="text-xs border border-slate-200 rounded px-1.5 py-1 bg-white">
+                    <option value="10">10%</option>
+                    <option value="15" selected>15%</option>
+                    <option value="20">20%</option>
+                    <option value="25">25%</option>
+                  </select>
+                  <button type="submit" class="px-2.5 py-1 text-xs font-medium rounded bg-slate-900 text-white hover:bg-slate-800 transition-colors">
+                    Activar
+                  </button>
+                {% endif %}
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" class="text-center py-10 text-slate-400 text-sm">
+              No hay ventas registradas aún para calcular los más vendidos.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
