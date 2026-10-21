@@ -514,6 +514,8 @@ function checkoutShopify() {
       btn.disabled = false;
       btn.innerHTML = origHtml;
       alert(data.error || 'No pudimos generar el enlace de pago.');
+      var details = document.querySelector('#cart-footer details');
+      if (details) details.open = true;
     }
   })
   .catch(function() {

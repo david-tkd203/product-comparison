@@ -362,6 +362,44 @@ from .admin_extra import *
 from .admin_retail import *
 
 
+@admin_bp.route('/admin/sync-shopify-variants')
+@require_login
+def sync_shopify_variants():
+    import urllib.request, json
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    cur.execute("SELECT setting_value FROM settings WHERE setting_key = 'shopify_shop'")
+    s_row = cur.fetchone()
+    shop = (s_row['setting_value'] if s_row else 'dcw11w-0p.myshopify.com').replace('https://', '').replace('http://', '').strip('/')
+    if not shop: shop = 'dcw11w-0p.myshopify.com'
+    
+    sku_map = {}
+    for page in range(1, 10):
+        try:
+            url = f"https://{shop}/products.json?limit=250&page={page}"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode())
+                prods = data.get('products', [])
+                if not prods:
+                    break
+                for p in prods:
+                    for v in p.get('variants', []):
+                        if v.get('sku'):
+                            sku_map[v.get('sku').strip().upper()] = str(v.get('id'))
+        except Exception:
+            break
+            
+    updated = 0
+    for sku, vid in sku_map.items():
+        cur.execute("UPDATE products SET shopify_variant_id = %s WHERE sku = %s", [vid, sku])
+        if cur.rowcount > 0:
+            updated += 1
+    db.commit()
+    flash(f'¡Variantes de Shopify actualizadas! Se vincularon {updated} productos de {len(sku_map)} encontrados en Shopify.', 'success')
+    return redirect(url_for('admin.admin_inventario'))
+
+
 @admin_bp.route('/admin/sync-shopify')
 @require_login
 def sync_shopify():
@@ -437,13 +475,15 @@ def sync_shopify():
 @require_login
 def export_shopify_csv():
     import csv, io
+    from ..db import _get_margen
     db = get_db()
     cur = db.cursor(dictionary=True)
-    cur.execute('''SELECT sku, nombre, linea, precio_venta, stock, imagen, aroma_family
+    cur.execute('''SELECT sku, nombre, linea, precio_mayorista, precio_venta, stock, imagen, aroma_family
                    FROM products
-                   WHERE is_active = 1 AND stock > 0 AND precio_venta > 0
+                   WHERE is_active = 1 AND stock > 0
                    ORDER BY linea, nombre''')
     products = cur.fetchall()
+    margen = _get_margen(db)
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -458,6 +498,13 @@ def export_shopify_csv():
     writer.writerow(headers)
 
     for p in products:
+        p_price = p.get('precio_venta')
+        if not p_price and p.get('precio_mayorista'):
+            p_price = int(round((p['precio_mayorista'] * (1 + margen / 100) + 10) / 1000) * 1000 - 10)
+        p_price = p_price or 0
+        if p_price <= 0:
+            continue
+
         handle = re.sub(r'[^a-z0-9]+', '-', (p['nombre'] or p['sku']).lower()).strip('-')
         writer.writerow([
             handle,
@@ -475,7 +522,7 @@ def export_shopify_csv():
             p['stock'],
             'deny',
             'manual',
-            p['precio_venta'],
+            p_price,
             '',
             'TRUE',
             'TRUE',

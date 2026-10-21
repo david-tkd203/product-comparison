@@ -390,7 +390,7 @@ def api_pedido():
 
 @store_bp.route('/api/checkout-shopify', methods=['POST'])
 def api_checkout_shopify():
-    import os
+    import os, urllib.request, json
     data = request.get_json(force=True, silent=True) or {}
     items = data.get('items') or []
     if not items or not isinstance(items, list):
@@ -406,7 +406,7 @@ def api_checkout_shopify():
     if not shop:
         shop = 'dcw11w-0p.myshopify.com'
     
-    # Get Access Token to fetch variants if needed
+    # Get Access Token to fetch variants or create products if needed
     cur.execute("SELECT setting_value FROM settings WHERE setting_key = 'shopify_access_token'")
     t_row = cur.fetchone()
     token = (t_row['setting_value'] if t_row else None) or os.environ.get('SHOPIFY_ACCESS_TOKEN')
@@ -414,6 +414,7 @@ def api_checkout_shopify():
     # Collect variant IDs
     cart_lines = []
     missing_skus = []
+    sku_to_qty = {}
     
     for it in items:
         sku = str(it.get('sku') or '').strip()
@@ -422,6 +423,7 @@ def api_checkout_shopify():
         except (TypeError, ValueError):
             qty = 1
             
+        sku_to_qty[sku] = qty
         cur.execute("SELECT sku, nombre, stock, shopify_variant_id FROM products WHERE sku = %s", [sku])
         p = cur.fetchone()
         if not p:
@@ -433,40 +435,80 @@ def api_checkout_shopify():
         else:
             missing_skus.append(sku)
 
-    # If any SKUs are missing variant_id, try fetching from Shopify API in real time
+    # 1. If any SKUs are missing variant_id, query Shopify's public products.json (works without token!)
+    if missing_skus:
+        sku_map = {}
+        for page in (1, 2, 3, 4):
+            try:
+                pub_url = f"https://{shop}/products.json?limit=250&page={page}"
+                req = urllib.request.Request(pub_url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    res_data = json.loads(resp.read().decode())
+                    prods = res_data.get('products', [])
+                    if not prods:
+                        break
+                    for prod in prods:
+                        for v in prod.get('variants', []):
+                            v_sku = v.get('sku')
+                            if v_sku:
+                                sku_map[v_sku.strip().upper()] = str(v.get('id'))
+            except Exception:
+                break
+
+        for sku in list(missing_skus):
+            vid = sku_map.get(sku.upper())
+            if vid:
+                cur.execute("UPDATE products SET shopify_variant_id = %s WHERE sku = %s", [vid, sku])
+                db.commit()
+                cart_lines.append(f"{vid}:{sku_to_qty.get(sku, 1)}")
+                missing_skus.remove(sku)
+
+    # 2. If SKUs are STILL missing and we have an Admin API token, auto-create the missing products in Shopify
     if missing_skus and token:
-        import urllib.request
-        try:
-            req = urllib.request.Request(
-                f"https://{shop}/admin/api/2024-01/products.json?limit=250",
-                headers={"X-Shopify-Access-Token": token}
-            )
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                res_data = json.loads(resp.read().decode())
-                sku_map = {}
-                for prod in res_data.get('products', []):
-                    for v in prod.get('variants', []):
-                        if v.get('sku'):
-                            sku_map[v.get('sku').strip().lower()] = v.get('id')
-                            
-                for it in items:
-                    sku = str(it.get('sku') or '').strip()
-                    if sku not in missing_skus:
-                        continue
-                    qty = max(1, min(99, int(it.get('qty') or 1)))
-                    vid = sku_map.get(sku.lower())
-                    if vid:
-                        cur.execute("UPDATE products SET shopify_variant_id = %s WHERE sku = %s", [vid, sku])
-                        db.commit()
-                        cart_lines.append(f"{vid}:{qty}")
-                        missing_skus.remove(sku)
-        except Exception:
-            pass
+        for sku in list(missing_skus):
+            cur.execute("SELECT sku, nombre, linea, precio_venta, imagen FROM products WHERE sku = %s", [sku])
+            p = cur.fetchone()
+            if not p or not p.get('precio_venta'):
+                continue
+            try:
+                payload = {
+                    "product": {
+                        "title": p['nombre'],
+                        "vendor": p['linea'] or "Siyash",
+                        "product_type": "Perfume",
+                        "status": "active",
+                        "published_scope": "global",
+                        "variants": [{
+                            "sku": sku,
+                            "price": str(p['precio_venta']),
+                            "requires_shipping": True
+                        }]
+                    }
+                }
+                if p.get('imagen') and str(p['imagen']).startswith('http'):
+                    payload["product"]["images"] = [{"src": p['imagen']}]
+                post_req = urllib.request.Request(
+                    f"https://{shop}/admin/api/2024-01/products.json",
+                    data=json.dumps(payload).encode('utf-8'),
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Shopify-Access-Token": token
+                    }
+                )
+                with urllib.request.urlopen(post_req, timeout=6) as post_resp:
+                    created = json.loads(post_resp.read().decode())
+                    new_vid = str(created['product']['variants'][0]['id'])
+                    cur.execute("UPDATE products SET shopify_variant_id = %s WHERE sku = %s", [new_vid, sku])
+                    db.commit()
+                    cart_lines.append(f"{new_vid}:{sku_to_qty.get(sku, 1)}")
+                    missing_skus.remove(sku)
+            except Exception:
+                pass
 
     if not cart_lines:
         return jsonify({
             'ok': False,
-            'error': 'Los productos seleccionados aún no están sincronizados en Shopify. Puedes usar la opción de WhatsApp temporalmente mientras se completa la sincronización.'
+            'error': 'Los productos de tu selección aún se están sincronizando con Shopify. Por favor utiliza la opción de WhatsApp temporalmente mientras finaliza la sincronización.'
         }), 400
 
     checkout_url = f"https://{shop}/cart/{','.join(cart_lines)}"
