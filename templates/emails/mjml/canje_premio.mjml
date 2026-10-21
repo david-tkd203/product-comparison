@@ -1,0 +1,111 @@
+<mjml>
+  <mj-head>
+    <mj-title>Premio Canjeado Exitosamente | Club Siyash</mj-title>
+    <mj-font name="Playfair Display" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;500;600&display=swap" />
+    <mj-attributes>
+      <mj-all font-family="Montserrat, Helvetica Neue, Arial, sans-serif" />
+      <mj-text font-size="14px" color="#333333" line-height="24px" />
+      <mj-section background-color="#ffffff" padding="0px" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .serif-title { font-family: 'Playfair Display', Georgia, serif !important; letter-spacing: 2px; }
+      .voucher-code { background-color: #111111; color: #ffffff; font-family: 'Courier New', monospace; font-size: 24px; font-weight: 700; letter-spacing: 4px; padding: 16px 24px; border: 2px dashed #d4af37; display: inline-block; }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#f5f5f4">
+
+    <!-- Brand Header -->
+    <mj-section background-color="#000000" padding="30px 20px 25px 20px">
+      <mj-column width="100%">
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-01-t.png" alt="Siyash Perfumería" width="160px" align="center" padding="0" href="https://siyash.cl/" />
+        <mj-text align="center" color="#d4af37" font-size="9px" padding-top="12px" text-transform="uppercase" letter-spacing="3px">
+          CLUB SIYASH &bull; BENEFICIOS EXCLUSIVOS
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Hero Announcement -->
+    <mj-section background-color="#ffffff" padding="45px 30px 20px 30px">
+      <mj-column width="100%">
+        <mj-text align="center" font-size="40px" padding-bottom="10px">🎁</mj-text>
+        <mj-text align="center" font-size="28px" font-weight="400" color="#111111" line-height="36px">
+          <span class="serif-title">¡Felicitaciones por tu canje!</span>
+        </mj-text>
+        <mj-divider border-width="1px" border-style="solid" border-color="#e7e5e4" width="60px" padding="15px 0" />
+        <mj-text align="center" font-size="14px" color="#57534e" line-height="24px">
+          Hola <strong>{{ nombre if nombre else 'Cliente' }}</strong>, has canjeado con éxito tu premio:
+        </mj-text>
+        <mj-text align="center" font-size="20px" font-weight="600" color="#111111" padding-top="10px">
+          {{ premio_nombre if premio_nombre else 'Premio Club Siyash' }}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Voucher Card -->
+    <mj-section background-color="#fafaf9" padding="35px 20px">
+      <mj-column width="100%">
+        <mj-text align="center" font-size="11px" color="#78716c" text-transform="uppercase" letter-spacing="2px" padding-bottom="12px">
+          TU CÓDIGO DE CANJE ÚNICO
+        </mj-text>
+        <mj-text align="center">
+          <span class="voucher-code">{{ codigo_canje if codigo_canje else 'REW-000000' }}</span>
+        </mj-text>
+        <mj-text align="center" font-size="12px" color="#78716c" padding-top="16px">
+          Ingresa este código en el carrito de compras en tu próximo pedido para incluir tu regalo a costo $0.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Points Summary Card -->
+    <mj-section background-color="#ffffff" padding="30px">
+      <mj-column width="100%">
+        <mj-table padding="0">
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #f5f5f4; font-size: 13px; color: #78716c;">Puntos canjeados en este premio</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #f5f5f4; font-size: 14px; font-weight: 600; text-align: right; color: #dc2626;">-{{ puntos_gastados }} pts</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 0; font-size: 14px; font-weight: 600; color: #111111;">Tu nuevo saldo disponible</td>
+            <td style="padding: 12px 0; font-size: 18px; font-weight: 700; text-align: right; color: #111111;">
+              <span class="serif-title">{{ puntos_restantes }} pts</span>
+            </td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- How to Redeem Steps -->
+    <mj-section background-color="#f8f7f4" padding="30px 25px">
+      <mj-column width="100%">
+        <mj-text font-size="11px" color="#78716c" text-transform="uppercase" letter-spacing="2px" font-weight="600" padding-bottom="12px" align="center">
+          ¿Cómo utilizar tu regalo?
+        </mj-text>
+        <mj-text font-size="12px" color="#44403c" line-height="22px">
+          <strong>1.</strong> Ingresa a <a href="https://siyash.cl/perfumes" style="color: #111111;">siyash.cl/perfumes</a> y agrega tus fragancias favoritas.<br/>
+          <strong>2.</strong> En el carrito de compras, pega tu código <strong>{{ codigo_canje }}</strong> en la casilla de canje.<br/>
+          <strong>3.</strong> Tu regalo se sumará automáticamente a costo $0 junto con tu despacho.
+        </mj-text>
+        <mj-button background-color="#000000" color="#ffffff" font-size="11px" font-weight="600" letter-spacing="2px" text-transform="uppercase" inner-padding="14px 32px" href="https://siyash.cl/perfumes" border-radius="0px" padding-top="20px">
+          IR A LA TIENDA AHORA &rarr;
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section background-color="#111111" padding="35px 25px 25px 25px">
+      <mj-column width="100%">
+        <mj-text align="center" font-size="13px" font-weight="600" color="#ffffff" letter-spacing="3px" text-transform="uppercase">
+          SIYASH PERFUMERÍA
+        </mj-text>
+        <mj-text align="center" font-size="11px" color="#a8a29e" padding-top="8px" line-height="20px">
+          Santiago de Chile &bull; contacto@siyash.cl &bull; WhatsApp +56 9 3223 8816
+        </mj-text>
+        <mj-divider border-width="1px" border-style="solid" border-color="#292524" width="80%" padding="20px 0" />
+        <mj-text align="center" font-size="10px" color="#78716c">
+          &copy; 2026 Siyash Perfumería. Todos los derechos reservados.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>

@@ -84,6 +84,12 @@ def registro():
     session['customer_nombre'] = nombre
     session['customer_email'] = email
 
+    try:
+        from ..mailer import send_welcome_email
+        send_welcome_email(email, nombre)
+    except Exception:
+        pass
+
     flash('¡Bienvenido a Siyash! Tu cuenta ha sido creada exitosamente con 100 puntos de bienvenida.', 'success')
     return redirect(url_for('customer.cuenta'))
 
@@ -282,6 +288,19 @@ def canjear_premio(reward_id):
 
     if hasattr(db, 'commit'):
         db.commit()
+
+    try:
+        from ..mailer import send_reward_redemption_email
+        send_reward_redemption_email(
+            session.get('customer_email', ''),
+            session.get('customer_nombre', ''),
+            reward['nombre'],
+            codigo_canje,
+            puntos_req,
+            max(0, int(customer.get('puntos', 0)) - puntos_req)
+        )
+    except Exception:
+        pass
 
     flash(f"¡Canjeaste '{reward['nombre']}' con éxito! Tu código es {codigo_canje}.", 'success')
     return redirect(url_for('customer.cuenta'))

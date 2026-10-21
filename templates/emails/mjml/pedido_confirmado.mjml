@@ -1,0 +1,162 @@
+<mjml>
+  <mj-head>
+    <mj-title>Pedido Confirmado | Siyash Perfumería</mj-title>
+    <mj-font name="Playfair Display" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;500;600&display=swap" />
+    <mj-attributes>
+      <mj-all font-family="Montserrat, Helvetica Neue, Arial, sans-serif" />
+      <mj-text font-size="14px" color="#333333" line-height="24px" />
+      <mj-section background-color="#ffffff" padding="0px" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .serif-title { font-family: 'Playfair Display', Georgia, serif !important; letter-spacing: 2px; }
+      .tracking-luxury { letter-spacing: 3px !important; }
+      .item-table th { text-align: left; padding: 10px 0; border-bottom: 2px solid #111111; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #78716c; }
+      .item-table td { padding: 14px 0; border-bottom: 1px solid #f5f5f4; font-size: 13px; color: #1c1917; }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#f5f5f4">
+
+    <!-- Brand Header -->
+    <mj-section background-color="#000000" padding="30px 20px 25px 20px">
+      <mj-column width="100%">
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-01-t.png" alt="Siyash Perfumería" width="160px" align="center" padding="0" href="https://siyash.cl/" />
+        <mj-text align="center" color="#a8a29e" font-size="9px" padding-top="12px" text-transform="uppercase" letter-spacing="3px">
+          CONFIRMACIÓN DE COMPRA
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Hero Confirmation -->
+    <mj-section background-color="#ffffff" padding="45px 30px 25px 30px">
+      <mj-column width="100%">
+        <mj-text align="center" font-size="11px" color="#15803d" font-weight="600" text-transform="uppercase" letter-spacing="2px" padding-bottom="6px">
+          &#10003; PEDIDO REGISTRADO EXITOSAMENTE
+        </mj-text>
+        <mj-text align="center" font-size="30px" font-weight="400" color="#111111" line-height="38px">
+          <span class="serif-title">Gracias por tu compra</span>
+        </mj-text>
+        <mj-divider border-width="1px" border-style="solid" border-color="#e7e5e4" width="60px" padding="15px 0" />
+        <mj-text align="center" font-size="14px" color="#57534e" line-height="24px">
+          Hola <strong>{{ nombre if nombre else 'Cliente' }}</strong>, hemos recibido tu pedido <strong>#{{ order_id if order_id else '0000' }}</strong>. Estamos preparando tus fragancias con el máximo cuidado y autenticidad garantizada.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Points Earned Highlight -->
+    {% if puntos_ganados and puntos_ganados > 0 %}
+    <mj-section background-color="#fafaf9" padding="20px 30px" border-left="4px solid #111111">
+      <mj-column width="100%">
+        <mj-table padding="0">
+          <tr>
+            <td style="font-size: 24px; width: 40px; vertical-align: middle;">⭐</td>
+            <td style="vertical-align: middle; padding-left: 10px;">
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #78716c; font-weight: 600;">Puntos Club Siyash Ganados</div>
+              <div style="font-size: 18px; font-weight: 600; color: #111111;">+{{ puntos_ganados }} puntos acreditados a tu cuenta</div>
+            </td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+    {% endif %}
+
+    <!-- Order Items Breakdown -->
+    <mj-section background-color="#ffffff" padding="30px">
+      <mj-column width="100%">
+        <mj-text font-size="11px" color="#78716c" text-transform="uppercase" letter-spacing="2px" font-weight="600" padding-bottom="10px">
+          Detalle de tu Selección
+        </mj-text>
+        <mj-table css-class="item-table" padding="0">
+          <thead>
+            <tr>
+              <th style="width: 60%;">Fragancia</th>
+              <th style="width: 15%; text-align: center;">Cant.</th>
+              <th style="width: 25%; text-align: right;">Precio</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if items %}
+              {% for it in items %}
+              <tr>
+                <td>
+                  <div style="font-weight: 600; color: #111111;">{{ it.nombre }}</div>
+                  {% if it.linea %}
+                  <div style="font-size: 10px; color: #a8a29e; text-transform: uppercase; letter-spacing: 1px;">{{ it.linea }}</div>
+                  {% endif %}
+                </td>
+                <td style="text-align: center; color: #57534e;">{{ it.qty }}</td>
+                <td style="text-align: right; font-weight: 600; color: #111111;">
+                  {% if it.precio == 0 %}
+                    <span style="color: #15803d; font-weight: bold; text-transform: uppercase; font-size: 11px;">GRATIS (PREMIO)</span>
+                  {% else %}
+                    ${{ "{:,}".format(it.precio * it.qty).replace(',', '.') }}
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="3" style="text-align: center; color: #a8a29e; padding: 20px 0;">Detalle no disponible</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Totals Summary -->
+    <mj-section background-color="#ffffff" padding="0px 30px 35px 30px">
+      <mj-column width="100%">
+        <mj-table padding="0">
+          {% if descuento and descuento > 0 %}
+          <tr>
+            <td style="padding: 6px 0; font-size: 13px; color: #78716c;">Subtotal</td>
+            <td style="padding: 6px 0; font-size: 13px; text-align: right; color: #1c1917;">${{ "{:,}".format(total + descuento).replace(',', '.') }}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-size: 13px; color: #15803d; font-weight: 600;">Descuento Cupón ({{ cupon_codigo }})</td>
+            <td style="padding: 6px 0; font-size: 13px; text-align: right; color: #15803d; font-weight: 600;">-${{ "{:,}".format(descuento).replace(',', '.') }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td style="padding: 14px 0 0 0; font-size: 16px; font-weight: 700; color: #111111; border-top: 2px solid #111111; text-transform: uppercase; letter-spacing: 1px;">Total Pagado</td>
+            <td style="padding: 14px 0 0 0; font-size: 20px; font-weight: 700; text-align: right; color: #111111; border-top: 2px solid #111111;">
+              <span class="serif-title">${{ "{:,}".format(total).replace(',', '.') if total else '$0' }}</span>
+            </td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Shipping & Next Steps -->
+    <mj-section background-color="#fafaf9" padding="30px">
+      <mj-column width="100%">
+        <mj-text font-size="11px" color="#78716c" text-transform="uppercase" letter-spacing="2px" font-weight="600" padding-bottom="6px">
+          Despacho y Seguimiento
+        </mj-text>
+        <mj-text font-size="13px" color="#44403c" line-height="22px">
+          Recibirás la confirmación de despacho y número de seguimiento apenas tu paquete sea entregado al courrier oficial. Todos los pedidos viajan asegurados en embalaje térmico y de alta protección.
+        </mj-text>
+        <mj-button background-color="#111111" color="#ffffff" font-size="11px" font-weight="600" letter-spacing="2px" text-transform="uppercase" inner-padding="14px 28px" href="https://siyash.cl/cliente/cuenta" border-radius="0px" padding-top="20px">
+          VER MI PEDIDO EN SIYASH.CL &rarr;
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section background-color="#111111" padding="35px 25px 25px 25px">
+      <mj-column width="100%">
+        <mj-text align="center" font-size="13px" font-weight="600" color="#ffffff" letter-spacing="3px" text-transform="uppercase">
+          SIYASH PERFUMERÍA
+        </mj-text>
+        <mj-text align="center" font-size="11px" color="#a8a29e" padding-top="8px" line-height="20px">
+          Santiago de Chile &bull; contacto@siyash.cl &bull; WhatsApp +56 9 3223 8816
+        </mj-text>
+        <mj-divider border-width="1px" border-style="solid" border-color="#292524" width="80%" padding="20px 0" />
+        <mj-text align="center" font-size="10px" color="#78716c">
+          &copy; 2026 Siyash Perfumería. Todos los derechos reservados.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>

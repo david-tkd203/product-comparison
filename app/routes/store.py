@@ -592,6 +592,23 @@ def api_pedido():
                 cur.execute('UPDATE products SET stock = stock - %s WHERE sku = %s', [i['qty'], i['sku']])
             
         db.commit()
+
+        if session.get('customer_email'):
+            try:
+                from ..mailer import send_order_confirmation_email
+                send_order_confirmation_email(session['customer_email'], {
+                    'id': order_id,
+                    'nombre': nombre,
+                    'items': final_items,
+                    'subtotal': subtotal,
+                    'descuento': descuento,
+                    'cupon_codigo': cupon_codigo,
+                    'total': total,
+                    'puntos_ganados': puntos_ganados if customer_id else 0
+                })
+            except Exception:
+                pass
+
         return jsonify({'ok': True, 'msg': 'Pedido registrado correctamente'})
     except Exception as e:
         db.rollback()
