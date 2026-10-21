@@ -1,6 +1,7 @@
 import json
 import time
 from flask import Blueprint, render_template, request, jsonify
+from .. import csrf
 
 from ..db import get_db
 from ..utils import _norm_genero, _genero_sql_conds, AROMA_FAMILIES, _classify_family
@@ -321,6 +322,7 @@ def api_search():
     return jsonify(results)
 
 @store_bp.route('/api/pedido', methods=['POST'])
+@csrf.exempt
 def api_pedido():
     data = request.get_json(force=True, silent=True) or {}
     nombre = (data.get('nombre') or '').strip()
@@ -389,6 +391,7 @@ def api_pedido():
 
 
 @store_bp.route('/api/checkout-shopify', methods=['POST'])
+@csrf.exempt
 def api_checkout_shopify():
     import os, urllib.request, json
     data = request.get_json(force=True, silent=True) or {}

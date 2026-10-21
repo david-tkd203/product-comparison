@@ -8,6 +8,7 @@
 <meta name="keywords" content="perfumes originales, perfumes arabes, perfumes al por mayor, siyash perfumeria, chile, perfumes santiago, lattafa, armaf, carolina herrera">
 <meta name="author" content="Siyash Perfumería">
 <meta name="robots" content="index, follow">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 
 <!-- OpenGraph (Facebook, WhatsApp, LinkedIn) -->
 <meta property="og:type" content="website">
@@ -460,12 +461,22 @@ function submitOrder() {
   for (var sku in cart) items.push({ sku: sku, qty: cart[sku].qty });
   var btn = document.getElementById('checkout-btn');
   btn.disabled = true; btn.textContent = 'Procesando…';
+  var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+  var csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
   fetch('/api/pedido', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken
+    },
     body: JSON.stringify({ nombre: nombre, telefono: telefono, items: items })
   })
-  .then(function(r) { return r.json(); })
+  .then(function(r) {
+    return r.text().then(function(text) {
+      try { return JSON.parse(text); } catch(e) { return { ok: false, error: 'Error del servidor (' + r.status + ')' }; }
+    });
+  })
   .then(function(data) {
     btn.disabled = false; btn.textContent = 'Enviar por WhatsApp';
     if (data.ok) {
@@ -501,12 +512,22 @@ function checkoutShopify() {
   btn.disabled = true;
   btn.innerHTML = '<span class="animate-pulse">Conectando pasarela de pago...</span>';
 
+  var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+  var csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
   fetch('/api/checkout-shopify', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken
+    },
     body: JSON.stringify({ items: items })
   })
-  .then(function(r) { return r.json(); })
+  .then(function(r) {
+    return r.text().then(function(text) {
+      try { return JSON.parse(text); } catch(e) { return { ok: false, error: 'Error del servidor (' + r.status + ')' }; }
+    });
+  })
   .then(function(data) {
     if (data.ok && data.checkout_url) {
       window.location.href = data.checkout_url;
