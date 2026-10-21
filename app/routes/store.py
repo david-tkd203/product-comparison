@@ -1,5 +1,7 @@
 import json
 import time
+from datetime import datetime
+import urllib.parse
 from flask import Blueprint, render_template, request, jsonify, session
 from .. import csrf
 
@@ -321,6 +323,88 @@ def api_search():
     
     return jsonify(results)
 
+def _validate_coupon_logic(cur, codigo, subtotal, customer_id=None):
+    codigo = (codigo or '').strip().upper()
+    if not codigo:
+        return False, 'Debes ingresar un código de cupón.', None
+
+    cur.execute('SELECT * FROM coupons WHERE codigo = %s', [codigo])
+    c = cur.fetchone()
+    if not c:
+        return False, 'El cupón ingresado no existe.', None
+
+    if not c.get('is_active'):
+        return False, 'Este cupón no se encuentra activo.', None
+
+    now = datetime.now()
+    valido_desde = c.get('valido_desde')
+    valido_hasta = c.get('valido_hasta')
+    if valido_desde and now < valido_desde:
+        return False, 'Este cupón aún no está vigente.', None
+    if valido_hasta and now > valido_hasta:
+        return False, 'Este cupón ha expirado.', None
+
+    limite_usos = c.get('limite_usos')
+    usos_actuales = c.get('usos_actuales') or 0
+    if limite_usos is not None and usos_actuales >= limite_usos:
+        return False, 'Este cupón ha alcanzado el límite máximo de usos.', None
+
+    coupon_customer_id = c.get('customer_id')
+    if coupon_customer_id is not None:
+        if not customer_id:
+            return False, 'Debes iniciar sesión con tu cuenta para usar este cupón exclusivo.', None
+        if int(customer_id) != int(coupon_customer_id):
+            return False, 'Este cupón exclusivo no pertenece a tu cuenta.', None
+        cur.execute('SELECT COUNT(*) AS cnt FROM coupon_usages WHERE coupon_id = %s AND customer_id = %s',
+                    [c['id'], customer_id])
+        if cur.fetchone()['cnt'] > 0:
+            return False, 'Ya has utilizado este cupón exclusivo anteriormente.', None
+
+    minimo_compra = c.get('minimo_compra') or 0
+    if subtotal < minimo_compra:
+        minimo_fmt = f"${minimo_compra:,}".replace(',', '.')
+        return False, f'El monto mínimo de compra para este cupón es de {minimo_fmt} CLP.', None
+
+    tipo = c.get('tipo')
+    valor = int(c.get('valor') or 0)
+    if tipo == 'porcentaje':
+        descuento = int(round(subtotal * (valor / 100.0)))
+    elif tipo == 'monto_fijo':
+        descuento = min(subtotal, valor)
+    else:
+        descuento = 0
+
+    descuento = max(0, min(subtotal, descuento))
+    total_final = max(0, subtotal - descuento)
+
+    result_data = {
+        'ok': True,
+        'codigo': c['codigo'],
+        'tipo': tipo,
+        'valor': valor,
+        'descuento': descuento,
+        'total_final': total_final
+    }
+    return True, result_data, c
+
+@store_bp.route('/api/cupon/validar', methods=['POST'])
+@csrf.exempt
+def api_cupon_validar():
+    data = request.get_json(force=True, silent=True) or {}
+    codigo = data.get('codigo')
+    try:
+        subtotal = int(data.get('subtotal', 0))
+    except (ValueError, TypeError):
+        subtotal = 0
+
+    customer_id = session.get('customer_id')
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    ok, res, _ = _validate_coupon_logic(cur, codigo, subtotal, customer_id)
+    if not ok:
+        return jsonify({'ok': False, 'error': res}), 400
+    return jsonify(res)
+
 @store_bp.route('/api/pedido', methods=['POST'])
 @csrf.exempt
 def api_pedido():
@@ -399,23 +483,38 @@ def api_pedido():
                 'qty': 1
             })
 
-        total = sum(i['precio'] * i['qty'] for i in final_items)
+        subtotal = sum(i['precio'] * i['qty'] for i in final_items)
+        cupon_codigo = str(data.get('cupon_codigo') or '').strip().upper()
+        descuento = 0
+        coupon_obj = None
+
+        if cupon_codigo:
+            ok, res, c_obj = _validate_coupon_logic(cur, cupon_codigo, subtotal, customer_id)
+            if not ok:
+                db.rollback()
+                return jsonify({'ok': False, 'error': res}), 400
+            descuento = res['descuento']
+            coupon_obj = c_obj
+            total = max(0, subtotal - descuento)
+        else:
+            total = subtotal
+
         items_json = json.dumps(final_items, ensure_ascii=False)
 
         if customer_id:
             puntos_ganados = int(total // 100)
-            cur.execute('''INSERT INTO orders (link_token, customer_id, nombre, telefono, items_json, total, puntos_ganados, status)
-                           VALUES (%s, %s, %s, %s, %s, %s, %s, 'nuevo')''',
-                        ['WEB', customer_id, nombre, telefono, items_json, total, puntos_ganados])
+            cur.execute('''INSERT INTO orders (link_token, customer_id, nombre, telefono, items_json, total, puntos_ganados, cupon_codigo, descuento, status)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'nuevo')''',
+                        ['WEB', customer_id, nombre, telefono, items_json, total, puntos_ganados, cupon_codigo or None, descuento])
             order_id = cur.lastrowid
             cur.execute('UPDATE customers SET puntos = puntos + %s WHERE id = %s', [puntos_ganados, customer_id])
             cur.execute('''INSERT INTO customer_points_history (customer_id, puntos, motivo, order_id)
                            VALUES (%s, %s, %s, %s)''',
                         [customer_id, puntos_ganados, 'Compra de perfumes', order_id])
         else:
-            cur.execute('''INSERT INTO orders (link_token, customer_id, nombre, telefono, items_json, total, puntos_ganados, status)
-                           VALUES (%s, NULL, %s, %s, %s, %s, 0, 'nuevo')''',
-                        ['WEB', nombre, telefono, items_json, total])
+            cur.execute('''INSERT INTO orders (link_token, customer_id, nombre, telefono, items_json, total, puntos_ganados, cupon_codigo, descuento, status)
+                           VALUES (%s, NULL, %s, %s, %s, %s, 0, %s, %s, 'nuevo')''',
+                        ['WEB', nombre, telefono, items_json, total, cupon_codigo or None, descuento])
             order_id = cur.lastrowid
         
         if valid_redemption:
@@ -423,6 +522,12 @@ def api_pedido():
                 "UPDATE customer_reward_redemptions SET estado = 'aplicado_en_pedido', order_id = %s WHERE id = %s",
                 [order_id, valid_redemption['id']]
             )
+
+        if coupon_obj:
+            cur.execute('UPDATE coupons SET usos_actuales = usos_actuales + 1 WHERE id = %s', [coupon_obj['id']])
+            cur.execute('''INSERT INTO coupon_usages (coupon_id, customer_id, order_id, descuento_aplicado)
+                           VALUES (%s, %s, %s, %s)''',
+                        [coupon_obj['id'], customer_id, order_id, descuento])
 
         for i in final_items:
             if not str(i['sku']).startswith('REW-'):
@@ -562,4 +667,7 @@ def api_checkout_shopify():
         }), 400
 
     checkout_url = f"https://{shop}/cart/{','.join(cart_lines)}"
+    cupon_codigo = str(data.get('cupon_codigo') or '').strip().upper()
+    if cupon_codigo:
+        checkout_url += f"?discount={urllib.parse.quote(cupon_codigo)}"
     return jsonify({'ok': True, 'checkout_url': checkout_url})

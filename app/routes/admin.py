@@ -636,3 +636,164 @@ def admin_premio_eliminar(reward_id):
         db.commit()
     flash('Premio eliminado exitosamente.', 'success')
     return redirect(url_for('admin.admin_premios'))
+
+
+@admin_bp.route('/admin/cupones', methods=['GET', 'POST'])
+@require_login
+def admin_cupones():
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        codigo = (request.form.get('codigo') or '').strip().upper()
+        tipo = (request.form.get('tipo') or '').strip().lower()
+        customer_id_raw = (request.form.get('customer_id') or '').strip()
+        valido_hasta_raw = (request.form.get('valido_hasta') or '').strip()
+
+        try:
+            valor = int(request.form.get('valor', 0))
+        except (ValueError, TypeError):
+            valor = 0
+
+        try:
+            minimo_compra = max(0, int(request.form.get('minimo_compra', 0) or 0))
+        except (ValueError, TypeError):
+            minimo_compra = 0
+
+        limite_usos = None
+        limite_usos_raw = (request.form.get('limite_usos') or '').strip()
+        if limite_usos_raw:
+            try:
+                parsed_limite = int(limite_usos_raw)
+                if parsed_limite > 0:
+                    limite_usos = parsed_limite
+            except (ValueError, TypeError):
+                limite_usos = None
+
+        customer_id = None
+        if customer_id_raw and customer_id_raw not in ('', '0', 'none', 'todos'):
+            try:
+                customer_id = int(customer_id_raw)
+            except (ValueError, TypeError):
+                customer_id = None
+
+        valido_hasta = None
+        if valido_hasta_raw:
+            try:
+                # Handle YYYY-MM-DD or YYYY-MM-DDTHH:MM
+                if 'T' in valido_hasta_raw:
+                    valido_hasta = datetime.strptime(valido_hasta_raw, '%Y-%m-%dT%H:%M')
+                else:
+                    valido_hasta = datetime.strptime(valido_hasta_raw, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            except Exception:
+                valido_hasta = None
+
+        if not codigo:
+            flash('El código del cupón es obligatorio.', 'error')
+            return redirect(url_for('admin.admin_cupones'))
+
+        if tipo not in ('porcentaje', 'monto_fijo'):
+            flash('Tipo de cupón no válido. Selecciona Porcentaje o Monto Fijo.', 'error')
+            return redirect(url_for('admin.admin_cupones'))
+
+        if valor <= 0:
+            flash('El valor del descuento debe ser mayor a 0.', 'error')
+            return redirect(url_for('admin.admin_cupones'))
+
+        if tipo == 'porcentaje' and (valor < 1 or valor > 100):
+            flash('El porcentaje de descuento debe estar entre 1% y 100%.', 'error')
+            return redirect(url_for('admin.admin_cupones'))
+
+        cur.execute('SELECT id FROM coupons WHERE codigo = %s', [codigo])
+        if cur.fetchone():
+            flash(f"El cupón con código '{codigo}' ya existe.", 'error')
+            return redirect(url_for('admin.admin_cupones'))
+
+        cur.execute(
+            '''INSERT INTO coupons (codigo, tipo, valor, minimo_compra, limite_usos, customer_id, valido_hasta, is_active)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, 1)''',
+            [codigo, tipo, valor, minimo_compra, limite_usos, customer_id, valido_hasta]
+        )
+        if hasattr(db, 'commit'):
+            db.commit()
+        flash(f"Cupón '{codigo}' creado exitosamente.", 'success')
+        return redirect(url_for('admin.admin_cupones'))
+
+    # GET: List coupons with customer info
+    cur.execute(
+        '''SELECT c.*, cust.nombre AS customer_nombre, cust.email AS customer_email
+           FROM coupons c
+           LEFT JOIN customers cust ON cust.id = c.customer_id
+           ORDER BY c.created_at DESC'''
+    )
+    coupons = cur.fetchall()
+
+    # KPI stats
+    cur.execute(
+        '''SELECT COUNT(*) AS total_cupones,
+                  SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS activos,
+                  COALESCE(SUM(usos_actuales), 0) AS total_usos
+           FROM coupons'''
+    )
+    coupon_stats = cur.fetchone() or {'total_cupones': 0, 'activos': 0, 'total_usos': 0}
+
+    cur.execute(
+        '''SELECT COUNT(*) AS total_usos_reg,
+                  COALESCE(SUM(descuento_aplicado), 0) AS total_descontado
+           FROM coupon_usages'''
+    )
+    usage_stats = cur.fetchone() or {'total_usos_reg': 0, 'total_descontado': 0}
+
+    kpi = {
+        'total_activos': int(coupon_stats.get('activos') or 0),
+        'total_usos': int(coupon_stats.get('total_usos') or usage_stats.get('total_usos_reg') or 0),
+        'total_descontado': int(usage_stats.get('total_descontado') or 0)
+    }
+
+    # Customers list for dropdown
+    cur.execute('SELECT id, nombre, email FROM customers WHERE is_active = 1 ORDER BY nombre ASC')
+    customers = cur.fetchall()
+
+    # Recent coupon usages (last 30)
+    cur.execute(
+        '''SELECT cu.id, cu.descuento_aplicado, cu.order_id, cu.created_at,
+                  c.codigo AS coupon_codigo, c.tipo AS coupon_tipo,
+                  cust.nombre AS customer_nombre, cust.email AS customer_email
+           FROM coupon_usages cu
+           JOIN coupons c ON c.id = cu.coupon_id
+           LEFT JOIN customers cust ON cust.id = cu.customer_id
+           ORDER BY cu.created_at DESC LIMIT 30'''
+    )
+    recent_usages = cur.fetchall()
+
+    return render_template(
+        'admin_cupones.html',
+        coupons=coupons,
+        kpi=kpi,
+        customers=customers,
+        recent_usages=recent_usages
+    )
+
+
+@admin_bp.route('/admin/cupones/<int:coupon_id>/toggle', methods=['POST'])
+@require_login
+def admin_cupon_toggle(coupon_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('UPDATE coupons SET is_active = 1 - is_active WHERE id = %s', [coupon_id])
+    if hasattr(db, 'commit'):
+        db.commit()
+    flash('Estado del cupón actualizado.', 'success')
+    return redirect(url_for('admin.admin_cupones'))
+
+
+@admin_bp.route('/admin/cupones/<int:coupon_id>/eliminar', methods=['POST'])
+@require_login
+def admin_cupon_eliminar(coupon_id):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('DELETE FROM coupons WHERE id = %s', [coupon_id])
+    if hasattr(db, 'commit'):
+        db.commit()
+    flash('Cupón eliminado exitosamente.', 'success')
+    return redirect(url_for('admin.admin_cupones'))

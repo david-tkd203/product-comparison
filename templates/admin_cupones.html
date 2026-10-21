@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Motor de Cupones y Descuentos</h1>
+    <p class="text-sm text-slate-500 mt-1">Crea y gestiona cupones masivos o asignados a clientes específicos con límites y fechas de caducidad.</p>
+  </div>
+  <div>
+    <button onclick="document.getElementById('modal-nuevo-cupon').classList.remove('hidden')" class="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-slate-800 transition-colors shadow-sm flex items-center gap-1.5">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      Crear Nuevo Cupón
+    </button>
+  </div>
+</div>
+
+<!-- KPI Stats Cards -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Cupones Activos</p>
+    <p class="text-2xl font-bold text-slate-900 mt-1">{{ kpi.total_activos }}</p>
+    <p class="text-[11px] text-emerald-600 mt-0.5">{{ coupons|length }} en total creados</p>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Usos Registrados</p>
+    <p class="text-2xl font-bold text-slate-900 mt-1">{{ kpi.total_usos }}</p>
+    <p class="text-[11px] text-slate-400 mt-0.5">En órdenes de compra</p>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Dinero Descontado</p>
+    <p class="text-2xl font-bold text-indigo-700 mt-1">${{ "{:,}".format(kpi.total_descontado).replace(',', '.') }}</p>
+    <p class="text-[11px] text-slate-400 mt-0.5">Ahorro total para clientes</p>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Últimos Usos (30d)</p>
+    <p class="text-2xl font-bold text-slate-900 mt-1">{{ recent_usages|length }}</p>
+    <p class="text-[11px] text-slate-400 mt-0.5">Actividad reciente</p>
+  </div>
+</div>
+
+<!-- Table: Lista de Cupones -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+  <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+    <div>
+      <h2 class="text-base font-semibold text-slate-900">Listado de Cupones</h2>
+      <p class="text-xs text-slate-500">Cupones habilitados para el carrito web y checkout de Shopify.</p>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm text-slate-600">
+      <thead class="bg-slate-50 text-[11px] font-medium uppercase tracking-wider text-slate-500 border-b border-slate-100">
+        <tr>
+          <th class="py-3 px-4">Código</th>
+          <th class="py-3 px-4">Tipo & Valor</th>
+          <th class="py-3 px-4">Mínimo Compra</th>
+          <th class="py-3 px-4">Usos / Límite</th>
+          <th class="py-3 px-4">Asignado a</th>
+          <th class="py-3 px-4">Vencimiento</th>
+          <th class="py-3 px-4">Estado</th>
+          <th class="py-3 px-4 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% if coupons %}
+          {% for c in coupons %}
+          <tr class="hover:bg-slate-50/70 transition-colors">
+            <td class="py-3.5 px-4 font-mono font-bold text-slate-900 text-sm tracking-wide">
+              <span class="px-2 py-1 bg-slate-100 border border-slate-200 rounded">
+                {{ c.codigo }}
+              </span>
+            </td>
+            <td class="py-3.5 px-4">
+              {% if c.tipo == 'porcentaje' %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                  {{ c.valor }}% OFF
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                  -${{ "{:,}".format(c.valor).replace(',', '.') }} CLP
+                </span>
+              {% endif %}
+            </td>
+            <td class="py-3.5 px-4 text-xs font-medium text-slate-700">
+              {% if c.minimo_compra and c.minimo_compra > 0 %}
+                ${{ "{:,}".format(c.minimo_compra).replace(',', '.') }} CLP
+              {% else %}
+                <span class="text-slate-400">Sin mínimo</span>
+              {% endif %}
+            </td>
+            <td class="py-3.5 px-4 text-xs">
+              <span class="font-bold text-slate-800">{{ c.usos_actuales or 0 }}</span>
+              <span class="text-slate-400">/ {{ c.limite_usos if c.limite_usos else '∞' }}</span>
+              {% if c.limite_usos and (c.usos_actuales >= c.limite_usos) %}
+                <span class="ml-1 text-[10px] text-red-500 font-semibold">(Agotado)</span>
+              {% endif %}
+            </td>
+            <td class="py-3.5 px-4 text-xs">
+              {% if c.customer_id %}
+                <div class="flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                  <div>
+                    <div class="font-medium text-slate-800">{{ c.customer_nombre or 'Cliente #' ~ c.customer_id }}</div>
+                    <div class="text-[10px] text-slate-400">{{ c.customer_email }}</div>
+                  </div>
+                </div>
+              {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-600">
+                  🌐 Masivo / Todos
+                </span>
+              {% endif %}
+            </td>
+            <td class="py-3.5 px-4 text-xs text-slate-500">
+              {% if c.valido_hasta %}
+                {{ c.valido_hasta.strftime('%d/%m/%Y %H:%M') }}
+              {% else %}
+                <span class="text-slate-400">Sin caducidad</span>
+              {% endif %}
+            </td>
+            <td class="py-3.5 px-4">
+              {% if c.is_active %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Activo
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Inactivo
+                </span>
+              {% endif %}
+            </td>
+            <td class="py-3.5 px-4 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <form method="POST" action="/admin/cupones/{{ c.id }}/toggle" class="inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                  <button type="submit" class="px-2.5 py-1 text-xs font-medium rounded border {{ 'text-slate-600 hover:bg-slate-100 border-slate-200' if c.is_active else 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200' }}">
+                    {{ 'Desactivar' if c.is_active else 'Activar' }}
+                  </button>
+                </form>
+                <form method="POST" action="/admin/cupones/{{ c.id }}/eliminar" class="inline" onsubmit="return confirm('¿Seguro que deseas eliminar el cupón {{ c.codigo }}?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                  <button type="submit" class="p-1 text-slate-400 hover:text-red-600 transition-colors" title="Eliminar cupón">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" class="text-center py-10 text-slate-400 text-sm">
+              No hay cupones creados aún. Haz clic en "Crear Nuevo Cupón" para comenzar.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Table: Registro Reciente de Usos -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+  <div class="p-4 sm:p-5 border-b border-slate-100">
+    <h2 class="text-base font-semibold text-slate-900">Historial Reciente de Cupones Aplicados</h2>
+    <p class="text-xs text-slate-500">Últimos canjes de cupones registrados en compras de clientes.</p>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm text-slate-600">
+      <thead class="bg-slate-50 text-[11px] font-medium uppercase tracking-wider text-slate-500 border-b border-slate-100">
+        <tr>
+          <th class="py-3 px-4">Fecha</th>
+          <th class="py-3 px-4">Cupón</th>
+          <th class="py-3 px-4">Descuento</th>
+          <th class="py-3 px-4">Cliente</th>
+          <th class="py-3 px-4">Pedido</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% if recent_usages %}
+          {% for u in recent_usages %}
+          <tr class="hover:bg-slate-50/70 transition-colors">
+            <td class="py-3 px-4 text-xs text-slate-500">
+              {{ u.created_at.strftime('%d/%m/%Y %H:%M') if u.created_at else '' }}
+            </td>
+            <td class="py-3 px-4 font-mono font-bold text-slate-900 text-xs">
+              {{ u.coupon_codigo }}
+            </td>
+            <td class="py-3 px-4 text-xs font-semibold text-emerald-700">
+              -${{ "{:,}".format(u.descuento_aplicado).replace(',', '.') }} CLP
+            </td>
+            <td class="py-3 px-4 text-xs">
+              {% if u.customer_nombre %}
+                <span class="font-medium text-slate-800">{{ u.customer_nombre }}</span>
+                <span class="text-[11px] text-slate-400 block">{{ u.customer_email }}</span>
+              {% else %}
+                <span class="text-slate-400 italic">Invitado (Web)</span>
+              {% endif %}
+            </td>
+            <td class="py-3 px-4 text-xs text-slate-600">
+              {% if u.order_id %}
+                <a href="/pedidos" class="font-medium text-indigo-600 hover:underline">Pedido #{{ u.order_id }}</a>
+              {% else %}
+                <span class="text-slate-400">-</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" class="text-center py-8 text-slate-400 text-sm">
+              Aún no se registran usos de cupones en pedidos.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Crear Nuevo Cupón -->
+<div id="modal-nuevo-cupon" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+  <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+      <div>
+        <h3 class="text-lg font-bold text-slate-900">Crear Nuevo Cupón</h3>
+        <p class="text-xs text-slate-500">Configura las reglas comerciales y restricciones del cupón.</p>
+      </div>
+      <button onclick="document.getElementById('modal-nuevo-cupon').classList.add('hidden')" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <form method="POST" action="/admin/cupones" class="p-5 space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Código del Cupón *</label>
+        <input type="text" name="codigo" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono uppercase tracking-wider focus:ring-2 focus:ring-slate-900 focus:outline-none" placeholder="EJ: CYBERSIYASH">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Tipo de Descuento *</label>
+          <select name="tipo" id="cupon-tipo-select" onchange="actualizarPlaceholderValor()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none">
+            <option value="porcentaje">Porcentaje (%)</option>
+            <option value="monto_fijo">Monto Fijo ($ CLP)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1" id="cupon-valor-label">Valor (% OFF) *</label>
+          <input type="number" name="valor" id="cupon-valor-input" required min="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none" placeholder="Ej: 15">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Mínimo de Compra ($ CLP)</label>
+          <input type="number" name="minimo_compra" min="0" value="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none" placeholder="Ej: 30000">
+          <p class="text-[10px] text-slate-400 mt-0.5">0 si aplica a cualquier monto.</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Límite de Usos</label>
+          <input type="number" name="limite_usos" min="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none" placeholder="Vacío = Ilimitado">
+          <p class="text-[10px] text-slate-400 mt-0.5">Cantidad máxima de veces que puede canjearse.</p>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Asignar a Cliente Específico (Opcional)</label>
+        <select name="customer_id" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none">
+          <option value="">🌐 Masivo (Cualquier cliente)</option>
+          {% for cust in customers %}
+          <option value="{{ cust.id }}">{{ cust.nombre }} ({{ cust.email }})</option>
+          {% endfor %}
+        </select>
+        <p class="text-[10px] text-slate-400 mt-0.5">Si seleccionas un cliente, solo podrá ser utilizado iniciando sesión con esa cuenta.</p>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Fecha de Vencimiento (Opcional)</label>
+        <input type="datetime-local" name="valido_hasta" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none">
+        <p class="text-[10px] text-slate-400 mt-0.5">Dejar vacío si el cupón nunca expira.</p>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+        <button type="button" onclick="document.getElementById('modal-nuevo-cupon').classList.add('hidden')" class="px-4 py-2 text-slate-600 text-xs font-medium hover:bg-slate-100 rounded-lg transition-colors">
+          Cancelar
+        </button>
+        <button type="submit" class="px-5 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition-colors shadow-sm">
+          Crear Cupón
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function actualizarPlaceholderValor() {
+  const sel = document.getElementById('cupon-tipo-select');
+  const label = document.getElementById('cupon-valor-label');
+  const inp = document.getElementById('cupon-valor-input');
+  if (sel.value === 'porcentaje') {
+    label.textContent = 'Valor (% OFF) *';
+    inp.placeholder = 'Ej: 15';
+    inp.max = 100;
+  } else {
+    label.textContent = 'Monto de Descuento ($ CLP) *';
+    inp.placeholder = 'Ej: 5000';
+    inp.removeAttribute('max');
+  }
+}
+</script>
+{% endblock %}

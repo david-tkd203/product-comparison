@@ -353,9 +353,41 @@
   <div class="flex-1 overflow-y-auto px-6" id="cart-items"></div>
 
   <div id="cart-footer" class="px-6 py-5 border-t border-brand-100 bg-brand-50 hidden">
-    <div class="flex justify-between items-baseline mb-5">
+    <!-- Subtotal y Descuento si hay cupón aplicado -->
+    <div id="cart-subtotal-row" class="hidden flex justify-between items-baseline mb-1.5 text-xs">
+      <span class="text-[10px] tracking-widest2 uppercase text-brand-400">Subtotal</span>
+      <span id="cart-subtotal" class="text-sm text-brand-600 font-serif">$0</span>
+    </div>
+
+    <!-- Badge de Cupón Aplicado -->
+    <div id="cart-coupon-badge-row" class="hidden mb-3 p-2.5 bg-brand-white border border-brand-300 flex items-center justify-between">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="text-xs">🏷️</span>
+        <div>
+          <span id="cart-coupon-label" class="text-[10px] font-bold font-mono tracking-wider text-brand-black uppercase block"></span>
+          <span id="cart-coupon-desc" class="text-[9px] text-brand-500"></span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 shrink-0">
+        <span id="cart-discount-amount" class="text-xs font-bold text-brand-black">-$0</span>
+        <button onclick="removeCoupon()" type="button" class="text-[9px] uppercase tracking-wider text-red-500 hover:text-red-700 underline font-medium">Quitar</button>
+      </div>
+    </div>
+
+    <div class="flex justify-between items-baseline mb-4">
       <span class="text-[10px] tracking-widest2 uppercase text-brand-500">Total</span>
       <span id="cart-total" class="font-serif text-3xl text-brand-black">$0</span>
+    </div>
+
+    <!-- Cupón de descuento Input (si no está aplicado) -->
+    <div id="coupon-input-container" class="mb-4">
+      <div class="flex gap-1.5">
+        <input type="text" id="coupon-code-input" class="flex-1 px-3 py-2 bg-brand-white border border-brand-200 text-xs font-mono uppercase tracking-wider focus:outline-none focus:border-brand-black transition-colors" placeholder="CUPÓN DE DESCUENTO">
+        <button type="button" onclick="applyCoupon()" id="coupon-apply-btn" class="px-3 py-2 bg-brand-black text-brand-white text-[10px] font-medium tracking-widest uppercase hover:bg-brand-800 transition-colors shrink-0">
+          Aplicar
+        </button>
+      </div>
+      <p id="coupon-error" class="hidden text-[10px] text-red-600 mt-1 font-medium"></p>
     </div>
 
     <!-- Botón principal de Checkout con tarjeta (Shopify) -->
@@ -412,6 +444,77 @@
 
 <script>
 var CART_KEY = 'siyash_cart';
+var appliedCoupon = null;
+
+function applyCoupon() {
+  var input = document.getElementById('coupon-code-input');
+  var code = (input ? input.value : '').trim().toUpperCase();
+  var errEl = document.getElementById('coupon-error');
+  var btn = document.getElementById('coupon-apply-btn');
+  if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+
+  if (!code) {
+    if (errEl) {
+      errEl.textContent = 'Ingresa un código de cupón';
+      errEl.classList.remove('hidden');
+    }
+    return;
+  }
+
+  var cart = getCart();
+  var subtotal = 0;
+  for (var sku in cart) {
+    subtotal += cart[sku].qty * cart[sku].precio;
+  }
+  if (subtotal <= 0) {
+    if (errEl) {
+      errEl.textContent = 'El carrito está vacío';
+      errEl.classList.remove('hidden');
+    }
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+  var csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+  fetch('/api/cupon/validar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ codigo: code, subtotal: subtotal })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Aplicar'; }
+    if (data.ok) {
+      appliedCoupon = data;
+      renderCart();
+    } else {
+      appliedCoupon = null;
+      renderCart();
+      if (errEl) {
+        errEl.textContent = data.error || 'Cupón inválido o no aplicable';
+        errEl.classList.remove('hidden');
+      }
+    }
+  })
+  .catch(function() {
+    if (btn) { btn.disabled = false; btn.textContent = 'Aplicar'; }
+    if (errEl) {
+      errEl.textContent = 'Error de conexión al verificar el cupón';
+      errEl.classList.remove('hidden');
+    }
+  });
+}
+
+function removeCoupon() {
+  appliedCoupon = null;
+  var input = document.getElementById('coupon-code-input');
+  if (input) input.value = '';
+  var errEl = document.getElementById('coupon-error');
+  if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+  renderCart();
+}
 
 function getCart() {
   try { return JSON.parse(localStorage.getItem(CART_KEY) || '{}'); } catch(e) { return {}; }
@@ -492,9 +595,45 @@ function renderCart() {
   if (count === 0) {
     html = '<div class="text-center py-16"><p class="font-serif italic text-xl text-brand-300">Tu selección está vacía</p></div>';
     footer.classList.add('hidden');
+    appliedCoupon = null;
   } else { footer.classList.remove('hidden'); }
   container.innerHTML = html;
-  document.getElementById('cart-total').textContent = clp(total);
+
+  var subtotal = total;
+  var discount = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.tipo === 'porcentaje') {
+      discount = Math.round(subtotal * (appliedCoupon.valor / 100));
+    } else if (appliedCoupon.tipo === 'monto_fijo') {
+      discount = Math.min(subtotal, appliedCoupon.valor);
+    }
+    discount = Math.max(0, Math.min(subtotal, discount));
+  }
+  var finalTotal = Math.max(0, subtotal - discount);
+
+  var subtotalRow = document.getElementById('cart-subtotal-row');
+  var subtotalEl = document.getElementById('cart-subtotal');
+  var badgeRow = document.getElementById('cart-coupon-badge-row');
+  var couponLabel = document.getElementById('cart-coupon-label');
+  var couponDesc = document.getElementById('cart-coupon-desc');
+  var discountAmount = document.getElementById('cart-discount-amount');
+  var inputContainer = document.getElementById('coupon-input-container');
+
+  if (appliedCoupon && discount > 0) {
+    if (subtotalRow) subtotalRow.classList.remove('hidden');
+    if (subtotalEl) subtotalEl.textContent = clp(subtotal);
+    if (badgeRow) badgeRow.classList.remove('hidden');
+    if (couponLabel) couponLabel.textContent = appliedCoupon.codigo;
+    if (couponDesc) couponDesc.textContent = (appliedCoupon.tipo === 'porcentaje' ? appliedCoupon.valor + '% de descuento' : 'Descuento aplicado');
+    if (discountAmount) discountAmount.textContent = '-' + clp(discount);
+    if (inputContainer) inputContainer.classList.add('hidden');
+  } else {
+    if (subtotalRow) subtotalRow.classList.add('hidden');
+    if (badgeRow) badgeRow.classList.add('hidden');
+    if (inputContainer) inputContainer.classList.remove('hidden');
+  }
+
+  document.getElementById('cart-total').textContent = clp(finalTotal);
 }
 function submitOrder() {
   var nombre = document.getElementById('order-name').value.trim();
@@ -515,7 +654,7 @@ function submitOrder() {
       'Content-Type': 'application/json',
       'X-CSRFToken': csrfToken
     },
-    body: JSON.stringify({ nombre: nombre, telefono: telefono, items: items, codigo_canje: codigoCanje })
+    body: JSON.stringify({ nombre: nombre, telefono: telefono, items: items, codigo_canje: codigoCanje, cupon_codigo: appliedCoupon ? appliedCoupon.codigo : '' })
   })
   .then(function(r) {
     return r.text().then(function(text) {
@@ -526,6 +665,7 @@ function submitOrder() {
     btn.disabled = false; btn.textContent = 'Enviar por WhatsApp';
     if (data.ok) {
       localStorage.removeItem(CART_KEY);
+      appliedCoupon = null;
       updateCartBadge();
       closeCart();
       var m = document.getElementById('success-modal');
@@ -566,7 +706,7 @@ function checkoutShopify() {
       'Content-Type': 'application/json',
       'X-CSRFToken': csrfToken
     },
-    body: JSON.stringify({ items: items })
+    body: JSON.stringify({ items: items, cupon_codigo: appliedCoupon ? appliedCoupon.codigo : '' })
   })
   .then(function(r) {
     return r.text().then(function(text) {

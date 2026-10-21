@@ -198,13 +198,27 @@ def cuenta():
     )
     my_redemptions = cur.fetchall()
 
+    cur.execute(
+        """SELECT id, codigo, tipo, valor, minimo_compra, limite_usos, usos_actuales, customer_id, valido_desde, valido_hasta, is_active
+           FROM coupons
+           WHERE (customer_id = %s OR (customer_id IS NULL AND is_active = 1))
+             AND is_active = 1
+             AND (valido_hasta IS NULL OR valido_hasta >= NOW())
+             AND (valido_desde IS NULL OR valido_desde <= NOW())
+             AND (limite_usos IS NULL OR usos_actuales < limite_usos)
+           ORDER BY (customer_id IS NOT NULL) DESC, created_at DESC""",
+        [customer_id]
+    )
+    available_coupons = cur.fetchall()
+
     return render_template(
         'tienda/cliente_cuenta.html',
         customer=customer,
         points_history=points_history,
         orders=orders,
         catalog_rewards=catalog_rewards,
-        my_redemptions=my_redemptions
+        my_redemptions=my_redemptions,
+        available_coupons=available_coupons
     )
 
 

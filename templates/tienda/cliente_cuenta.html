@@ -175,6 +175,75 @@
     </div>
     {% endif %}
 
+    <!-- Section: Mis Cupones y Promociones -->
+    <div class="mb-10 bg-brand-white border border-brand-100 p-8 shadow-[0_2px_20px_rgba(0,0,0,0.02)]">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-brand-100">
+        <div>
+          <span class="text-[10px] tracking-widest2 uppercase text-brand-400 block mb-1">Beneficios y Descuentos</span>
+          <h2 class="font-serif text-2xl sm:text-3xl text-brand-black">Mis Cupones y Promociones</h2>
+          <p class="text-xs text-brand-400 font-light mt-0.5">Cupones disponibles para aplicar en el carrito de compras y en el checkout de Shopify.</p>
+        </div>
+        <span class="text-xs text-brand-500 font-medium bg-brand-50 px-3 py-1.5 border border-brand-100">
+          {{ available_coupons|length }} cupón{{ 'es' if available_coupons|length != 1 else '' }} disponible{{ 's' if available_coupons|length != 1 else '' }}
+        </span>
+      </div>
+
+      {% if available_coupons %}
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {% for cp in available_coupons %}
+        <div class="border border-brand-200 bg-brand-white p-5 flex flex-col justify-between hover:border-brand-black transition-colors">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="inline-flex items-center px-2 py-0.5 text-[9px] font-semibold tracking-wider uppercase {{ 'bg-brand-black text-brand-white' if cp.customer_id else 'bg-brand-100 text-brand-800' }}">
+                {{ '✨ Exclusivo para ti' if cp.customer_id else '🌐 Promoción' }}
+              </span>
+              <span class="font-serif text-lg font-bold text-brand-black">
+                {% if cp.tipo == 'porcentaje' %}
+                  {{ cp.valor }}% OFF
+                {% else %}
+                  ${{ "{:,}".format(cp.valor).replace(',', '.') }} CLP
+                {% endif %}
+              </span>
+            </div>
+
+            <p class="text-xs text-brand-600 font-light mb-4">
+              {% if cp.minimo_compra and cp.minimo_compra > 0 %}
+                Válido en compras sobre <strong>${{ "{:,}".format(cp.minimo_compra).replace(',', '.') }} CLP</strong>.
+              {% else %}
+                Sin mínimo de compra requerido.
+              {% endif %}
+              {% if cp.valido_hasta %}
+                <span class="block text-[10px] text-brand-400 mt-1">Vence el {{ cp.valido_hasta.strftime('%d/%m/%Y') }}</span>
+              {% else %}
+                <span class="block text-[10px] text-brand-400 mt-1">Vigente · Sin caducidad</span>
+              {% endif %}
+            </p>
+          </div>
+
+          <div class="pt-3 border-t border-brand-100 flex items-center justify-between gap-2">
+            <div>
+              <span class="text-[9px] uppercase tracking-wider text-brand-400 block">Código</span>
+              <span class="font-mono text-sm font-bold text-brand-black select-all tracking-wider">{{ cp.codigo }}</span>
+            </div>
+            <button
+              type="button"
+              onclick="navigator.clipboard.writeText('{{ cp.codigo }}'); this.textContent='¡Copiado!'; setTimeout(() => this.textContent='Copiar', 2000);"
+              class="px-3.5 py-1.5 border border-brand-900 text-brand-black text-[10px] uppercase tracking-wider font-semibold hover:bg-brand-black hover:text-brand-white transition-colors"
+            >
+              Copiar
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-center py-8 bg-brand-50/50 border border-brand-100">
+        <p class="font-serif italic text-lg text-brand-400 mb-1">No hay cupones activos en este momento.</p>
+        <p class="text-xs text-brand-400 font-light">¡Permanece atento a nuestras próximas campañas y promociones del Club Siyash!</p>
+      </div>
+      {% endif %}
+    </div>
+
     <!-- Section: Catálogo de Premios -->
     <div class="mb-10 bg-brand-white border border-brand-100 p-8 shadow-[0_2px_20px_rgba(0,0,0,0.02)]">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-brand-100">

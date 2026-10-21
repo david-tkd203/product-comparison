@@ -250,6 +250,8 @@ def init_db():
     ''')
     _add_column_if_missing(cur, 'orders', 'customer_id', 'INT DEFAULT NULL')
     _add_column_if_missing(cur, 'orders', 'puntos_ganados', 'INT DEFAULT 0')
+    _add_column_if_missing(cur, 'orders', 'cupon_codigo', 'VARCHAR(50) DEFAULT NULL')
+    _add_column_if_missing(cur, 'orders', 'descuento', 'INT NOT NULL DEFAULT 0')
     try:
         cur.execute('ALTER TABLE orders ADD INDEX idx_orders_customer (customer_id)')
     except Exception:
@@ -308,6 +310,48 @@ def init_db():
             INDEX idx_crr_customer (customer_id, estado)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS coupons (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            codigo VARCHAR(50) NOT NULL UNIQUE,
+            tipo VARCHAR(20) NOT NULL,
+            valor INT NOT NULL,
+            minimo_compra INT NOT NULL DEFAULT 0,
+            limite_usos INT DEFAULT NULL,
+            usos_actuales INT NOT NULL DEFAULT 0,
+            customer_id INT DEFAULT NULL,
+            valido_desde TIMESTAMP NULL DEFAULT NULL,
+            valido_hasta TIMESTAMP NULL DEFAULT NULL,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_coupon_code (codigo, is_active),
+            INDEX idx_coupon_cust (customer_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ''')
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS coupon_usages (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            coupon_id INT NOT NULL,
+            customer_id INT DEFAULT NULL,
+            order_id INT DEFAULT NULL,
+            descuento_aplicado INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_cu_coupon (coupon_id),
+            INDEX idx_cu_customer (customer_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ''')
+
+    try:
+        cur.execute('SELECT COUNT(*) FROM coupons')
+        if cur.fetchone()[0] == 0:
+            cur.execute('''
+                INSERT INTO coupons (codigo, tipo, valor, minimo_compra, limite_usos, is_active)
+                VALUES (%s, %s, %s, %s, %s, 1)
+            ''', ('CYBERSIYASH', 'porcentaje', 15, 30000, 500))
+    except Exception:
+        pass
 
     try:
         cur.execute('SELECT COUNT(*) FROM rewards')
