@@ -17,6 +17,12 @@ services:
       - SHOPIFY_CLIENT_ID=${SHOPIFY_CLIENT_ID:-c7c86c013557a82ada1098651381f1fb}
       - SHOPIFY_CLIENT_SECRET=${SHOPIFY_CLIENT_SECRET}
       - SHOPIFY_SHOP=${SHOPIFY_SHOP:-dcw11w-0p.myshopify.com}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-Siyash Perfumería <contacto@siyash.cl>}
+      - SMTP_SECURE=${SMTP_SECURE:-tls}
     restart: always
     depends_on:
       db:
