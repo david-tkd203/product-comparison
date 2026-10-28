@@ -4,116 +4,104 @@
     <mj-font name="Playfair Display" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" />
     <mj-attributes>
       <mj-all font-family="Montserrat, Helvetica Neue, Arial, sans-serif" />
-      <mj-text font-size="14px" color="#333333" line-height="24px" />
+      <mj-text font-size="13px" color="#333333" line-height="20px" />
       <mj-section background-color="#ffffff" padding="0px" />
     </mj-attributes>
     <mj-style inline="inline">
-      .serif-title { font-family: 'Playfair Display', Georgia, serif !important; letter-spacing: 2px; }
-      .badge-cyber { background-color: #000000; color: #fbbf24; border: 1px solid #fbbf24; padding: 6px 14px; font-size: 11px; letter-spacing: 3px; font-weight: 700; text-transform: uppercase; display: inline-block; }
-      .coupon-card { background-color: #111111; color: #ffffff; font-family: 'Courier New', monospace; font-size: 26px; font-weight: 700; letter-spacing: 4px; padding: 18px 26px; border: 2px dashed #fbbf24; display: inline-block; }
+      .serif-title { font-family: 'Playfair Display', Georgia, serif !important; letter-spacing: 1px; }
+      .badge-cyber { background-color: #000000; color: #fbbf24; border: 1px solid #fbbf24; padding: 4px 10px; font-size: 10px; letter-spacing: 2px; font-weight: 700; text-transform: uppercase; display: inline-block; }
+      .coupon-card { background-color: #111111; color: #ffffff; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; letter-spacing: 3px; padding: 12px 20px; border: 1px dashed #fbbf24; display: inline-block; }
     </mj-style>
   </mj-head>
   <mj-body background-color="#f5f5f4">
 
     <!-- Brand Header -->
-    <mj-section background-color="#000000" padding="35px 20px 25px 20px" border-bottom="1px solid #1c1917">
+    <mj-section background-color="#000000" padding="22px 20px 16px 20px" border-bottom="1px solid #1c1917">
       <mj-column width="100%">
-        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="180px" align="center" padding="0" href="https://siyash.cl/" />
-        <mj-text align="center" color="#d6d3d1" font-size="9px" padding-top="14px" text-transform="uppercase" letter-spacing="4px" font-weight="500">
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="150px" align="center" padding="0" href="https://siyash.cl/" />
+        <mj-text align="center" color="#a8a29e" font-size="8px" padding-top="8px" text-transform="uppercase" letter-spacing="3px" font-weight="500">
           VENTA EXCLUSIVA &bull; CUPÓN DE DESCUENTO
         </mj-text>
       </mj-column>
     </mj-section>
 
     <!-- Hero Promo Section -->
-    <mj-section background-color="#ffffff" padding="45px 30px 20px 30px">
+    <mj-section background-color="#ffffff" padding="24px 25px 12px 25px">
       <mj-column width="100%">
-        <mj-text align="center" padding-bottom="12px">
+        <mj-text align="center" padding-bottom="6px">
           <span class="badge-cyber">{{ tag_promo if tag_promo else 'CYBER SIYASH' }}</span>
         </mj-text>
-        <mj-text align="center" font-size="32px" font-weight="400" color="#111111" line-height="40px">
+        <mj-text align="center" font-size="22px" font-weight="400" color="#111111" line-height="28px" padding-top="6px">
           <span class="serif-title">{{ titulo_promo if titulo_promo else 'Un beneficio pensado para ti' }}</span>
         </mj-text>
-        <mj-divider border-width="1px" border-style="solid" border-color="#e7e5e4" width="60px" padding="15px 0" />
-        <mj-text align="center" font-size="14px" color="#57534e" line-height="24px">
-          Hola <strong>{{ nombre if nombre else 'Cliente VIP' }}</strong>. Como parte de nuestra comunidad exclusiva, queremos regalarte un descuento especial para tu próxima fragancia favorita.
+        <mj-text align="center" font-size="13px" color="#57534e" line-height="20px" padding-top="8px">
+          Hola <strong>{{ nombre if nombre else 'Cliente VIP' }}</strong>. Tienes acceso a un beneficio exclusivo en tu próxima compra de fragancias importadas originales.
         </mj-text>
       </mj-column>
     </mj-section>
 
-    <!-- Coupon Display Box -->
-    <mj-section background-color="#fafaf9" padding="35px 25px" border-top="1px solid #e7e5e4" border-bottom="1px solid #e7e5e4">
+    <!-- Compact Coupon Display Box -->
+    <mj-section background-color="#fafaf9" padding="20px 25px" border-top="1px solid #e7e5e4" border-bottom="1px solid #e7e5e4">
       <mj-column width="100%">
-        <mj-text align="center" font-size="12px" color="#78716c" text-transform="uppercase" letter-spacing="2px" padding-bottom="6px">
+        <mj-text align="center" font-size="10px" color="#78716c" text-transform="uppercase" letter-spacing="2px" padding-bottom="4px">
           BENEFICIO DISPONIBLE
         </mj-text>
-        <mj-text align="center" font-size="28px" font-weight="700" color="#111111" padding-bottom="15px">
+        <mj-text align="center" font-size="22px" font-weight="700" color="#111111" padding-bottom="10px">
           <span class="serif-title">{{ valor_descuento if valor_descuento else '15% DE DESCUENTO' }}</span>
         </mj-text>
         <mj-text align="center">
           <span class="coupon-card">{{ codigo_cupon if codigo_cupon else 'CYBERSIYASH' }}</span>
         </mj-text>
-        <mj-text align="center" font-size="11px" color="#a8a29e" padding-top="14px">
+        <mj-text align="center" font-size="10px" color="#a8a29e" padding-top="10px">
           {% if minimo_compra %}Válido en compras sobre {{ minimo_compra }}. {% endif %}
           {% if fecha_expiracion %}Vence el {{ fecha_expiracion }}.{% endif %}
         </mj-text>
       </mj-column>
     </mj-section>
 
-    <!-- Selected Fragrances Preview -->
-    <mj-section background-color="#ffffff" padding="40px 25px 20px 25px">
-      <mj-column width="100%">
-        <mj-text align="center" font-size="11px" color="#78716c" text-transform="uppercase" letter-spacing="2px" font-weight="600" padding-bottom="10px">
-          Colecciones Destacadas
-        </mj-text>
-        <mj-text align="center" font-size="20px" color="#111111" padding-bottom="25px">
-          <span class="serif-title">Descubre el aroma que define tu presencia</span>
-        </mj-text>
-      </mj-column>
-    </mj-section>
-
-    <mj-section background-color="#ffffff" padding="0 20px 30px 20px">
-      <mj-column width="50%" padding="10px">
-        <mj-text align="center" font-size="28px" padding-bottom="4px">⚜️</mj-text>
-        <mj-text align="center" font-size="13px" font-weight="600" color="#111111" padding-top="6px">
+    <!-- Compact Categories -->
+    <mj-section background-color="#ffffff" padding="16px 20px 10px 20px">
+      <mj-column width="50%" padding="6px 10px">
+        <mj-text align="center" font-size="20px" padding-bottom="2px">⚜️</mj-text>
+        <mj-text align="center" font-size="12px" font-weight="600" color="#111111" padding-top="2px">
           Perfumes de Diseñador
         </mj-text>
-        <mj-text align="center" font-size="11px" color="#78716c">
-          Azzaro, Armani, Burberry, Carolina Herrera y más.
+        <mj-text align="center" font-size="10px" color="#78716c" line-height="15px">
+          Armani, Azzaro, Burberry, CH y más.
         </mj-text>
       </mj-column>
-      <mj-column width="50%" padding="10px">
-        <mj-text align="center" font-size="28px" padding-bottom="4px">👑</mj-text>
-        <mj-text align="center" font-size="13px" font-weight="600" color="#111111" padding-top="6px">
+      <mj-column width="50%" padding="6px 10px">
+        <mj-text align="center" font-size="20px" padding-bottom="2px">👑</mj-text>
+        <mj-text align="center" font-size="12px" font-weight="600" color="#111111" padding-top="2px">
           Perfumería Árabe & Nicho
         </mj-text>
-        <mj-text align="center" font-size="11px" color="#78716c">
-          Lattafa, Armaf, Afnan, Al Haramain y Sospiro.
+        <mj-text align="center" font-size="10px" color="#78716c" line-height="15px">
+          Lattafa, Armaf, Afnan, Al Haramain.
         </mj-text>
       </mj-column>
     </mj-section>
 
     <!-- CTA Button -->
-    <mj-section background-color="#ffffff" padding="10px 30px 45px 30px">
+    <mj-section background-color="#ffffff" padding="5px 25px 26px 25px">
       <mj-column width="100%">
-        <mj-button background-color="#000000" color="#ffffff" font-size="11px" font-weight="600" letter-spacing="2px" text-transform="uppercase" inner-padding="16px 36px" href="https://siyash.cl/perfumes" border-radius="0px">
+        <mj-button background-color="#000000" color="#ffffff" font-size="11px" font-weight="600" letter-spacing="2px" text-transform="uppercase" inner-padding="13px 30px" href="https://siyash.cl/perfumes" border-radius="0px">
           APLICAR CUPÓN Y COMPRAR AHORA &rarr;
         </mj-button>
-        <mj-text align="center" font-size="11px" color="#a8a29e" padding-top="15px">
+        <mj-text align="center" font-size="10px" color="#a8a29e" padding-top="10px">
           Envíos a todo Chile con embalaje térmico y seguro.
         </mj-text>
       </mj-column>
     </mj-section>
 
-    <!-- Footer -->
-    <mj-section background-color="#0a0a0a" padding="35px 25px 25px 25px" border-top="1px solid #1c1917">
+    <!-- Compact Footer -->
+    <mj-section background-color="#0a0a0a" padding="22px 20px 18px 20px" border-top="1px solid #1c1917">
       <mj-column width="100%">
-        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="120px" align="center" padding="0 0 15px 0" href="https://siyash.cl/" />
-        <mj-text align="center" font-size="11px" color="#a8a29e" padding-top="4px" line-height="20px">
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="100px" align="center" padding="0 0 10px 0" href="https://siyash.cl/" />
+        <mj-text align="center" font-size="10px" color="#a8a29e" padding-top="2px" line-height="16px">
           Santiago de Chile &bull; contacto@siyash.cl &bull; WhatsApp +56 9 3223 8816
         </mj-text>
-        <mj-divider border-width="1px" border-style="solid" border-color="#262626" width="80%" padding="18px 0" />
-        <mj-text align="center" font-size="10px" color="#737373">
+        <mj-divider border-width="1px" border-style="solid" border-color="#262626" width="60%" padding="12px 0" />
+        <mj-text align="center" font-size="9px" color="#737373">
           &copy; 2026 Siyash Perfumería. Todos los derechos reservados.
         </mj-text>
       </mj-column>

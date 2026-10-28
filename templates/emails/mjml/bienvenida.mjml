@@ -4,111 +4,108 @@
     <mj-font name="Playfair Display" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;500;600&display=swap" />
     <mj-attributes>
       <mj-all font-family="Montserrat, Helvetica Neue, Arial, sans-serif" />
-      <mj-text font-size="14px" color="#333333" line-height="24px" />
+      <mj-text font-size="13px" color="#333333" line-height="20px" />
       <mj-section background-color="#ffffff" padding="0px" />
     </mj-attributes>
     <mj-style inline="inline">
-      .serif-title { font-family: 'Playfair Display', Georgia, serif !important; letter-spacing: 2px; }
-      .tracking-luxury { letter-spacing: 3px !important; }
-      .badge-gold { background-color: #111111; color: #d4af37; border: 1px solid #d4af37; padding: 6px 14px; display: inline-block; font-size: 11px; letter-spacing: 2px; font-weight: 600; text-transform: uppercase; }
+      .serif-title { font-family: 'Playfair Display', Georgia, serif !important; letter-spacing: 1px; }
+      .badge-gold { background-color: #111111; color: #fbbf24; border: 1px solid #fbbf24; padding: 4px 10px; display: inline-block; font-size: 10px; letter-spacing: 2px; font-weight: 600; text-transform: uppercase; }
+      .bonus-card { background-color: #fafaf9; border: 1px solid #e7e5e4; border-left: 3px solid #111111; padding: 14px 20px; text-align: center; margin: 15px 0 5px 0; }
     </mj-style>
   </mj-head>
   <mj-body background-color="#f5f5f4">
 
-    <!-- Top Spacer & Brand Header -->
-    <mj-section background-color="#000000" padding="35px 20px 25px 20px" border-bottom="1px solid #1c1917">
+    <!-- Brand Header -->
+    <mj-section background-color="#000000" padding="22px 20px 16px 20px" border-bottom="1px solid #1c1917">
       <mj-column width="100%">
-        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="180px" align="center" padding="0" href="https://siyash.cl/" />
-        <mj-text align="center" color="#d6d3d1" font-size="9px" padding-top="14px" text-transform="uppercase" letter-spacing="4px" font-weight="500">
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="150px" align="center" padding="0" href="https://siyash.cl/" />
+        <mj-text align="center" color="#a8a29e" font-size="8px" padding-top="8px" text-transform="uppercase" letter-spacing="3px" font-weight="500">
           ALTA PERFUMERÍA &bull; SANTIAGO DE CHILE
         </mj-text>
       </mj-column>
     </mj-section>
 
-    <!-- Hero Section -->
-    <mj-section background-color="#ffffff" padding="45px 30px 30px 30px">
+    <!-- Unified Hero & Welcome -->
+    <mj-section background-color="#ffffff" padding="24px 25px 12px 25px">
       <mj-column width="100%">
-        <mj-text align="center" padding-bottom="10px">
+        <mj-text align="center" padding-bottom="6px">
           <span class="badge-gold">CLUB SIYASH</span>
         </mj-text>
-        <mj-text align="center" font-size="28px" font-weight="400" color="#111111" line-height="36px" padding-top="15px">
+        <mj-text align="center" font-size="22px" font-weight="400" color="#111111" line-height="28px" padding-top="8px">
           <span class="serif-title">Bienvenido a tu nueva experiencia olfativa</span>
         </mj-text>
-        <mj-divider border-width="1px" border-style="solid" border-color="#e7e5e4" width="60px" padding="20px 0" />
-        <mj-text align="center" font-size="14px" color="#57534e" line-height="24px" font-weight="300">
-          Hola, <strong>{{ nombre if nombre else 'amante de las fragancias' }}</strong>. Nos alegra darte la bienvenida a Siyash Perfumería, donde seleccionamos con rigurosidad las mejores esencias de diseñador, perfumes árabes y fragancias de nicho originales.
+        <mj-text align="center" font-size="13px" color="#57534e" line-height="20px" font-weight="300" padding-top="10px">
+          Hola, <strong>{{ nombre if nombre else 'amante de las fragancias' }}</strong>. Te damos la bienvenida a Siyash, donde seleccionamos rigurosamente las mejores esencias de diseñador, perfumes árabes y fragancias de nicho 100% originales.
         </mj-text>
       </mj-column>
     </mj-section>
 
-    <!-- Points Welcome Bonus Box -->
-    <mj-section background-color="#fafaf9" padding="30px" border-left="3px solid #111111">
+    <!-- Compact Points Welcome Bonus -->
+    <mj-section background-color="#ffffff" padding="0 25px 15px 25px">
       <mj-column width="100%">
-        <mj-text align="center" font-size="11px" color="#78716c" text-transform="uppercase" letter-spacing="2px" padding-bottom="5px">
-          REGALO DE BIENVENIDA
-        </mj-text>
-        <mj-text align="center" font-size="34px" font-weight="400" color="#111111" line-height="40px">
-          <span class="serif-title">+100 PUNTOS</span>
-        </mj-text>
-        <mj-text align="center" font-size="13px" color="#57534e" padding-top="8px">
-          Ya acreditamos 100 puntos en tu cuenta para canjear por decants, miniaturas y envíos gratis.
+        <mj-text align="center" padding="0">
+          <div class="bonus-card">
+            <div style="font-size: 10px; color: #78716c; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px;">REGALO DE BIENVENIDA ACREDITADO</div>
+            <div style="font-size: 24px; font-family: 'Playfair Display', Georgia, serif; color: #111111; font-weight: 600;">+100 PUNTOS CLUB SIYASH</div>
+            <div style="font-size: 12px; color: #57534e; margin-top: 4px;">Disponibles en tu cuenta para canjear por decants, miniaturas y envíos gratis.</div>
+          </div>
         </mj-text>
       </mj-column>
     </mj-section>
 
-    <!-- Value Props / How it works -->
-    <mj-section background-color="#ffffff" padding="35px 25px 20px 25px">
-      <mj-column width="33.33%" padding="10px">
-        <mj-text align="center" font-size="18px" padding-bottom="6px">💎</mj-text>
-        <mj-text align="center" font-size="12px" font-weight="600" text-transform="uppercase" color="#111111" letter-spacing="1px" padding-bottom="4px">
+    <!-- Compact Value Props -->
+    <mj-section background-color="#ffffff" padding="5px 20px 15px 20px">
+      <mj-column width="33.33%" padding="6px 8px">
+        <mj-text align="center" font-size="16px" padding-bottom="2px">💎</mj-text>
+        <mj-text align="center" font-size="11px" font-weight="600" text-transform="uppercase" color="#111111" letter-spacing="1px" padding-bottom="2px">
           100% Originales
         </mj-text>
-        <mj-text align="center" font-size="11px" color="#78716c" line-height="18px">
-          Importación directa garantizada con sello de autenticidad.
+        <mj-text align="center" font-size="10px" color="#78716c" line-height="15px">
+          Sello de autenticidad e importación directa.
         </mj-text>
       </mj-column>
-      <mj-column width="33.33%" padding="10px">
-        <mj-text align="center" font-size="18px" padding-bottom="6px">⭐</mj-text>
-        <mj-text align="center" font-size="12px" font-weight="600" text-transform="uppercase" color="#111111" letter-spacing="1px" padding-bottom="4px">
+      <mj-column width="33.33%" padding="6px 8px">
+        <mj-text align="center" font-size="16px" padding-bottom="2px">⭐</mj-text>
+        <mj-text align="center" font-size="11px" font-weight="600" text-transform="uppercase" color="#111111" letter-spacing="1px" padding-bottom="2px">
           Gana Puntos
         </mj-text>
-        <mj-text align="center" font-size="11px" color="#78716c" line-height="18px">
-          1 punto acumulado por cada $100 CLP en todas tus compras.
+        <mj-text align="center" font-size="10px" color="#78716c" line-height="15px">
+          1 punto por cada $100 CLP en tus compras.
         </mj-text>
       </mj-column>
-      <mj-column width="33.33%" padding="10px">
-        <mj-text align="center" font-size="18px" padding-bottom="6px">🎁</mj-text>
-        <mj-text align="center" font-size="12px" font-weight="600" text-transform="uppercase" color="#111111" letter-spacing="1px" padding-bottom="4px">
+      <mj-column width="33.33%" padding="6px 8px">
+        <mj-text align="center" font-size="16px" padding-bottom="2px">🎁</mj-text>
+        <mj-text align="center" font-size="11px" font-weight="600" text-transform="uppercase" color="#111111" letter-spacing="1px" padding-bottom="2px">
           Premios Reales
         </mj-text>
-        <mj-text align="center" font-size="11px" color="#78716c" line-height="18px">
-          Canjea muestras, formatos de viaje y frascos completos.
+        <mj-text align="center" font-size="10px" color="#78716c" line-height="15px">
+          Canjea muestras, formatos de viaje y frascos.
         </mj-text>
       </mj-column>
     </mj-section>
 
     <!-- CTA Button -->
-    <mj-section background-color="#ffffff" padding="10px 30px 45px 30px">
+    <mj-section background-color="#ffffff" padding="5px 25px 28px 25px">
       <mj-column width="100%">
-        <mj-button background-color="#000000" color="#ffffff" font-size="11px" font-weight="600" letter-spacing="2px" text-transform="uppercase" inner-padding="16px 36px" href="https://siyash.cl/perfumes" border-radius="0px">
+        <mj-button background-color="#000000" color="#ffffff" font-size="11px" font-weight="600" letter-spacing="2px" text-transform="uppercase" inner-padding="13px 30px" href="https://siyash.cl/perfumes" border-radius="0px">
           EXPLORAR CATÁLOGO EXCLUSIVO &rarr;
         </mj-button>
-        <mj-text align="center" font-size="11px" color="#a8a29e" padding-top="15px">
-          O visita tu portal en <a href="https://siyash.cl/cliente/cuenta" style="color: #111111; text-decoration: underline;">siyash.cl/cliente/cuenta</a>
+        <mj-text align="center" font-size="10px" color="#a8a29e" padding-top="10px">
+          Tu cuenta: <a href="https://siyash.cl/cliente/cuenta" style="color: #111111; text-decoration: underline;">siyash.cl/cliente/cuenta</a>
         </mj-text>
       </mj-column>
     </mj-section>
 
-    <!-- Footer -->
-    <mj-section background-color="#0a0a0a" padding="35px 25px 25px 25px" border-top="1px solid #1c1917">
+    <!-- Compact Footer -->
+    <mj-section background-color="#0a0a0a" padding="22px 20px 18px 20px" border-top="1px solid #1c1917">
       <mj-column width="100%">
-        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="120px" align="center" padding="0 0 15px 0" href="https://siyash.cl/" />
-        <mj-text align="center" font-size="11px" color="#a8a29e" padding-top="4px" line-height="20px">
-          Venta de Perfumes Originales por Mayor y Detalle &bull; Envíos a todo Chile<br/>
-          Santiago de Chile &bull; contacto@siyash.cl &bull; WhatsApp +56 9 3223 8816
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="100px" align="center" padding="0 0 10px 0" href="https://siyash.cl/" />
+        <mj-text align="center" font-size="10px" color="#a8a29e" padding-top="2px" line-height="16px">
+          Venta por Mayor y Detalle &bull; Envíos a todo Chile<br/>
+          contacto@siyash.cl &bull; WhatsApp +56 9 3223 8816
         </mj-text>
-        <mj-divider border-width="1px" border-style="solid" border-color="#262626" width="80%" padding="18px 0" />
-        <mj-text align="center" font-size="10px" color="#737373" line-height="16px">
+        <mj-divider border-width="1px" border-style="solid" border-color="#262626" width="60%" padding="12px 0" />
+        <mj-text align="center" font-size="9px" color="#737373" line-height="14px">
           Recibes este correo porque eres miembro registrado en siyash.cl.<br/>
           &copy; 2026 Siyash Perfumería. Todos los derechos reservados.
         </mj-text>
