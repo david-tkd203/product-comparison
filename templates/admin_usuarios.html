@@ -1,0 +1,540 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Gestión de Usuarios y Clientes</h1>
+    <p class="text-sm text-slate-500 mt-1">Administra los clientes de Club Siyash, historial de compras, puntos, sincronización con Shopify y telemetría de sesiones.</p>
+  </div>
+  <div>
+    <button onclick="document.getElementById('modal-crear-usuario').classList.remove('hidden')" class="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-slate-800 transition-colors shadow-sm flex items-center gap-1.5">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+      Crear Nuevo Usuario
+    </button>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Total Usuarios</p>
+    <p class="text-2xl font-bold text-slate-900 mt-1">{{ kpis.total_usuarios }}</p>
+    <p class="text-[11px] text-slate-400 mt-0.5">Registrados en Club Siyash</p>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Usuarios Activos</p>
+    <p class="text-2xl font-bold text-emerald-700 mt-1">{{ kpis.activos }}</p>
+    <p class="text-[11px] text-slate-400 mt-0.5">{{ kpis.inactivos }} suspendidos</p>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Puntos en Circulación</p>
+    <p class="text-2xl font-bold text-amber-600 mt-1">{{ "{:,}".format(kpis.puntos_totales).replace(',', '.') }} <span class="text-xs font-normal text-slate-500">pts</span></p>
+    <p class="text-[11px] text-slate-400 mt-0.5">Saldo acumulado por clientes</p>
+  </div>
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <p class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Facturación Clientes</p>
+    <p class="text-2xl font-bold text-indigo-700 mt-1">${{ "{:,}".format(kpis.facturacion_clientes).replace(',', '.') }}</p>
+    <p class="text-[11px] text-slate-400 mt-0.5">Compras con cuenta</p>
+  </div>
+</div>
+
+<!-- Search & Filters -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+  <form method="GET" action="/admin/usuarios" class="flex flex-col md:flex-row items-center gap-3">
+    <div class="relative flex-1 w-full">
+      <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <input type="text" name="q" value="{{ q }}" placeholder="Buscar por nombre, correo electrónico o teléfono..." class="w-full pl-9 pr-4 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 transition-colors">
+    </div>
+    <div class="flex items-center gap-2 w-full md:w-auto">
+      <select name="status" class="py-2 px-3 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 bg-white text-slate-700">
+        <option value="todos" {% if status_filter == 'todos' %}selected{% endif %}>Todos los estados</option>
+        <option value="activos" {% if status_filter == 'activos' %}selected{% endif %}>Solo Activos</option>
+        <option value="inactivos" {% if status_filter == 'inactivos' %}selected{% endif %}>Solo Suspendidos</option>
+      </select>
+      <select name="order_by" class="py-2 px-3 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 bg-white text-slate-700">
+        <option value="recientes" {% if order_by == 'recientes' %}selected{% endif %}>Más recientes</option>
+        <option value="nombre" {% if order_by == 'nombre' %}selected{% endif %}>Nombre (A-Z)</option>
+        <option value="puntos" {% if order_by == 'puntos' %}selected{% endif %}>Más puntos</option>
+        <option value="gastado" {% if order_by == 'gastado' %}selected{% endif %}>Mayor gasto ($)</option>
+        <option value="pedidos" {% if order_by == 'pedidos' %}selected{% endif %}>Más compras</option>
+      </select>
+      <button type="submit" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition-colors">
+        Filtrar
+      </button>
+      {% if q or status_filter != 'todos' or order_by != 'recientes' %}
+      <a href="/admin/usuarios" class="px-3 py-2 text-xs sm:text-sm text-slate-500 hover:text-slate-700">Limpiar</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<!-- Table: List of Customers -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm text-slate-600">
+      <thead class="bg-slate-50 text-[11px] font-medium uppercase tracking-wider text-slate-500 border-b border-slate-100">
+        <tr>
+          <th class="py-3 px-4">Usuario</th>
+          <th class="py-3 px-4">Teléfono</th>
+          <th class="py-3 px-4">Puntos Club</th>
+          <th class="py-3 px-4">Pedidos & Facturación</th>
+          <th class="py-3 px-4">Shopify CRM</th>
+          <th class="py-3 px-4">Estado</th>
+          <th class="py-3 px-4">Registro</th>
+          <th class="py-3 px-4 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% if customers %}
+          {% for u in customers %}
+          <tr class="hover:bg-slate-50/70 transition-colors">
+            <td class="py-3.5 px-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center shrink-0 uppercase">
+                  {{ u.nombre[:2] }}
+                </div>
+                <div>
+                  <div class="font-semibold text-slate-900 text-sm flex items-center gap-1.5">
+                    {{ u.nombre }}
+                    {% if u.total_gastado and u.total_gastado > 150000 %}
+                      <span class="px-1.5 py-0.2 bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold rounded" title="Cliente VIP">VIP</span>
+                    {% endif %}
+                  </div>
+                  <div class="text-xs text-slate-400 font-mono">{{ u.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="py-3.5 px-4 text-xs font-mono">
+              {% if u.telefono %}
+                <a href="https://wa.me/{{ u.telefono|replace('+', '')|replace(' ', '')|replace('-', '') }}" target="_blank" class="text-emerald-700 hover:text-emerald-800 flex items-center gap-1" title="Abrir chat de WhatsApp">
+                  <span>{{ u.telefono }}</span>
+                  <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                </a>
+              {% else %}
+                <span class="text-slate-400">Sin teléfono</span>
+              {% endif %}
+            </td>
+            <td class="py-3.5 px-4">
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                <svg class="w-3.5 h-3.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                {{ u.puntos }} pts
+              </span>
+            </td>
+            <td class="py-3.5 px-4 text-xs">
+              <div class="font-bold text-slate-800">${{ "{:,}".format(u.total_gastado).replace(',', '.') }} CLP</div>
+              <div class="text-[11px] text-slate-400">{{ u.total_pedidos }} {{ 'pedido' if u.total_pedidos == 1 else 'pedidos' }}</div>
+            </td>
+            <td class="py-3.5 px-4 text-xs">
+              {% if u.shopify_customer_id %}
+                <a href="https://admin.shopify.com/store/dcw11w-0p/customers/{{ u.shopify_customer_id }}" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors" title="Abrir en Shopify Admin">
+                  <svg class="w-3 h-3 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                  ID: {{ u.shopify_customer_id }}
+                </a>
+              {% else %}
+                <form method="POST" action="/admin/usuarios/{{ u.id }}/sync-shopify" class="inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                  <button type="submit" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors" title="Sincronizar a Shopify ahora">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Sincronizar
+                  </button>
+                </form>
+              {% endif %}
+            </td>
+            <td class="py-3.5 px-4">
+              {% if u.is_active %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Activo
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Suspendido
+                </span>
+              {% endif %}
+            </td>
+            <td class="py-3.5 px-4 text-xs text-slate-500">
+              {{ u.created_at.strftime('%d/%m/%Y') if u.created_at else 'N/A' }}
+            </td>
+            <td class="py-3.5 px-4 text-right">
+              <div class="flex items-center justify-end gap-1.5">
+                <!-- Botón Perfil 360 -->
+                <button onclick="abrirDetalleUsuario({{ u.id }})" class="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors" title="Ver compras, puntos y cookies">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </button>
+
+                <!-- Botón Editar -->
+                <button onclick="abrirEditarUsuario({{ u.id }}, '{{ u.nombre|escape }}', '{{ u.email|escape }}', '{{ u.telefono or '' }}', {{ u.puntos }})" class="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Editar usuario y puntos">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                </button>
+
+                <!-- Toggle Activo -->
+                <form method="POST" action="/admin/usuarios/{{ u.id }}/toggle" class="inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                  <button type="submit" class="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors" title="{{ 'Suspender usuario' if u.is_active else 'Activar usuario' }}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                  </button>
+                </form>
+
+                <!-- Eliminar -->
+                <form method="POST" action="/admin/usuarios/{{ u.id }}/eliminar" class="inline" onsubmit="return confirm('¿Seguro que deseas eliminar permanentemente a {{ u.nombre }}? Se le enviará un correo de confirmación de cuenta eliminada.');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                  <button type="submit" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Eliminar permanentemente">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" class="text-center py-12 text-slate-400 text-sm">
+              No se encontraron usuarios que coincidan con la búsqueda.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL 1: Crear Nuevo Usuario -->
+<div id="modal-crear-usuario" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-base font-bold text-slate-900">Registrar Nuevo Usuario</h3>
+      <button onclick="document.getElementById('modal-crear-usuario').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form method="POST" action="/admin/usuarios/crear" class="p-5 space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Nombre Completo *</label>
+        <input type="text" name="nombre" required placeholder="Ej. Camila Morales" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Correo Electrónico *</label>
+        <input type="email" name="email" required placeholder="cliente@gmail.com" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Teléfono Móvil (WhatsApp)</label>
+        <input type="text" name="telefono" placeholder="+56 9 1234 5678" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Contraseña Inicial</label>
+          <input type="password" name="password" placeholder="Mínimo 6 caracteres" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Puntos Iniciales</label>
+          <input type="number" name="puntos" value="100" min="0" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900">
+        </div>
+      </div>
+      <p class="text-[11px] text-slate-400">El usuario se creará en Siyash y se sincronizará automáticamente con Shopify CRM.</p>
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('modal-crear-usuario').classList.add('hidden')" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+        <button type="submit" class="px-4 py-2 text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 rounded-lg shadow-sm">Guardar y Sincronizar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL 2: Editar Usuario -->
+<div id="modal-editar-usuario" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-base font-bold text-slate-900">Editar Usuario y Puntos</h3>
+      <button onclick="document.getElementById('modal-editar-usuario').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="form-editar-usuario" method="POST" action="" class="p-5 space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Nombre Completo *</label>
+        <input type="text" id="edit-nombre" name="nombre" required class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Correo Electrónico *</label>
+        <input type="email" id="edit-email" name="email" required class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Teléfono</label>
+        <input type="text" id="edit-telefono" name="telefono" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Nueva Contraseña</label>
+          <input type="password" name="password" placeholder="En blanco para mantener" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Saldo de Puntos</label>
+          <input type="number" id="edit-puntos" name="puntos" min="0" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900">
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('modal-editar-usuario').classList.add('hidden')" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+        <button type="submit" class="px-4 py-2 text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 rounded-lg shadow-sm">Actualizar Cambios</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL 3: Detalle 360° del Usuario (Compras, Puntos, Canjes, Cookies) -->
+<div id="modal-detalle-usuario" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+    <!-- Header del Modal -->
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div class="flex items-center gap-3">
+        <div id="det-avatar" class="w-10 h-10 rounded-full bg-slate-900 text-white font-bold text-sm flex items-center justify-center shrink-0 uppercase">
+          --
+        </div>
+        <div>
+          <h3 id="det-nombre" class="text-base font-bold text-slate-900">Cargando...</h3>
+          <p id="det-email" class="text-xs text-slate-500 font-mono">--</p>
+        </div>
+      </div>
+      <button onclick="document.getElementById('modal-detalle-usuario').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Navegación por Pestañas -->
+    <div class="flex border-b border-slate-200 bg-white px-5 text-xs font-medium">
+      <button id="tab-btn-compras" onclick="cambiarPestana('compras')" class="py-3 px-4 text-slate-900 border-b-2 border-slate-900 font-bold transition-colors">
+        🛍️ Compras (<span id="det-count-compras">0</span>)
+      </button>
+      <button id="tab-btn-puntos" onclick="cambiarPestana('puntos')" class="py-3 px-4 text-slate-500 hover:text-slate-900 transition-colors">
+        🪙 Puntos e Historial
+      </button>
+      <button id="tab-btn-canjes" onclick="cambiarPestana('canjes')" class="py-3 px-4 text-slate-500 hover:text-slate-900 transition-colors">
+        🎁 Premios Canjeados
+      </button>
+      <button id="tab-btn-sesion" onclick="cambiarPestana('sesion')" class="py-3 px-4 text-slate-500 hover:text-slate-900 transition-colors">
+        🍪 Cookies & Sesión
+      </button>
+    </div>
+
+    <!-- Contenido Scrollable -->
+    <div class="p-5 overflow-y-auto flex-1 text-sm text-slate-600">
+      
+      <!-- PESTAÑA 1: Compras -->
+      <div id="tab-content-compras" class="space-y-4">
+        <div id="det-lista-compras" class="space-y-3">
+          <p class="text-slate-400 text-xs italic">Cargando compras...</p>
+        </div>
+      </div>
+
+      <!-- PESTAÑA 2: Puntos -->
+      <div id="tab-content-puntos" class="hidden space-y-4">
+        <div class="flex items-center justify-between p-3 bg-amber-50 rounded-xl border border-amber-200">
+          <div>
+            <span class="text-xs text-amber-800 font-medium">Saldo Actual Disponible</span>
+            <div id="det-puntos-total" class="text-xl font-bold text-amber-900">0 pts</div>
+          </div>
+          <span class="text-[11px] text-amber-700">1 pt por cada $100 CLP de compra</span>
+        </div>
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 uppercase border-b border-slate-100">
+              <tr>
+                <th class="py-2.5 px-3">Fecha</th>
+                <th class="py-2.5 px-3">Motivo / Operación</th>
+                <th class="py-2.5 px-3 text-right">Variación</th>
+              </tr>
+            </thead>
+            <tbody id="det-tabla-puntos" class="divide-y divide-slate-100">
+              <!-- Render dinámico -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PESTAÑA 3: Canjes de Premios -->
+      <div id="tab-content-canjes" class="hidden space-y-3">
+        <div id="det-lista-canjes" class="space-y-2">
+          <!-- Render dinámico -->
+        </div>
+      </div>
+
+      <!-- PESTAÑA 4: Cookies, Sesión & Shopify -->
+      <div id="tab-content-sesion" class="hidden space-y-4 text-xs">
+        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
+          <h4 class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            Seguridad y Sesión Web
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <span class="text-slate-400 block text-[11px]">Canal de Navegación</span>
+              <span id="det-sesion-canal" class="font-medium text-slate-800">--</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[11px]">Tipo de Cookie de Autenticación</span>
+              <span id="det-sesion-cookie" class="font-mono text-slate-800">--</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[11px]">Cifrado de Credenciales</span>
+              <span id="det-sesion-auth" class="font-medium text-slate-800">--</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[11px]">Fecha y Hora de Registro</span>
+              <span id="det-sesion-fecha" class="font-medium text-slate-800">--</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-indigo-50/60 rounded-xl p-4 border border-indigo-100 space-y-2">
+          <h4 class="font-bold text-indigo-950 text-sm flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            Enlace con Shopify CRM
+          </h4>
+          <p class="text-slate-600 text-[11px]">
+            Cuando el cliente inicia el checkout de un perfume, la URL permalink transfiere automáticamente el token de descuento y pre-carga la identidad del cliente mediante su ID en Shopify.
+          </p>
+          <div class="pt-1 flex items-center gap-2">
+            <span class="text-[11px] text-slate-500">ID Cliente Shopify:</span>
+            <span id="det-shopify-id" class="font-mono font-bold text-indigo-900 bg-white px-2 py-0.5 rounded border border-indigo-200">--</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer del Modal -->
+    <div class="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+      <button onclick="document.getElementById('modal-detalle-usuario').classList.add('hidden')" class="px-4 py-2 text-xs font-semibold bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors">
+        Cerrar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+function abrirEditarUsuario(id, nombre, email, telefono, puntos) {
+  document.getElementById('form-editar-usuario').action = '/admin/usuarios/' + id + '/editar';
+  document.getElementById('edit-nombre').value = nombre;
+  document.getElementById('edit-email').value = email;
+  document.getElementById('edit-telefono').value = telefono || '';
+  document.getElementById('edit-puntos').value = puntos || 0;
+  document.getElementById('modal-editar-usuario').classList.remove('hidden');
+}
+
+function cambiarPestana(tabName) {
+  const tabs = ['compras', 'puntos', 'canjes', 'sesion'];
+  tabs.forEach(t => {
+    const btn = document.getElementById('tab-btn-' + t);
+    const content = document.getElementById('tab-content-' + t);
+    if (t === tabName) {
+      btn.className = 'py-3 px-4 text-slate-900 border-b-2 border-slate-900 font-bold transition-colors';
+      content.classList.remove('hidden');
+    } else {
+      btn.className = 'py-3 px-4 text-slate-500 hover:text-slate-900 transition-colors';
+      content.classList.add('hidden');
+    }
+  });
+}
+
+function abrirDetalleUsuario(id) {
+  document.getElementById('modal-detalle-usuario').classList.remove('hidden');
+  cambiarPestana('compras');
+
+  document.getElementById('det-nombre').innerText = 'Cargando perfil...';
+  document.getElementById('det-email').innerText = '...';
+  document.getElementById('det-avatar').innerText = '..';
+
+  fetch('/admin/usuarios/' + id + '/detalle')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) {
+        alert(data.error || 'Error al cargar perfil');
+        return;
+      }
+      const c = data.customer;
+      document.getElementById('det-nombre').innerText = c.nombre;
+      document.getElementById('det-email').innerText = c.email + (c.telefono ? ' · ' + c.telefono : '');
+      document.getElementById('det-avatar').innerText = c.nombre.slice(0, 2);
+      document.getElementById('det-count-compras').innerText = data.orders.length;
+      document.getElementById('det-puntos-total').innerText = (c.puntos || 0) + ' pts';
+
+      // Compras
+      const contCompras = document.getElementById('det-lista-compras');
+      if (data.orders.length === 0) {
+        contCompras.innerHTML = '<p class="text-slate-400 text-xs italic py-4 text-center">Este cliente aún no ha realizado pedidos.</p>';
+      } else {
+        contCompras.innerHTML = data.orders.map(o => `
+          <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <div class="flex items-center justify-between text-xs mb-2">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-slate-900 font-mono">Pedido #${o.id}</span>
+                <span class="text-slate-400">·</span>
+                <span class="text-slate-500">${o.fecha_fmt || ''}</span>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${o.status === 'completado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                ${(o.status || 'pendiente').toUpperCase()}
+              </span>
+            </div>
+            <div class="space-y-1 py-1 border-t border-b border-slate-200/60 my-2">
+              ${(o.items || []).map(it => `
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-slate-700">${it.qty}x ${it.nombre}</span>
+                  <span class="font-medium text-slate-900">$${(it.precio * it.qty).toLocaleString('es-CL')}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div class="flex items-center justify-between text-xs pt-1">
+              <span class="text-slate-500">
+                ${o.cupon_codigo ? 'Cupón: <span class="font-mono font-bold text-indigo-700">' + o.cupon_codigo + ' (-$' + (o.descuento || 0).toLocaleString('es-CL') + ')</span>' : ''}
+              </span>
+              <span class="font-bold text-slate-900 text-sm">Total: $${(o.total || 0).toLocaleString('es-CL')} CLP</span>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // Puntos
+      const tbodyPuntos = document.getElementById('det-tabla-puntos');
+      if (data.points_history.length === 0) {
+        tbodyPuntos.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-slate-400 italic">Sin movimientos registrados.</td></tr>';
+      } else {
+        tbodyPuntos.innerHTML = data.points_history.map(ph => `
+          <tr>
+            <td class="py-2.5 px-3 text-slate-500 font-mono text-[11px]">${ph.fecha_fmt}</td>
+            <td class="py-2.5 px-3 text-slate-800">${ph.motivo}</td>
+            <td class="py-2.5 px-3 text-right font-bold ${ph.puntos > 0 ? 'text-emerald-600' : 'text-red-500'}">
+              ${ph.puntos > 0 ? '+' : ''}${ph.puntos} pts
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      // Canjes
+      const contCanjes = document.getElementById('det-lista-canjes');
+      if (data.redemptions.length === 0) {
+        contCanjes.innerHTML = '<p class="text-slate-400 text-xs italic py-4 text-center">No registra canjes de premios hasta el momento.</p>';
+      } else {
+        contCanjes.innerHTML = data.redemptions.map(r => `
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+            <div>
+              <div class="font-bold text-slate-900">${r.reward_nombre}</div>
+              <div class="text-[11px] text-slate-400">Canjeado el ${r.fecha_fmt} &bull; Código: <span class="font-mono font-bold text-indigo-700">${r.codigo_canje}</span></div>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">${(r.estado || 'disponible').toUpperCase()}</span>
+          </div>
+        `).join('');
+      }
+
+      // Sesión / Cookies
+      const s = data.session_data;
+      document.getElementById('det-sesion-canal').innerText = s.canal;
+      document.getElementById('det-sesion-cookie').innerText = s.cookie_name;
+      document.getElementById('det-sesion-auth').innerText = s.auth_method;
+      document.getElementById('det-sesion-fecha').innerText = s.fecha_registro;
+      document.getElementById('det-shopify-id').innerText = s.shopify_customer_id;
+    })
+    .catch(err => {
+      alert('Error de conexión al obtener el detalle: ' + err);
+    });
+}
+</script>
+{% endblock %}

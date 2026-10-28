@@ -1157,3 +1157,375 @@ def admin_cyber_limpiar_todo():
     clear_settings_cache()
     flash('🚨 Campaña Cyber apagada: todos los productos volvieron a sus precios estándar.', 'success')
     return redirect(url_for('admin.admin_cyber'))
+
+
+# -------------------------------------------------------------
+# GESTIÓN DE USUARIOS / CLIENTES (CLUB SIYASH)
+# -------------------------------------------------------------
+
+@admin_bp.route('/admin/usuarios')
+@require_login
+def admin_usuarios():
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    q = (request.args.get('q') or '').strip()
+    status_filter = (request.args.get('status') or 'todos').strip()
+    order_by = (request.args.get('order_by') or 'recientes').strip()
+
+    sql = '''
+        SELECT c.*,
+               COUNT(DISTINCT o.id) AS total_pedidos,
+               COALESCE(SUM(o.total), 0) AS total_gastado,
+               MAX(o.created_at) AS ultimo_pedido
+        FROM customers c
+        LEFT JOIN orders o ON o.customer_id = c.id
+        WHERE 1=1
+    '''
+    params = []
+
+    if q:
+        sql += " AND (c.nombre LIKE %s OR c.email LIKE %s OR c.telefono LIKE %s)"
+        like_q = f"%{q}%"
+        params.extend([like_q, like_q, like_q])
+
+    if status_filter == 'activos':
+        sql += " AND c.is_active = 1"
+    elif status_filter == 'inactivos':
+        sql += " AND c.is_active = 0"
+
+    sql += " GROUP BY c.id"
+
+    if order_by == 'nombre':
+        sql += " ORDER BY c.nombre ASC"
+    elif order_by == 'puntos':
+        sql += " ORDER BY c.puntos DESC"
+    elif order_by == 'gastado':
+        sql += " ORDER BY total_gastado DESC"
+    elif order_by == 'pedidos':
+        sql += " ORDER BY total_pedidos DESC"
+    else:
+        sql += " ORDER BY c.created_at DESC"
+
+    cur.execute(sql, params)
+    customers = cur.fetchall()
+
+    # Métricas Globales
+    cur.execute('''
+        SELECT COUNT(*) AS total_usuarios,
+               SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS activos,
+               SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS inactivos,
+               COALESCE(SUM(puntos), 0) AS puntos_totales
+        FROM customers
+    ''')
+    kpi_stats = cur.fetchone() or {'total_usuarios': 0, 'activos': 0, 'inactivos': 0, 'puntos_totales': 0}
+
+    cur.execute('SELECT COALESCE(SUM(total), 0) AS facturacion_clientes FROM orders WHERE customer_id IS NOT NULL')
+    fact_row = cur.fetchone() or {'facturacion_clientes': 0}
+
+    kpis = {
+        'total_usuarios': int(kpi_stats.get('total_usuarios') or 0),
+        'activos': int(kpi_stats.get('activos') or 0),
+        'inactivos': int(kpi_stats.get('inactivos') or 0),
+        'puntos_totales': int(kpi_stats.get('puntos_totales') or 0),
+        'facturacion_clientes': int(fact_row.get('facturacion_clientes') or 0)
+    }
+
+    return render_template(
+        'admin_usuarios.html',
+        customers=customers,
+        kpis=kpis,
+        q=q,
+        status_filter=status_filter,
+        order_by=order_by
+    )
+
+
+@admin_bp.route('/admin/usuarios/crear', methods=['POST'])
+@require_login
+def admin_usuario_crear():
+    nombre = (request.form.get('nombre') or '').strip()
+    email = (request.form.get('email') or '').strip().lower()
+    telefono = (request.form.get('telefono') or '').strip()
+    password = (request.form.get('password') or '').strip()
+    try:
+        puntos = max(0, int(request.form.get('puntos', 100)))
+    except (ValueError, TypeError):
+        puntos = 100
+
+    if not nombre or not email:
+        flash('Nombre y correo electrónico son obligatorios.', 'error')
+        return redirect(url_for('admin.admin_usuarios'))
+
+    from werkzeug.security import generate_password_hash
+    import secrets
+
+    if not password:
+        password = secrets.token_urlsafe(8)
+
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    cur.execute('SELECT id FROM customers WHERE email = %s', [email])
+    if cur.fetchone():
+        flash(f"El correo '{email}' ya se encuentra registrado por otro usuario.", 'error')
+        return redirect(url_for('admin.admin_usuarios'))
+
+    cur.execute('''
+        INSERT INTO customers (nombre, email, telefono, password_hash, puntos, is_active)
+        VALUES (%s, %s, %s, %s, %s, 1)
+    ''', [nombre, email, telefono, generate_password_hash(password), puntos])
+    customer_id = cur.lastrowid
+
+    if puntos > 0:
+        cur.execute('''
+            INSERT INTO customer_points_history (customer_id, puntos, motivo)
+            VALUES (%s, %s, %s)
+        ''', [customer_id, puntos, 'Bono inicial asignado por administración'])
+
+    if hasattr(db, 'commit'):
+        db.commit()
+
+    # Sincronización con Shopify
+    shopify_msg = ""
+    try:
+        from ..shopify_api import sync_customer_to_shopify
+        ok_sh, sh_id, err_sh = sync_customer_to_shopify({
+            'id': customer_id,
+            'nombre': nombre,
+            'email': email,
+            'telefono': telefono
+        }, db=db)
+        if ok_sh:
+            shopify_msg = " y sincronizado con Shopify exitosamente."
+    except Exception as e:
+        shopify_msg = f" (Aviso Shopify: {e})."
+
+    flash(f"Usuario '{nombre}' creado exitosamente{shopify_msg}", 'success')
+    return redirect(url_for('admin.admin_usuarios'))
+
+
+@admin_bp.route('/admin/usuarios/<int:customer_id>/editar', methods=['POST'])
+@require_login
+def admin_usuario_editar(customer_id):
+    nombre = (request.form.get('nombre') or '').strip()
+    email = (request.form.get('email') or '').strip().lower()
+    telefono = (request.form.get('telefono') or '').strip()
+    password = (request.form.get('password') or '').strip()
+    puntos_raw = request.form.get('puntos')
+
+    if not nombre or not email:
+        flash('Nombre y correo electrónico son obligatorios.', 'error')
+        return redirect(url_for('admin.admin_usuarios'))
+
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    cur.execute('SELECT * FROM customers WHERE id = %s', [customer_id])
+    customer = cur.fetchone()
+    if not customer:
+        flash('Usuario no encontrado.', 'error')
+        return redirect(url_for('admin.admin_usuarios'))
+
+    cur.execute('SELECT id FROM customers WHERE email = %s AND id != %s', [email, customer_id])
+    if cur.fetchone():
+        flash(f"El correo '{email}' ya pertenece a otro usuario.", 'error')
+        return redirect(url_for('admin.admin_usuarios'))
+
+    updates = ['nombre = %s', 'email = %s', 'telefono = %s']
+    params = [nombre, email, telefono]
+
+    if password:
+        from werkzeug.security import generate_password_hash
+        updates.append('password_hash = %s')
+        params.append(generate_password_hash(password))
+
+    if puntos_raw is not None and puntos_raw != '':
+        try:
+            nuevos_puntos = max(0, int(puntos_raw))
+            diff_puntos = nuevos_puntos - int(customer.get('puntos', 0))
+            if diff_puntos != 0:
+                updates.append('puntos = %s')
+                params.append(nuevos_puntos)
+                motivo_admin = f"Ajuste manual de administración ({'+' if diff_puntos > 0 else ''}{diff_puntos} pts)"
+                cur.execute('''
+                    INSERT INTO customer_points_history (customer_id, puntos, motivo)
+                    VALUES (%s, %s, %s)
+                ''', [customer_id, diff_puntos, motivo_admin])
+        except (ValueError, TypeError):
+            pass
+
+    params.append(customer_id)
+    cur.execute(f"UPDATE customers SET {', '.join(updates)} WHERE id = %s", params)
+
+    if hasattr(db, 'commit'):
+        db.commit()
+
+    # Re-sincronizar Shopify
+    try:
+        from ..shopify_api import sync_customer_to_shopify
+        sync_customer_to_shopify({
+            'id': customer_id,
+            'nombre': nombre,
+            'email': email,
+            'telefono': telefono
+        }, db=db)
+    except Exception:
+        pass
+
+    flash(f"Usuario '{nombre}' actualizado exitosamente.", 'success')
+    return redirect(url_for('admin.admin_usuarios'))
+
+
+@admin_bp.route('/admin/usuarios/<int:customer_id>/toggle', methods=['POST'])
+@require_login
+def admin_usuario_toggle(customer_id):
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    cur.execute('SELECT id, nombre, is_active FROM customers WHERE id = %s', [customer_id])
+    customer = cur.fetchone()
+    if not customer:
+        flash('Usuario no encontrado.', 'error')
+        return redirect(url_for('admin.admin_usuarios'))
+
+    new_status = 0 if customer['is_active'] else 1
+    cur.execute('UPDATE customers SET is_active = %s WHERE id = %s', [new_status, customer_id])
+    if hasattr(db, 'commit'):
+        db.commit()
+
+    flash(f"Usuario '{customer['nombre']}' {'activado' if new_status else 'suspendido'}.", 'success')
+    return redirect(url_for('admin.admin_usuarios'))
+
+
+@admin_bp.route('/admin/usuarios/<int:customer_id>/eliminar', methods=['POST'])
+@require_login
+def admin_usuario_eliminar(customer_id):
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    cur.execute('SELECT id, nombre, email FROM customers WHERE id = %s', [customer_id])
+    customer = cur.fetchone()
+    if not customer:
+        flash('Usuario no encontrado.', 'error')
+        return redirect(url_for('admin.admin_usuarios'))
+
+    try:
+        from ..mailer import send_account_deleted_email
+        send_account_deleted_email(customer['email'], customer['nombre'])
+    except Exception:
+        pass
+
+    cur.execute('DELETE FROM customers WHERE id = %s', [customer_id])
+    if hasattr(db, 'commit'):
+        db.commit()
+
+    flash(f"Usuario '{customer['nombre']}' eliminado permanentemente.", 'success')
+    return redirect(url_for('admin.admin_usuarios'))
+
+
+@admin_bp.route('/admin/usuarios/<int:customer_id>/detalle')
+@require_login
+def admin_usuario_detalle(customer_id):
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    cur.execute('SELECT * FROM customers WHERE id = %s', [customer_id])
+    customer = cur.fetchone()
+    if not customer:
+        return jsonify({'ok': False, 'error': 'Usuario no encontrado'}), 404
+
+    # Compras / Pedidos del cliente
+    cur.execute('''
+        SELECT id, link_token, total, descuento, cupon_codigo, puntos_ganados, status, created_at, items_json
+        FROM orders
+        WHERE customer_id = %s
+        ORDER BY created_at DESC
+    ''', [customer_id])
+    orders = cur.fetchall()
+
+    for o in orders:
+        if o.get('created_at'):
+            o['fecha_fmt'] = o['created_at'].strftime('%d/%m/%Y %H:%M')
+        if o.get('items_json'):
+            try:
+                o['items'] = json.loads(o['items_json'])
+            except Exception:
+                o['items'] = []
+        else:
+            o['items'] = []
+
+    # Historial de Puntos
+    cur.execute('''
+        SELECT id, puntos, motivo, created_at
+        FROM customer_points_history
+        WHERE customer_id = %s
+        ORDER BY created_at DESC
+        LIMIT 50
+    ''', [customer_id])
+    points_history = cur.fetchall()
+    for ph in points_history:
+        if ph.get('created_at'):
+            ph['fecha_fmt'] = ph['created_at'].strftime('%d/%m/%Y %H:%M')
+
+    # Canjes de Premios
+    cur.execute('''
+        SELECT crr.*, r.nombre AS reward_nombre
+        FROM customer_reward_redemptions crr
+        JOIN rewards r ON r.id = crr.reward_id
+        WHERE crr.customer_id = %s
+        ORDER BY crr.created_at DESC
+    ''', [customer_id])
+    redemptions = cur.fetchall()
+    for r in redemptions:
+        if r.get('created_at'):
+            r['fecha_fmt'] = r['created_at'].strftime('%d/%m/%Y %H:%M')
+
+    session_data = {
+        'canal': 'Tienda Web Oficial (siyash.cl)',
+        'cookie_name': 'session (Flask Secure Cookie / HMAC SHA256)',
+        'shopify_linked': bool(customer.get('shopify_customer_id')),
+        'shopify_customer_id': customer.get('shopify_customer_id') or 'Pendiente de sincronizar',
+        'auth_method': 'Email + Contraseña (PBKDF2 SHA256)',
+        'fecha_registro': customer['created_at'].strftime('%d/%m/%Y %H:%M') if customer.get('created_at') else 'N/A'
+    }
+
+    return jsonify({
+        'ok': True,
+        'customer': {
+            'id': customer['id'],
+            'nombre': customer['nombre'],
+            'email': customer['email'],
+            'telefono': customer.get('telefono') or '',
+            'puntos': customer.get('puntos', 0),
+            'is_active': customer.get('is_active', 1),
+            'shopify_customer_id': customer.get('shopify_customer_id') or '',
+            'created_at': customer['created_at'].strftime('%d/%m/%Y %H:%M') if customer.get('created_at') else ''
+        },
+        'orders': orders,
+        'points_history': points_history,
+        'redemptions': redemptions,
+        'session_data': session_data
+    })
+
+
+@admin_bp.route('/admin/usuarios/<int:customer_id>/sync-shopify', methods=['POST'])
+@require_login
+def admin_usuario_sync_shopify(customer_id):
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    cur.execute('SELECT * FROM customers WHERE id = %s', [customer_id])
+    customer = cur.fetchone()
+    if not customer:
+        flash('Usuario no encontrado.', 'error')
+        return redirect(url_for('admin.admin_usuarios'))
+
+    try:
+        from ..shopify_api import sync_customer_to_shopify
+        ok, sh_id, err = sync_customer_to_shopify(customer, db=db)
+        if ok:
+            flash(f"Usuario '{customer['nombre']}' sincronizado con Shopify exitosamente (ID: {sh_id}).", 'success')
+        else:
+            flash(f"Error al sincronizar con Shopify: {err}", 'error')
+    except Exception as e:
+        flash(f"Excepción al conectar con Shopify: {e}", 'error')
+
+    return redirect(url_for('admin.admin_usuarios'))
