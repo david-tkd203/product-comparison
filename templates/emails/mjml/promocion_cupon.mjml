@@ -16,10 +16,10 @@
   <mj-body background-color="#f5f5f4">
 
     <!-- Brand Header -->
-    <mj-section background-color="#000000" padding="30px 20px 25px 20px">
+    <mj-section background-color="#000000" padding="35px 20px 25px 20px" border-bottom="1px solid #1c1917">
       <mj-column width="100%">
-        <mj-image src="https://siyash.cl/static/img/LogoSiyash-01-t.png" alt="Siyash Perfumería" width="160px" align="center" padding="0" href="https://siyash.cl/" />
-        <mj-text align="center" color="#a8a29e" font-size="9px" padding-top="12px" text-transform="uppercase" letter-spacing="3px">
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="180px" align="center" padding="0" href="https://siyash.cl/" />
+        <mj-text align="center" color="#d6d3d1" font-size="9px" padding-top="14px" text-transform="uppercase" letter-spacing="4px" font-weight="500">
           VENTA EXCLUSIVA &bull; CUPÓN DE DESCUENTO
         </mj-text>
       </mj-column>
@@ -74,8 +74,8 @@
 
     <mj-section background-color="#ffffff" padding="0 20px 30px 20px">
       <mj-column width="50%" padding="10px">
-        <mj-image src="https://siyash.cl/static/img/LogoSiyash-01-t.png" width="100px" padding="10px" />
-        <mj-text align="center" font-size="13px" font-weight="600" color="#111111" padding-top="10px">
+        <mj-text align="center" font-size="28px" padding-bottom="4px">⚜️</mj-text>
+        <mj-text align="center" font-size="13px" font-weight="600" color="#111111" padding-top="6px">
           Perfumes de Diseñador
         </mj-text>
         <mj-text align="center" font-size="11px" color="#78716c">
@@ -83,8 +83,8 @@
         </mj-text>
       </mj-column>
       <mj-column width="50%" padding="10px">
-        <mj-image src="https://siyash.cl/static/img/LogoSiyash-01-t.png" width="100px" padding="10px" />
-        <mj-text align="center" font-size="13px" font-weight="600" color="#111111" padding-top="10px">
+        <mj-text align="center" font-size="28px" padding-bottom="4px">👑</mj-text>
+        <mj-text align="center" font-size="13px" font-weight="600" color="#111111" padding-top="6px">
           Perfumería Árabe & Nicho
         </mj-text>
         <mj-text align="center" font-size="11px" color="#78716c">
@@ -106,16 +106,14 @@
     </mj-section>
 
     <!-- Footer -->
-    <mj-section background-color="#111111" padding="35px 25px 25px 25px">
+    <mj-section background-color="#0a0a0a" padding="35px 25px 25px 25px" border-top="1px solid #1c1917">
       <mj-column width="100%">
-        <mj-text align="center" font-size="13px" font-weight="600" color="#ffffff" letter-spacing="3px" text-transform="uppercase">
-          SIYASH PERFUMERÍA
-        </mj-text>
-        <mj-text align="center" font-size="11px" color="#a8a29e" padding-top="8px" line-height="20px">
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="120px" align="center" padding="0 0 15px 0" href="https://siyash.cl/" />
+        <mj-text align="center" font-size="11px" color="#a8a29e" padding-top="4px" line-height="20px">
           Santiago de Chile &bull; contacto@siyash.cl &bull; WhatsApp +56 9 3223 8816
         </mj-text>
-        <mj-divider border-width="1px" border-style="solid" border-color="#292524" width="80%" padding="20px 0" />
-        <mj-text align="center" font-size="10px" color="#78716c">
+        <mj-divider border-width="1px" border-style="solid" border-color="#262626" width="80%" padding="18px 0" />
+        <mj-text align="center" font-size="10px" color="#737373">
           &copy; 2026 Siyash Perfumería. Todos los derechos reservados.
         </mj-text>
       </mj-column>
