@@ -766,9 +766,31 @@ def admin_cupones():
                VALUES (%s, %s, %s, %s, %s, %s, %s, 1)''',
             [codigo, tipo, valor, minimo_compra, limite_usos, customer_id, valido_hasta]
         )
+        coupon_id = cur.lastrowid
         if hasattr(db, 'commit'):
             db.commit()
-        flash(f"Cupón '{codigo}' creado exitosamente.", 'success')
+
+        shopify_msg = ""
+        try:
+            from ..shopify_api import sync_coupon_to_shopify
+            ok_sh, rule_id, code_id, err_sh = sync_coupon_to_shopify({
+                'id': coupon_id,
+                'codigo': codigo,
+                'tipo': tipo,
+                'valor': valor,
+                'minimo_compra': minimo_compra,
+                'limite_usos': limite_usos,
+                'valido_hasta': valido_hasta,
+                'is_active': 1
+            }, db=db)
+            if ok_sh:
+                shopify_msg = " y sincronizado con Shopify exitosamente."
+            elif err_sh:
+                shopify_msg = f" (Aviso Shopify: {err_sh})."
+        except Exception as e:
+            shopify_msg = f" (No se pudo conectar con Shopify: {e})."
+
+        flash(f"Cupón '{codigo}' creado{shopify_msg}", 'success' if "exitosamente" in shopify_msg or not shopify_msg else 'warning')
         return redirect(url_for('admin.admin_cupones'))
 
     # GET: List coupons with customer info
@@ -831,11 +853,26 @@ def admin_cupones():
 @require_login
 def admin_cupon_toggle(coupon_id):
     db = get_db()
-    cur = db.cursor()
-    cur.execute('UPDATE coupons SET is_active = 1 - is_active WHERE id = %s', [coupon_id])
+    cur = db.cursor(dictionary=True)
+    cur.execute('SELECT * FROM coupons WHERE id = %s', [coupon_id])
+    coupon = cur.fetchone()
+    if not coupon:
+        flash('Cupón no encontrado.', 'error')
+        return redirect(url_for('admin.admin_cupones'))
+
+    new_status = 0 if coupon['is_active'] else 1
+    cur.execute('UPDATE coupons SET is_active = %s WHERE id = %s', [new_status, coupon_id])
     if hasattr(db, 'commit'):
         db.commit()
-    flash('Estado del cupón actualizado.', 'success')
+
+    coupon['is_active'] = new_status
+    try:
+        from ..shopify_api import sync_coupon_to_shopify
+        sync_coupon_to_shopify(coupon, db=db)
+    except Exception:
+        pass
+
+    flash(f"Cupón '{coupon['codigo']}' {'activado y sincronizado con Shopify' if new_status else 'desactivado'}.", 'success')
     return redirect(url_for('admin.admin_cupones'))
 
 
@@ -843,11 +880,43 @@ def admin_cupon_toggle(coupon_id):
 @require_login
 def admin_cupon_eliminar(coupon_id):
     db = get_db()
-    cur = db.cursor()
+    cur = db.cursor(dictionary=True)
+    cur.execute('SELECT * FROM coupons WHERE id = %s', [coupon_id])
+    coupon = cur.fetchone()
+    if coupon and coupon.get('shopify_price_rule_id'):
+        try:
+            from ..shopify_api import delete_coupon_from_shopify
+            delete_coupon_from_shopify(coupon['shopify_price_rule_id'], db=db)
+        except Exception:
+            pass
     cur.execute('DELETE FROM coupons WHERE id = %s', [coupon_id])
     if hasattr(db, 'commit'):
         db.commit()
-    flash('Cupón eliminado exitosamente.', 'success')
+    flash(f"Cupón '{coupon['codigo'] if coupon else coupon_id}' eliminado exitosamente.", 'success')
+    return redirect(url_for('admin.admin_cupones'))
+
+
+@admin_bp.route('/admin/cupones/<int:coupon_id>/sync-shopify', methods=['POST'])
+@require_login
+def admin_cupon_sync_shopify(coupon_id):
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    cur.execute('SELECT * FROM coupons WHERE id = %s', [coupon_id])
+    coupon = cur.fetchone()
+    if not coupon:
+        flash('Cupón no encontrado.', 'error')
+        return redirect(url_for('admin.admin_cupones'))
+
+    try:
+        from ..shopify_api import sync_coupon_to_shopify
+        ok, rule_id, code_id, err = sync_coupon_to_shopify(coupon, db=db)
+        if ok:
+            flash(f"Cupón '{coupon['codigo']}' sincronizado con Shopify exitosamente.", 'success')
+        else:
+            flash(f"Error sincronizando '{coupon['codigo']}' con Shopify: {err}", 'error')
+    except Exception as e:
+        flash(f"Excepción al conectar con Shopify: {e}", 'error')
+
     return redirect(url_for('admin.admin_cupones'))
 
 

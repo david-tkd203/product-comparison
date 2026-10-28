@@ -90,6 +90,17 @@ def registro():
     except Exception:
         pass
 
+    try:
+        from ..shopify_api import sync_customer_to_shopify
+        sync_customer_to_shopify({
+            'id': customer_id,
+            'nombre': nombre,
+            'email': email,
+            'telefono': telefono
+        }, db=db)
+    except Exception:
+        pass
+
     flash('¡Bienvenido a Siyash! Tu cuenta ha sido creada exitosamente con 100 puntos de bienvenida.', 'success')
     return redirect(url_for('customer.cuenta'))
 

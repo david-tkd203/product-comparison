@@ -740,10 +740,18 @@ def api_checkout_shopify():
             'error': 'Los productos de tu selección aún se están sincronizando con Shopify. Por favor utiliza la opción de WhatsApp temporalmente mientras finaliza la sincronización.'
         }), 400
 
-    checkout_url = f"https://{shop}/cart/{','.join(cart_lines)}"
+    checkout_params = []
     cupon_codigo = str(data.get('cupon_codigo') or '').strip().upper()
     if cupon_codigo:
-        checkout_url += f"?discount={urllib.parse.quote(cupon_codigo)}"
+        checkout_params.append(f"discount={urllib.parse.quote(cupon_codigo)}")
+
+    customer_email = session.get('customer_email') or str(data.get('email') or '').strip().lower()
+    if customer_email:
+        checkout_params.append(f"checkout[email]={urllib.parse.quote(customer_email)}")
+
+    checkout_url = f"https://{shop}/cart/{','.join(cart_lines)}"
+    if checkout_params:
+        checkout_url += f"?{'&'.join(checkout_params)}"
     return jsonify({'ok': True, 'checkout_url': checkout_url})
 
 

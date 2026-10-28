@@ -349,6 +349,10 @@ def init_db():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
 
+    _add_column_if_missing(cur, 'coupons', 'shopify_price_rule_id', 'VARCHAR(50) DEFAULT NULL')
+    _add_column_if_missing(cur, 'coupons', 'shopify_discount_code_id', 'VARCHAR(50) DEFAULT NULL')
+    _add_column_if_missing(cur, 'customers', 'shopify_customer_id', 'VARCHAR(50) DEFAULT NULL')
+
     try:
         cur.execute('SELECT COUNT(*) FROM coupons')
         if cur.fetchone()[0] == 0:
