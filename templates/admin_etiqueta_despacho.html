@@ -240,7 +240,7 @@
       <!-- Picking List (Validación de Bodega) -->
       <div class="picking-box">
         <div class="picking-title">CHECKLIST DE PICKING (CONTROL DE BODEGA)</div>
-        {% for it in order.items %}
+        {% for it in (order.items_list or order['items']) %}
         <div class="picking-item">
           <span class="check-box"></span>
           <span><b>{{ it.qty }}x</b> {{ it.nombre }} (SKU: {{ it.sku }})</span>

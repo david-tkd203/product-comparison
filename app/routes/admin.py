@@ -1447,11 +1447,13 @@ def admin_usuario_detalle(customer_id):
             o['fecha_fmt'] = o['created_at'].strftime('%d/%m/%Y %H:%M')
         if o.get('items_json'):
             try:
-                o['items'] = json.loads(o['items_json'])
+                parsed_items = json.loads(o['items_json'])
             except Exception:
-                o['items'] = []
+                parsed_items = []
         else:
-            o['items'] = []
+            parsed_items = []
+        o['items'] = parsed_items
+        o['items_list'] = parsed_items
 
     # Historial de Puntos
     cur.execute('''
@@ -1590,11 +1592,13 @@ def admin_envios():
 
         if o.get('items_json'):
             try:
-                o['items'] = json.loads(o['items_json'])
+                parsed_items = json.loads(o['items_json'])
             except Exception:
-                o['items'] = []
+                parsed_items = []
         else:
-            o['items'] = []
+            parsed_items = []
+        o['items'] = parsed_items
+        o['items_list'] = parsed_items
 
         courier = o.get('shipping_courier')
         tracking = o.get('shipping_tracking')
@@ -1797,11 +1801,13 @@ def admin_envio_etiqueta(order_id):
 
     if order.get('items_json'):
         try:
-            order['items'] = json.loads(order['items_json'])
+            parsed_items = json.loads(order['items_json'])
         except Exception:
-            order['items'] = []
+            parsed_items = []
     else:
-        order['items'] = []
+        parsed_items = []
+    order['items'] = parsed_items
+    order['items_list'] = parsed_items
 
     return render_template('admin_etiqueta_despacho.html', order=order)
 

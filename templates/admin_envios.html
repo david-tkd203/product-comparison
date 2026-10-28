@@ -142,10 +142,10 @@
         <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
           <div class="font-bold text-slate-800 uppercase tracking-wider text-[10px] mb-2 flex items-center justify-between">
             <span>Perfumes a Empacar (Picking)</span>
-            <span class="text-slate-400">{{ o.items|length }} items</span>
+            <span class="text-slate-400">{{ (o.items_list or o['items'])|length }} items</span>
           </div>
           <div class="space-y-1.5">
-            {% for it in o.items %}
+            {% for it in (o.items_list or o['items']) %}
             <div class="flex items-center justify-between">
               <span class="text-slate-700 font-medium truncate pr-2">
                 <span class="font-bold text-slate-900">{{ it.qty }}x</span> {{ it.nombre }}
