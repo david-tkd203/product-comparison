@@ -258,6 +258,14 @@ def init_db():
     _add_column_if_missing(cur, 'orders', 'puntos_ganados', 'INT DEFAULT 0')
     _add_column_if_missing(cur, 'orders', 'cupon_codigo', 'VARCHAR(50) DEFAULT NULL')
     _add_column_if_missing(cur, 'orders', 'descuento', 'INT NOT NULL DEFAULT 0')
+    _add_column_if_missing(cur, 'orders', 'email', 'VARCHAR(191) DEFAULT NULL')
+    _add_column_if_missing(cur, 'orders', 'shipping_courier', 'VARCHAR(50) DEFAULT NULL')
+    _add_column_if_missing(cur, 'orders', 'shipping_tracking', 'VARCHAR(100) DEFAULT NULL')
+    _add_column_if_missing(cur, 'orders', 'shipping_address', 'TEXT DEFAULT NULL')
+    _add_column_if_missing(cur, 'orders', 'shipping_commune', 'VARCHAR(100) DEFAULT NULL')
+    _add_column_if_missing(cur, 'orders', 'dispatch_stage', "VARCHAR(30) DEFAULT 'recibido'")
+    _add_column_if_missing(cur, 'orders', 'package_photo', 'TEXT DEFAULT NULL')
+    _add_column_if_missing(cur, 'orders', 'barcode_val', 'VARCHAR(100) DEFAULT NULL')
     try:
         cur.execute('ALTER TABLE orders ADD INDEX idx_orders_customer (customer_id)')
     except Exception:

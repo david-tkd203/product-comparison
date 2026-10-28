@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Control de Despachos y Logística</h1>
+    <p class="text-sm text-slate-500 mt-1">Gestión operativa de bodega: recepción, armado, validación fotográfica de paquetes, códigos de barras y couriers.</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <a href="/pedidos" class="px-3 py-2 text-xs sm:text-sm font-medium border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-700 transition-colors">
+      Ver Todos los Pedidos
+    </a>
+  </div>
+</div>
+
+<!-- Lector / Escáner de Códigos de Barras en Vivo -->
+<div class="bg-slate-900 text-white rounded-2xl shadow-lg p-4 sm:p-5 mb-6 border border-slate-800">
+  <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+    <div class="flex items-center gap-3 w-full md:w-auto">
+      <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 text-emerald-400">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+      </div>
+      <div>
+        <h3 class="text-sm font-bold text-white tracking-wide flex items-center gap-2">
+          Escáner de Código de Barras / Picking
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        </h3>
+        <p class="text-[11px] text-slate-400">Pasa la pistola láser o escribe el folio (ej. SIY-ORD-000001) para autoseleccionar el pedido.</p>
+      </div>
+    </div>
+    <div class="w-full md:w-96 relative">
+      <input type="text" id="barcode-scanner-input" placeholder="Escanea código de barras aquí..." autofocus class="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-xs sm:text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono transition-colors">
+      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-mono">ENTER</span>
+    </div>
+  </div>
+</div>
+
+<!-- Pipeline de Etapas (Filtro por Tabs) -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
+  <a href="/admin/envios" class="p-3 rounded-xl border text-center transition-all {{ 'bg-slate-900 text-white border-slate-900 shadow-sm' if stage_filter == 'todos' else 'bg-white text-slate-700 border-slate-200 hover:border-slate-300' }}">
+    <div class="text-[11px] font-semibold uppercase tracking-wider {{ 'text-slate-300' if stage_filter == 'todos' else 'text-slate-500' }}">Todos</div>
+    <div class="text-xl font-bold mt-0.5">{{ stage_counts.total }}</div>
+  </a>
+
+  <a href="/admin/envios?stage=recibido" class="p-3 rounded-xl border text-center transition-all {{ 'bg-blue-600 text-white border-blue-600 shadow-sm' if stage_filter == 'recibido' else 'bg-white text-slate-700 border-slate-200 hover:border-slate-300' }}">
+    <div class="text-[11px] font-semibold uppercase tracking-wider {{ 'text-blue-200' if stage_filter == 'recibido' else 'text-slate-500' }}">1. Recibidos</div>
+    <div class="text-xl font-bold mt-0.5">{{ stage_counts.recibido }}</div>
+  </a>
+
+  <a href="/admin/envios?stage=armado" class="p-3 rounded-xl border text-center transition-all {{ 'bg-amber-600 text-white border-amber-600 shadow-sm' if stage_filter == 'armado' else 'bg-white text-slate-700 border-slate-200 hover:border-slate-300' }}">
+    <div class="text-[11px] font-semibold uppercase tracking-wider {{ 'text-amber-200' if stage_filter == 'armado' else 'text-slate-500' }}">2. En Armado</div>
+    <div class="text-xl font-bold mt-0.5">{{ stage_counts.armado }}</div>
+  </a>
+
+  <a href="/admin/envios?stage=empaquetado" class="p-3 rounded-xl border text-center transition-all {{ 'bg-purple-600 text-white border-purple-600 shadow-sm' if stage_filter == 'empaquetado' else 'bg-white text-slate-700 border-slate-200 hover:border-slate-300' }}">
+    <div class="text-[11px] font-semibold uppercase tracking-wider {{ 'text-purple-200' if stage_filter == 'empaquetado' else 'text-slate-500' }}">3. Empaquetados</div>
+    <div class="text-xl font-bold mt-0.5">{{ stage_counts.empaquetado }}</div>
+  </a>
+
+  <a href="/admin/envios?stage=despachado" class="p-3 rounded-xl border text-center transition-all {{ 'bg-indigo-600 text-white border-indigo-600 shadow-sm' if stage_filter == 'despachado' else 'bg-white text-slate-700 border-slate-200 hover:border-slate-300' }}">
+    <div class="text-[11px] font-semibold uppercase tracking-wider {{ 'text-indigo-200' if stage_filter == 'despachado' else 'text-slate-500' }}">4. Despachados</div>
+    <div class="text-xl font-bold mt-0.5">{{ stage_counts.despachado }}</div>
+  </a>
+
+  <a href="/admin/envios?stage=entregado" class="p-3 rounded-xl border text-center transition-all {{ 'bg-emerald-600 text-white border-emerald-600 shadow-sm' if stage_filter == 'entregado' else 'bg-white text-slate-700 border-slate-200 hover:border-slate-300' }}">
+    <div class="text-[11px] font-semibold uppercase tracking-wider {{ 'text-emerald-200' if stage_filter == 'entregado' else 'text-slate-500' }}">5. Entregados</div>
+    <div class="text-xl font-bold mt-0.5">{{ stage_counts.entregado }}</div>
+  </a>
+</div>
+
+<!-- Listado de Pedidos en Logística -->
+<div class="space-y-4">
+  {% if orders %}
+    {% for o in orders %}
+    <div id="order-card-{{ o.id }}" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 transition-all hover:border-slate-300">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+        
+        <!-- Info Pedido + Código de Barras -->
+        <div class="flex items-start sm:items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold font-mono text-xs text-slate-800 shrink-0">
+            #{{ o.id }}
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-bold text-slate-900 text-base">{{ o.cliente_nombre or o.nombre }}</span>
+              <span class="font-mono text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200">
+                {{ o.barcode_val }}
+              </span>
+              <!-- Badge de Etapa -->
+              {% if o.dispatch_stage == 'recibido' %}
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">1. Recibido</span>
+              {% elif o.dispatch_stage == 'armado' %}
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">2. En Armado</span>
+              {% elif o.dispatch_stage == 'empaquetado' %}
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">3. Empaquetado</span>
+              {% elif o.dispatch_stage == 'despachado' %}
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">4. Despachado (En Camino)</span>
+              {% elif o.dispatch_stage == 'entregado' %}
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">5. Entregado</span>
+              {% endif %}
+            </div>
+            <div class="text-xs text-slate-400 mt-0.5 flex flex-wrap items-center gap-2">
+              <span>{{ o.created_at.strftime('%d/%m/%Y %H:%M') if o.created_at else '' }}</span>
+              <span>&bull;</span>
+              <span>Total: <b class="text-slate-800">${{ "{:,}".format(o.total).replace(',', '.') }} CLP</b></span>
+              {% if o.cliente_telefono or o.telefono %}
+                <span>&bull;</span>
+                <a href="https://wa.me/{{ (o.cliente_telefono or o.telefono)|replace('+', '')|replace(' ', '')|replace('-', '') }}" target="_blank" class="text-emerald-700 hover:text-emerald-800 font-medium">
+                  📞 {{ o.cliente_telefono or o.telefono }}
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Acciones Rápidas de Despacho -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Imprimir Etiqueta Térmica -->
+          <a href="/admin/envios/{{ o.id }}/etiqueta" target="_blank" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-lg border border-slate-300 flex items-center gap-1.5 transition-colors" title="Imprimir etiqueta adhesiva 100x150 mm">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            Imprimir Etiqueta
+          </a>
+
+          <!-- Botón Subir Foto / Validar -->
+          <button onclick="abrirModalFoto({{ o.id }}, '{{ o.barcode_val }}')" class="px-3 py-1.5 text-xs font-semibold rounded-lg border flex items-center gap-1.5 transition-colors {{ 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100' if o.package_photo else 'bg-slate-900 text-white hover:bg-slate-800' }}">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            {{ 'Foto Validada ✓' if o.package_photo else 'Tomar / Subir Foto' }}
+          </button>
+
+          <!-- Botón Gestionar Despacho / Courier -->
+          <button onclick="abrirModalEtapa({{ o.id }}, '{{ o.dispatch_stage }}', '{{ o.shipping_courier or '' }}', '{{ o.shipping_tracking or '' }}', '{{ o.shipping_address|escape or '' }}', '{{ o.shipping_commune|escape or '' }}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm flex items-center gap-1.5 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+            Avanzar Etapa / Courier
+          </button>
+        </div>
+      </div>
+
+      <!-- Detalle Interior: Productos en el Paquete + Fotografía de Paquete + Courier -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs">
+        
+        <!-- Col 1: Picking List (Perfumes) -->
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
+          <div class="font-bold text-slate-800 uppercase tracking-wider text-[10px] mb-2 flex items-center justify-between">
+            <span>Perfumes a Empacar (Picking)</span>
+            <span class="text-slate-400">{{ o.items|length }} items</span>
+          </div>
+          <div class="space-y-1.5">
+            {% for it in o.items %}
+            <div class="flex items-center justify-between">
+              <span class="text-slate-700 font-medium truncate pr-2">
+                <span class="font-bold text-slate-900">{{ it.qty }}x</span> {{ it.nombre }}
+              </span>
+              <span class="font-mono text-slate-400 text-[10px] shrink-0">{{ it.sku }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Col 2: Dirección y Courier Asignado -->
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
+          <div class="font-bold text-slate-800 uppercase tracking-wider text-[10px] mb-2">
+            Destino y Courier
+          </div>
+          <div class="space-y-1">
+            <div class="text-slate-900 font-semibold">{{ o.shipping_address or 'Dirección no especificada' }}</div>
+            <div class="text-slate-500 font-medium">{{ o.shipping_commune or 'Región Metropolitana' }}</div>
+            
+            <div class="pt-2 border-t border-slate-200 mt-2 flex items-center justify-between">
+              <div>
+                <span class="text-[10px] text-slate-400 uppercase font-bold block">Empresa de Envío</span>
+                <span class="font-bold text-indigo-900">{{ o.shipping_courier or 'Sin asignar' }}</span>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-slate-400 uppercase font-bold block">Tracking</span>
+                {% if o.shipping_tracking %}
+                  {% if o.tracking_url %}
+                    <a href="{{ o.tracking_url }}" target="_blank" class="font-mono font-bold text-indigo-700 hover:underline">
+                      {{ o.shipping_tracking }} ↗
+                    </a>
+                  {% else %}
+                    <span class="font-mono font-bold text-slate-800">{{ o.shipping_tracking }}</span>
+                  {% endif %}
+                {% else %}
+                  <span class="text-slate-400">Pendiente</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Col 3: Fotografía de Validación de Empaque -->
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-200 flex flex-col justify-between">
+          <div class="font-bold text-slate-800 uppercase tracking-wider text-[10px] mb-2 flex items-center justify-between">
+            <span>Evidencia / Control Fotográfico</span>
+            {% if o.package_photo %}
+              <span class="text-emerald-700 font-bold text-[10px]">VERIFICADO ✓</span>
+            {% else %}
+              <span class="text-amber-600 font-bold text-[10px]">PENDIENTE</span>
+            {% endif %}
+          </div>
+
+          {% if o.package_photo %}
+            <div class="relative group rounded-lg overflow-hidden border border-slate-300 bg-white aspect-video flex items-center justify-center">
+              <img src="{{ o.package_photo }}" alt="Foto paquete pedido #{{ o.id }}" class="w-full h-full object-cover">
+              <a href="{{ o.package_photo }}" target="_blank" class="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-semibold transition-opacity">
+                Ver Foto Completa ↗
+              </a>
+            </div>
+          {% else %}
+            <div onclick="abrirModalFoto({{ o.id }}, '{{ o.barcode_val }}')" class="rounded-lg border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white p-4 text-center cursor-pointer transition-colors flex flex-col items-center justify-center h-full min-h-[90px]">
+              <svg class="w-6 h-6 text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              <span class="text-[11px] font-semibold text-slate-700">Tomar foto con la cámara</span>
+              <span class="text-[9px] text-slate-400">Celular, tablet o subir JPG/PNG</span>
+            </div>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400">
+      <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/></svg>
+      <p class="text-sm font-semibold text-slate-700">No hay pedidos en esta etapa de logística.</p>
+      <p class="text-xs text-slate-400 mt-1">Selecciona otra etapa en el pipeline superior para ver más pedidos.</p>
+    </div>
+  {% endif %}
+</div>
+
+<!-- MODAL 1: Subir Fotografía de Validación de Empaque -->
+<div id="modal-foto" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+      <div>
+        <h3 class="text-base font-bold text-slate-900">Validación Fotográfica de Paquete</h3>
+        <p id="modal-foto-sub" class="text-xs text-slate-500 font-mono">Pedido #--</p>
+      </div>
+      <button onclick="document.getElementById('modal-foto').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="form-subir-foto" method="POST" enctype="multipart/form-data" action="" class="p-5 space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      
+      <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-slate-400 transition-colors">
+        <input type="file" id="foto-input" name="foto" accept="image/*" capture="environment" required class="hidden" onchange="previewFoto(event)">
+        <label for="foto-input" class="cursor-pointer flex flex-col items-center">
+          <svg class="w-10 h-10 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span class="text-xs font-bold text-slate-800">Toca para abrir cámara o seleccionar imagen</span>
+          <span class="text-[11px] text-slate-400 mt-0.5">Captura la caja cerrada con su etiqueta pegada</span>
+        </label>
+        <div id="preview-container" class="mt-4 hidden">
+          <img id="foto-preview-img" class="w-full max-h-48 object-cover rounded-lg border border-slate-200">
+        </div>
+      </div>
+
+      <p class="text-[11px] text-slate-400 italic">
+        Al guardar la foto, el pedido avanza automáticamente a la etapa de <b>"Empaquetado"</b>.
+      </p>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('modal-foto').classList.add('hidden')" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+        <button type="submit" class="px-4 py-2 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 rounded-lg shadow-sm">Guardar y Validar Foto</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL 2: Avanzar Etapa, Courier y Tracking -->
+<div id="modal-etapa" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+      <div>
+        <h3 class="text-base font-bold text-slate-900">Control de Etapa y Despacho</h3>
+        <p id="modal-etapa-sub" class="text-xs text-slate-500 font-mono">Pedido #--</p>
+      </div>
+      <button onclick="document.getElementById('modal-etapa').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="form-cambiar-etapa" method="POST" action="" class="p-5 space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Etapa de Despacho *</label>
+        <select id="etapa-select" name="nueva_etapa" required class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 font-medium">
+          <option value="recibido">1. Recibido (Por preparar)</option>
+          <option value="armado">2. En Armado (Picking de fragancias)</option>
+          <option value="empaquetado">3. Empaquetado (Foto lista)</option>
+          <option value="despachado">4. Despachado (En camino al cliente)</option>
+          <option value="entregado">5. Entregado (Completado con éxito)</option>
+        </select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Courier *</label>
+          <select id="etapa-courier" name="courier" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900">
+            <option value="Starken">Starken</option>
+            <option value="Chilexpress">Chilexpress</option>
+            <option value="Blue Express">Blue Express</option>
+            <option value="Correos de Chile">Correos de Chile</option>
+            <option value="Delivery Propio">Delivery Propio / Express</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">N° de Seguimiento / OT</label>
+          <input type="text" id="etapa-tracking" name="tracking" placeholder="Ej. 123456789" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 font-mono">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Dirección de Entrega</label>
+        <input type="text" id="etapa-direccion" name="direccion" placeholder="Calle, número, depto" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900">
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Comuna / Ciudad</label>
+        <input type="text" id="etapa-comuna" name="comuna" placeholder="Ej. Providencia, Santiago" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900">
+      </div>
+
+      <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-[11px] text-indigo-900">
+        💡 <b>Disparo automático:</b> Al marcar como <b>"Despachado"</b> se enviará el correo con el link de seguimiento oficial de Starken/Chilexpress/BlueExpress al cliente.
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('modal-etapa').classList.add('hidden')" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+        <button type="submit" class="px-4 py-2 text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg shadow-sm">Guardar y Notificar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function abrirModalFoto(orderId, barcode) {
+  document.getElementById('form-subir-foto').action = '/admin/envios/' + orderId + '/subir-foto';
+  document.getElementById('modal-foto-sub').innerText = 'Pedido #' + orderId + ' (' + barcode + ')';
+  document.getElementById('preview-container').classList.add('hidden');
+  document.getElementById('foto-input').value = '';
+  document.getElementById('modal-foto').classList.remove('hidden');
+}
+
+function previewFoto(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      document.getElementById('foto-preview-img').src = evt.target.result;
+      document.getElementById('preview-container').classList.remove('hidden');
+    }
+    reader.readAsDataURL(file);
+  }
+}
+
+function abrirModalEtapa(orderId, stage, courier, tracking, direccion, comuna) {
+  document.getElementById('form-cambiar-etapa').action = '/admin/envios/' + orderId + '/etapa';
+  document.getElementById('modal-etapa-sub').innerText = 'Pedido #' + orderId;
+  document.getElementById('etapa-select').value = stage || 'recibido';
+  document.getElementById('etapa-courier').value = courier || 'Starken';
+  document.getElementById('etapa-tracking').value = tracking || '';
+  document.getElementById('etapa-direccion').value = direccion || '';
+  document.getElementById('etapa-comuna').value = comuna || '';
+  document.getElementById('modal-etapa').classList.remove('hidden');
+}
+
+// Escáner de Código de Barras Automático
+const scannerInput = document.getElementById('barcode-scanner-input');
+if (scannerInput) {
+  scannerInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const code = this.value.trim();
+      if (!code) return;
+
+      fetch('/api/envios/scan/' + encodeURIComponent(code))
+        .then(r => r.json())
+        .then(data => {
+          if (!data.ok) {
+            alert(data.error || 'Código no reconocido');
+            scannerInput.select();
+            return;
+          }
+          const ord = data.order;
+          // Resaltar tarjeta si existe en la página
+          const card = document.getElementById('order-card-' + ord.id);
+          if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            card.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-50/20');
+            setTimeout(() => {
+              card.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50/20');
+            }, 3000);
+          }
+          // Abrir modal de etapa directamente
+          abrirModalEtapa(ord.id, ord.dispatch_stage, ord.courier, ord.tracking, '', '');
+          scannerInput.value = '';
+        })
+        .catch(err => {
+          alert('Error de lectura: ' + err);
+        });
+    }
+  });
+}
+</script>
+{% endblock %}

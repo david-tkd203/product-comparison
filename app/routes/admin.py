@@ -1529,3 +1529,328 @@ def admin_usuario_sync_shopify(customer_id):
         flash(f"Excepción al conectar con Shopify: {e}", 'error')
 
     return redirect(url_for('admin.admin_usuarios'))
+
+
+# -------------------------------------------------------------
+# LOGÍSTICA, PICKING Y CONTROL DE DESPACHOS
+# -------------------------------------------------------------
+
+COURIER_TRACKING_URLS = {
+    'Starken': 'https://www.starken.cl/seguimiento?codigo={tracking}',
+    'Chilexpress': 'https://www.chilexpress.cl/seguimiento?orden={tracking}',
+    'Blue Express': 'https://www.bluex.cl/seguimiento/?tracking={tracking}',
+    'Correos de Chile': 'https://www.correos.cl/seguimiento-en-linea?envio={tracking}',
+    'Delivery Propio': ''
+}
+
+
+@admin_bp.route('/admin/envios')
+@require_login
+def admin_envios():
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    stage_filter = (request.args.get('stage') or 'todos').strip().lower()
+    q = (request.args.get('q') or '').strip()
+
+    sql = '''
+        SELECT o.*,
+               COALESCE(c.nombre, o.nombre) AS cliente_nombre,
+               COALESCE(c.email, o.email) AS cliente_email,
+               COALESCE(c.telefono, o.telefono) AS cliente_telefono
+        FROM orders o
+        LEFT JOIN customers c ON c.id = o.customer_id
+        WHERE 1=1
+    '''
+    params = []
+
+    if stage_filter in ('recibido', 'armado', 'empaquetado', 'despachado', 'entregado'):
+        sql += " AND o.dispatch_stage = %s"
+        params.append(stage_filter)
+
+    if q:
+        sql += " AND (o.id = %s OR o.nombre LIKE %s OR o.shipping_tracking LIKE %s OR o.barcode_val LIKE %s)"
+        try:
+            q_id = int(q.replace('SIY-ORD-', '').replace('SIY-', ''))
+        except ValueError:
+            q_id = -1
+        like_q = f"%{q}%"
+        params.extend([q_id, like_q, like_q, like_q])
+
+    sql += " ORDER BY o.created_at DESC"
+
+    cur.execute(sql, params)
+    orders = cur.fetchall()
+
+    for o in orders:
+        if not o.get('barcode_val'):
+            o['barcode_val'] = f"SIY-ORD-{o['id']:06d}"
+        if not o.get('dispatch_stage'):
+            o['dispatch_stage'] = 'recibido'
+
+        if o.get('items_json'):
+            try:
+                o['items'] = json.loads(o['items_json'])
+            except Exception:
+                o['items'] = []
+        else:
+            o['items'] = []
+
+        courier = o.get('shipping_courier')
+        tracking = o.get('shipping_tracking')
+        if courier and tracking and courier in COURIER_TRACKING_URLS:
+            tmpl = COURIER_TRACKING_URLS[courier]
+            o['tracking_url'] = tmpl.format(tracking=tracking) if tmpl else ''
+        else:
+            o['tracking_url'] = ''
+
+    cur.execute('''
+        SELECT 
+            SUM(CASE WHEN dispatch_stage = 'recibido' OR dispatch_stage IS NULL THEN 1 ELSE 0 END) AS c_recibido,
+            SUM(CASE WHEN dispatch_stage = 'armado' THEN 1 ELSE 0 END) AS c_armado,
+            SUM(CASE WHEN dispatch_stage = 'empaquetado' THEN 1 ELSE 0 END) AS c_empaquetado,
+            SUM(CASE WHEN dispatch_stage = 'despachado' THEN 1 ELSE 0 END) AS c_despachado,
+            SUM(CASE WHEN dispatch_stage = 'entregado' THEN 1 ELSE 0 END) AS c_entregado,
+            COUNT(*) AS c_total
+        FROM orders
+    ''')
+    counts_row = cur.fetchone() or {}
+
+    stage_counts = {
+        'total': int(counts_row.get('c_total') or 0),
+        'recibido': int(counts_row.get('c_recibido') or 0),
+        'armado': int(counts_row.get('c_armado') or 0),
+        'empaquetado': int(counts_row.get('c_empaquetado') or 0),
+        'despachado': int(counts_row.get('c_despachado') or 0),
+        'entregado': int(counts_row.get('c_entregado') or 0),
+    }
+
+    return render_template(
+        'admin_envios.html',
+        orders=orders,
+        stage_counts=stage_counts,
+        stage_filter=stage_filter,
+        q=q
+    )
+
+
+@admin_bp.route('/admin/envios/<int:order_id>/etapa', methods=['POST'])
+@require_login
+def admin_envio_cambiar_etapa(order_id):
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    cur.execute('''
+        SELECT o.*, 
+               COALESCE(c.nombre, o.nombre) AS cliente_nombre,
+               COALESCE(c.email, o.email) AS cliente_email
+        FROM orders o
+        LEFT JOIN customers c ON c.id = o.customer_id
+        WHERE o.id = %s
+    ''', [order_id])
+    order = cur.fetchone()
+
+    if not order:
+        flash('Pedido no encontrado.', 'error')
+        return redirect(url_for('admin.admin_envios'))
+
+    nueva_etapa = (request.form.get('nueva_etapa') or '').strip().lower()
+    courier = (request.form.get('courier') or order.get('shipping_courier') or '').strip()
+    tracking = (request.form.get('tracking') or order.get('shipping_tracking') or '').strip()
+    direccion = (request.form.get('direccion') or order.get('shipping_address') or '').strip()
+    comuna = (request.form.get('comuna') or order.get('shipping_commune') or '').strip()
+
+    valid_stages = ('recibido', 'armado', 'empaquetado', 'despachado', 'entregado')
+    if nueva_etapa not in valid_stages:
+        flash('Etapa de despacho no válida.', 'error')
+        return redirect(url_for('admin.admin_envios'))
+
+    updates = [
+        'dispatch_stage = %s',
+        'shipping_courier = %s',
+        'shipping_tracking = %s',
+        'shipping_address = %s',
+        'shipping_commune = %s'
+    ]
+    params = [nueva_etapa, courier or None, tracking or None, direccion or None, comuna or None]
+
+    if nueva_etapa == 'entregado':
+        updates.append("status = 'completado'")
+
+    params.append(order_id)
+    cur.execute(f"UPDATE orders SET {', '.join(updates)} WHERE id = %s", params)
+
+    if hasattr(db, 'commit'):
+        db.commit()
+
+    recipient_email = order.get('cliente_email') or order.get('email')
+    nombre_cliente = order.get('cliente_nombre') or order.get('nombre') or 'Cliente Siyash'
+
+    if nueva_etapa == 'despachado' and recipient_email:
+        tracking_url = ''
+        if courier in COURIER_TRACKING_URLS and tracking:
+            tmpl = COURIER_TRACKING_URLS[courier]
+            tracking_url = tmpl.format(tracking=tracking) if tmpl else ''
+
+        try:
+            from ..mailer import send_order_shipped_email
+            send_order_shipped_email(recipient_email, {
+                'id': order_id,
+                'nombre': nombre_cliente,
+                'courier': courier or 'Courier Express',
+                'tracking_number': tracking or 'En asignación',
+                'tracking_url': tracking_url,
+                'direccion_envio': f"{direccion}, {comuna}".strip(', ') if direccion else 'Domicilio del cliente'
+            })
+            flash(f"Pedido #{order_id} marcado como 'Despachado' y correo de seguimiento enviado a {recipient_email}.", 'success')
+        except Exception as e:
+            flash(f"Pedido #{order_id} despachado. Aviso de correo: {e}", 'warning')
+
+    elif nueva_etapa == 'entregado' and recipient_email:
+        try:
+            from ..mailer import send_order_delivered_email
+            send_order_delivered_email(recipient_email, {
+                'id': order_id,
+                'nombre': nombre_cliente,
+                'fecha_entrega': datetime.now().strftime('%d/%m/%Y %H:%M')
+            })
+            flash(f"Pedido #{order_id} marcado como 'Entregado' y correo de confirmación enviado a {recipient_email}.", 'success')
+        except Exception as e:
+            flash(f"Pedido #{order_id} entregado. Aviso de correo: {e}", 'warning')
+    else:
+        flash(f"Pedido #{order_id} actualizado a etapa '{nueva_etapa.capitalize()}'.", 'success')
+
+    return redirect(url_for('admin.admin_envios', stage=nueva_etapa))
+
+
+@admin_bp.route('/admin/envios/<int:order_id>/subir-foto', methods=['POST'])
+@require_login
+def admin_envio_subir_foto(order_id):
+    if 'foto' not in request.files:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({'ok': False, 'error': 'No se adjuntó archivo de fotografía.'}), 400
+        flash('No se seleccionó ningún archivo de fotografía.', 'error')
+        return redirect(url_for('admin.admin_envios'))
+
+    file = request.files['foto']
+    if not file or not file.filename:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({'ok': False, 'error': 'Archivo de fotografía vacío.'}), 400
+        flash('Archivo de fotografía vacío.', 'error')
+        return redirect(url_for('admin.admin_envios'))
+
+    import secrets
+    upload_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'static', 'uploads', 'despachos')
+    os.makedirs(upload_dir, exist_ok=True)
+
+    ext = os.path.splitext(file.filename)[1].lower() or '.jpg'
+    filename = f"orden_{order_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{secrets.token_hex(3)}{ext}"
+    dest_path = os.path.join(upload_dir, filename)
+    file.save(dest_path)
+
+    relative_url = f"/static/uploads/despachos/{filename}"
+
+    db = get_db()
+    cur = db.cursor()
+    cur.execute('''
+        UPDATE orders 
+        SET package_photo = %s,
+            dispatch_stage = CASE 
+                WHEN dispatch_stage IN ('recibido', 'armado') THEN 'empaquetado' 
+                ELSE dispatch_stage 
+            END
+        WHERE id = %s
+    ''', [relative_url, order_id])
+
+    if hasattr(db, 'commit'):
+        db.commit()
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        return jsonify({'ok': True, 'photo_url': relative_url, 'message': 'Fotografía validada exitosamente.'})
+
+    flash(f"Fotografía de validación guardada exitosamente para el Pedido #{order_id}.", 'success')
+    return redirect(url_for('admin.admin_envios'))
+
+
+@admin_bp.route('/admin/envios/<int:order_id>/etiqueta')
+@require_login
+def admin_envio_etiqueta(order_id):
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    cur.execute('''
+        SELECT o.*,
+               COALESCE(c.nombre, o.nombre) AS cliente_nombre,
+               COALESCE(c.telefono, o.telefono) AS cliente_telefono,
+               COALESCE(c.email, o.email) AS cliente_email
+        FROM orders o
+        LEFT JOIN customers c ON c.id = o.customer_id
+        WHERE o.id = %s
+    ''', [order_id])
+    order = cur.fetchone()
+
+    if not order:
+        return "Pedido no encontrado", 404
+
+    if not order.get('barcode_val'):
+        order['barcode_val'] = f"SIY-ORD-{order['id']:06d}"
+
+    if order.get('items_json'):
+        try:
+            order['items'] = json.loads(order['items_json'])
+        except Exception:
+            order['items'] = []
+    else:
+        order['items'] = []
+
+    return render_template('admin_etiqueta_despacho.html', order=order)
+
+
+@admin_bp.route('/api/envios/scan/<path:barcode_query>')
+@require_login
+def api_envios_scan(barcode_query):
+    raw = barcode_query.strip().upper()
+    order_id = None
+
+    if raw.startswith('SIY-ORD-'):
+        try:
+            order_id = int(raw.replace('SIY-ORD-', ''))
+        except ValueError:
+            pass
+    elif raw.startswith('SIY-'):
+        try:
+            order_id = int(raw.replace('SIY-', ''))
+        except ValueError:
+            pass
+    else:
+        try:
+            order_id = int(raw)
+        except ValueError:
+            pass
+
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    if order_id:
+        cur.execute('SELECT * FROM orders WHERE id = %s', [order_id])
+    else:
+        cur.execute('SELECT * FROM orders WHERE shipping_tracking = %s OR barcode_val = %s', [raw, raw])
+
+    order = cur.fetchone()
+    if not order:
+        return jsonify({'ok': False, 'error': f"No se encontró ningún pedido para el código '{raw}'"}), 404
+
+    return jsonify({
+        'ok': True,
+        'order': {
+            'id': order['id'],
+            'nombre': order['nombre'],
+            'telefono': order.get('telefono'),
+            'total': order['total'],
+            'dispatch_stage': order.get('dispatch_stage') or 'recibido',
+            'package_photo': order.get('package_photo'),
+            'courier': order.get('shipping_courier'),
+            'tracking': order.get('shipping_tracking'),
+            'barcode': order.get('barcode_val') or f"SIY-ORD-{order['id']:06d}"
+        }
+    })
