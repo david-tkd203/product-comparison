@@ -1,0 +1,114 @@
+<mjml>
+  <mj-head>
+    <mj-title>Devolución / Nota de Crédito Aprobada | Siyash Perfumería</mj-title>
+    <mj-font name="Cormorant Garamond" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap" />
+    <mj-attributes>
+      <mj-all font-family="'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" />
+      <mj-text font-size="13px" color="#2d2d2e" line-height="22px" />
+      <mj-section background-color="#ffffff" padding="0px" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .brand-serif { font-family: 'Cormorant Garamond', Garamond, 'Hoefler Text', 'Times New Roman', Georgia, serif !important; }
+      .brand-sans { font-family: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important; }
+      .tracking-luxury { letter-spacing: 3px !important; }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#f6f6f6">
+
+    <!-- Brand Header -->
+    <mj-section background-color="#000000" padding="24px 20px 18px 20px">
+      <mj-column width="100%">
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="140px" align="center" padding="0" href="https://siyash.cl/" />
+        <mj-text align="center" color="#a8a8a8" font-size="8px" padding-top="10px" text-transform="uppercase" letter-spacing="3px" font-weight="500">
+          ALTA PERFUMERÍA &bull; SANTIAGO DE CHILE
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main Content -->
+    <mj-section background-color="#ffffff" padding="28px 25px 12px 25px">
+      <mj-column width="100%">
+        <mj-text align="center" padding-bottom="4px">
+          <span style="font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #797979; font-weight: 600; border-bottom: 1px solid #e2e2e2; padding-bottom: 3px;">POSTVENTA &bull; RESOLUCIÓN FINANCIERA</span>
+        </mj-text>
+        <mj-text align="center" font-size="24px" font-weight="500" color="#000000" line-height="30px" padding-top="12px">
+          <span class="brand-serif">Resolución de reembolso aprobada</span>
+        </mj-text>
+        <mj-text align="center" font-size="13px" color="#5f5f5f" line-height="21px" font-weight="300" padding-top="8px">
+          Hola <strong>{{ nombre if nombre else 'estimado cliente' }}</strong>. Te informamos que la solicitud de devolución o reembolso correspondiente a la orden <strong>#{{ order_id if order_id else '0000' }}</strong> ha sido aprobada y procesada por nuestro equipo de administración.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Financial Resolution Card -->
+    <mj-section background-color="#ffffff" padding="8px 25px 16px 25px">
+      <mj-column width="100%">
+        <mj-table padding="0">
+          <tr>
+            <td style="background-color: #000000; color: #ffffff; padding: 20px 22px; text-align: center;">
+              <div style="font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #a8a8a8; margin-bottom: 6px; font-family: 'Jost', sans-serif;">
+                MONTO AUTORIZADO
+              </div>
+              <div style="font-family: 'Cormorant Garamond', Garamond, Georgia, serif; font-size: 30px; font-weight: 600; color: #ffffff; letter-spacing: 1px; margin-bottom: 6px;">
+                {{ monto_reembolsado if monto_reembolsado else '$0 CLP' }}
+              </div>
+              <div style="font-size: 11px; color: #c9c9c9; text-transform: uppercase; letter-spacing: 1.5px; font-family: 'Jost', sans-serif;">
+                TIPO: {{ tipo_resolucion if tipo_resolucion else 'TRANSFERENCIA BANCARIA' }}
+              </div>
+            </td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Details Table -->
+    <mj-section background-color="#ffffff" padding="4px 25px 16px 25px">
+      <mj-column width="100%">
+        <mj-table padding="14px 18px" container-background-color="#f6f6f6">
+          <tr>
+            <td style="font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #797979; font-weight: 600; padding-bottom: 6px; width: 40%;">ORDEN ASOCIADA:</td>
+            <td style="font-size: 12px; color: #000000; font-weight: 600; padding-bottom: 6px;">#{{ order_id if order_id else '0000' }}</td>
+          </tr>
+          {% if numero_comprobante %}
+          <tr>
+            <td style="font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #797979; font-weight: 600; padding-bottom: 6px;">N° COMPROBANTE / NC:</td>
+            <td style="font-size: 12px; color: #000000; font-weight: 500; padding-bottom: 6px;">{{ numero_comprobante }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td style="font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #797979; font-weight: 600;">FECHA DE PROCESO:</td>
+            <td style="font-size: 12px; color: #000000;">{{ fecha_resolucion if fecha_resolucion else 'Procesado hoy' }}</td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Banking Times Note -->
+    <mj-section background-color="#ffffff" padding="0 25px 24px 25px">
+      <mj-column width="100%">
+        <mj-text font-size="11px" color="#797979" line-height="18px">
+          &bull; <strong>Transferencias bancarias:</strong> El abono suele verse reflejado en un plazo de 24 a 48 horas hábiles bancarias.<br/>
+          &bull; <strong>Tarjetas de crédito o débito:</strong> El plazo de reversa depende exclusivamente del banco emisor de tu tarjeta (habitualmente entre 3 y 10 días hábiles).<br/>
+          &bull; Ante cualquier consulta, nuestro canal de WhatsApp (+56 9 3223 8816) te atenderá con gusto indicando tu orden.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section background-color="#000000" padding="22px 20px 18px 20px">
+      <mj-column width="100%">
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="95px" align="center" padding="0 0 10px 0" href="https://siyash.cl/" />
+        <mj-text align="center" font-size="10px" color="#a8a8a8" padding-top="2px" line-height="16px">
+          Venta de Perfumes Originales por Mayor y Detalle &bull; Envíos a todo Chile<br/>
+          Santiago de Chile &bull; contacto@siyash.cl &bull; WhatsApp +56 9 3223 8816
+        </mj-text>
+        <mj-divider border-width="1px" border-style="solid" border-color="#2d2d2e" width="50%" padding="12px 0" />
+        <mj-text align="center" font-size="9px" color="#797979" line-height="14px">
+          Notificación financiera oficial de Siyash Perfumería.<br/>
+          &copy; 2026 Siyash Perfumería. Todos los derechos reservados.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>

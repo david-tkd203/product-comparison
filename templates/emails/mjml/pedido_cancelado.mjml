@@ -1,0 +1,101 @@
+<mjml>
+  <mj-head>
+    <mj-title>Pedido Cancelado | Siyash Perfumería</mj-title>
+    <mj-font name="Cormorant Garamond" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap" />
+    <mj-attributes>
+      <mj-all font-family="'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" />
+      <mj-text font-size="13px" color="#2d2d2e" line-height="22px" />
+      <mj-section background-color="#ffffff" padding="0px" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .brand-serif { font-family: 'Cormorant Garamond', Garamond, 'Hoefler Text', 'Times New Roman', Georgia, serif !important; }
+      .brand-sans { font-family: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important; }
+      .tracking-luxury { letter-spacing: 3px !important; }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#f6f6f6">
+
+    <!-- Brand Header -->
+    <mj-section background-color="#000000" padding="24px 20px 18px 20px">
+      <mj-column width="100%">
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="140px" align="center" padding="0" href="https://siyash.cl/" />
+        <mj-text align="center" color="#a8a8a8" font-size="8px" padding-top="10px" text-transform="uppercase" letter-spacing="3px" font-weight="500">
+          ALTA PERFUMERÍA &bull; SANTIAGO DE CHILE
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main Content -->
+    <mj-section background-color="#ffffff" padding="28px 25px 12px 25px">
+      <mj-column width="100%">
+        <mj-text align="center" padding-bottom="4px">
+          <span style="font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #797979; font-weight: 600; border-bottom: 1px solid #e2e2e2; padding-bottom: 3px;">ESTADO DE COMPRA &bull; ORDEN #{{ order_id if order_id else '0000' }}</span>
+        </mj-text>
+        <mj-text align="center" font-size="24px" font-weight="500" color="#000000" line-height="30px" padding-top="12px">
+          <span class="brand-serif">Tu pedido ha sido cancelado</span>
+        </mj-text>
+        <mj-text align="center" font-size="13px" color="#5f5f5f" line-height="21px" font-weight="300" padding-top="8px">
+          Hola <strong>{{ nombre if nombre else 'estimado cliente' }}</strong>. Te informamos que la orden <strong>#{{ order_id if order_id else '0000' }}</strong> ha sido cancelada en nuestro sistema.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Cancellation Details Box -->
+    <mj-section background-color="#ffffff" padding="8px 25px 16px 25px">
+      <mj-column width="100%">
+        <mj-table padding="16px 18px" container-background-color="#f6f6f6">
+          <tr>
+            <td style="font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #797979; font-weight: 600; padding-bottom: 6px; width: 35%;">NÚMERO DE ORDEN:</td>
+            <td style="font-size: 12px; color: #000000; font-weight: 600; padding-bottom: 6px;">#{{ order_id if order_id else '0000' }}</td>
+          </tr>
+          <tr>
+            <td style="font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #797979; font-weight: 600; padding-bottom: 6px;">MOTIVO:</td>
+            <td style="font-size: 12px; color: #000000; padding-bottom: 6px;">{{ motivo_cancelacion if motivo_cancelacion else 'Solicitud del cliente o límite de espera de pago agotado.' }}</td>
+          </tr>
+          <tr>
+            <td style="font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #797979; font-weight: 600;">ESTADO DE STOCK:</td>
+            <td style="font-size: 12px; color: #000000;">Unidades liberadas al catálogo.</td>
+          </tr>
+          {% if monto_reembolsado %}
+          <tr>
+            <td style="font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #797979; font-weight: 600; padding-top: 6px;">MONTO EN REEMBOLSO:</td>
+            <td style="font-size: 12px; color: #000000; font-weight: 600; padding-top: 6px;">{{ monto_reembolsado }}</td>
+          </tr>
+          {% endif %}
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Support and Info -->
+    <mj-section background-color="#ffffff" padding="0 25px 24px 25px">
+      <mj-column width="100%">
+        <mj-text font-size="12px" color="#5f5f5f" line-height="20px">
+          Si ya habías efectuado una transferencia o pago con tarjeta bancaria, nuestro equipo de tesorería procesará la devolución o la anulación según el método de pago original. Ante cualquier consulta, nuestro canal de atención directa se encuentra disponible.
+        </mj-text>
+        <mj-button background-color="#000000" color="#ffffff" font-size="10px" font-weight="500" letter-spacing="2.5px" text-transform="uppercase" inner-padding="12px 28px" href="https://siyash.cl/perfumes" border-radius="0px" padding-top="16px">
+          VOLVER AL CATÁLOGO &rarr;
+        </mj-button>
+        <mj-text align="center" font-size="10px" color="#797979" padding-top="12px">
+          WhatsApp de atención: <a href="https://wa.me/56932238816" style="color: #000000; font-weight: 500;">+56 9 3223 8816</a> &bull; <a href="mailto:contacto@siyash.cl" style="color: #000000; font-weight: 500;">contacto@siyash.cl</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section background-color="#000000" padding="22px 20px 18px 20px">
+      <mj-column width="100%">
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="95px" align="center" padding="0 0 10px 0" href="https://siyash.cl/" />
+        <mj-text align="center" font-size="10px" color="#a8a8a8" padding-top="2px" line-height="16px">
+          Venta de Perfumes Originales por Mayor y Detalle &bull; Envíos a todo Chile<br/>
+          Santiago de Chile &bull; contacto@siyash.cl &bull; WhatsApp +56 9 3223 8816
+        </mj-text>
+        <mj-divider border-width="1px" border-style="solid" border-color="#2d2d2e" width="50%" padding="12px 0" />
+        <mj-text align="center" font-size="9px" color="#797979" line-height="14px">
+          Notificación de estado de orden en siyash.cl.<br/>
+          &copy; 2026 Siyash Perfumería. Todos los derechos reservados.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>
