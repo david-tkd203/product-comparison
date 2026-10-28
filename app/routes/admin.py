@@ -319,9 +319,60 @@ def update_pedido_status(order_id):
         return redirect(url_for('admin.pedidos'))
     
     db = get_db()
-    cur = db.cursor()
+    cur = db.cursor(dictionary=True)
+    cur.execute('SELECT * FROM orders WHERE id = %s', [order_id])
+    order = cur.fetchone()
+
     cur.execute('UPDATE orders SET status = %s WHERE id = %s', [status, order_id])
     db.commit()
+
+    # Si se marca como completado, enviar confirmación con boleta PDF adjunta si tiene email
+    if order and status == 'completado':
+        customer_email = None
+        if order.get('customer_id'):
+            cur.execute("SELECT email FROM customers WHERE id = %s", [order['customer_id']])
+            c_row = cur.fetchone()
+            if c_row: customer_email = c_row['email']
+
+        if customer_email:
+            try:
+                import json
+                items = json.loads(order['items_json']) if order.get('items_json') else []
+                from ..mailer import send_order_confirmation_email
+                order_data = {
+                    'id': order['id'],
+                    'nombre': order.get('nombre'),
+                    'telefono': order.get('telefono'),
+                    'email': customer_email,
+                    'items': items,
+                    'total': order.get('total', 0),
+                    'descuento': order.get('descuento', 0),
+                    'cupon_codigo': order.get('cupon_codigo'),
+                    'puntos_ganados': order.get('puntos_ganados', 0),
+                    'fecha': order['created_at'].strftime("%d/%m/%Y %H:%M") if order.get('created_at') else None
+                }
+                send_order_confirmation_email(customer_email, order_data, attach_boleta=True)
+            except Exception as e:
+                print(f"[ADMIN ERROR] Error al enviar confirmación con boleta: {e}")
+
+    elif order and status == 'cancelado':
+        customer_email = None
+        if order.get('customer_id'):
+            cur.execute("SELECT email FROM customers WHERE id = %s", [order['customer_id']])
+            c_row = cur.fetchone()
+            if c_row: customer_email = c_row['email']
+
+        if customer_email:
+            try:
+                from ..mailer import send_order_cancelled_email
+                send_order_cancelled_email(customer_email, {
+                    'id': order['id'],
+                    'nombre': order.get('nombre'),
+                    'motivo_cancelacion': 'Cancelado por administración o tiempo límite de reserva expirado'
+                })
+            except Exception as e:
+                print(f"[ADMIN ERROR] Error al enviar correo de cancelación: {e}")
+
     db.close()
     flash(f'Pedido #{order_id} marcado como {status}', 'success')
     return redirect(url_for('admin.pedidos'))

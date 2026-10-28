@@ -1,0 +1,158 @@
+<mjml>
+  <mj-head>
+    <mj-title>Pedido Recibido | Siyash Perfumería</mj-title>
+    <mj-font name="Cormorant Garamond" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap" />
+    <mj-attributes>
+      <mj-all font-family="'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" />
+      <mj-text font-size="13px" color="#2d2d2e" line-height="20px" />
+      <mj-section background-color="#ffffff" padding="0px" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .brand-serif { font-family: 'Cormorant Garamond', Garamond, 'Hoefler Text', 'Times New Roman', Georgia, serif !important; }
+      .brand-sans { font-family: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important; }
+      .item-table th { text-align: left; padding: 8px 0; border-bottom: 2px solid #000000; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #797979; font-weight: 600; }
+      .item-table td { padding: 10px 0; border-bottom: 1px solid #f6f6f6; font-size: 12px; color: #2d2d2e; }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#f6f6f6">
+
+    <!-- Brand Header -->
+    <mj-section background-color="#000000" padding="24px 20px 18px 20px">
+      <mj-column width="100%">
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="140px" align="center" padding="0" href="https://siyash.cl/" />
+        <mj-text align="center" color="#a8a8a8" font-size="8px" padding-top="10px" text-transform="uppercase" letter-spacing="3px" font-weight="500">
+          ALTA PERFUMERÍA &bull; SANTIAGO DE CHILE
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Hero Section -->
+    <mj-section background-color="#ffffff" padding="26px 25px 12px 25px">
+      <mj-column width="100%">
+        <mj-text align="center" padding-bottom="4px">
+          <span style="font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #797979; font-weight: 600; border-bottom: 1px solid #e2e2e2; padding-bottom: 3px;">PEDIDO REGISTRADO</span>
+        </mj-text>
+        <mj-text align="center" font-size="24px" font-weight="500" color="#000000" line-height="30px" padding-top="12px">
+          <span class="brand-serif">Hemos recibido tu orden</span>
+        </mj-text>
+        <mj-text align="center" font-size="13px" color="#5f5f5f" line-height="20px" padding-top="8px">
+          Hola <strong>{{ nombre if nombre else 'Cliente' }}</strong>. Tu solicitud de compra <strong>#{{ order_id if order_id else '0000' }}</strong> ha sido registrada con éxito y se encuentra en proceso de validación de pago.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Payment Notice Box -->
+    <mj-section background-color="#ffffff" padding="4px 25px 14px 25px">
+      <mj-column width="100%">
+        <mj-table padding="12px 16px" container-background-color="#f6f6f6">
+          <tr>
+            <td style="font-size: 18px; width: 28px; vertical-align: middle;">⏳</td>
+            <td style="vertical-align: middle; padding-left: 8px;">
+              <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #797979; font-weight: 600;">Estado de la Orden</div>
+              <div style="font-size: 13px; font-weight: 600; color: #000000; margin-top: 2px;">En espera de confirmación de pago</div>
+              <div style="font-size: 11px; color: #5f5f5f; margin-top: 2px;">Una vez verificado el pago, recibirás tu confirmación con la <strong>Boleta Electrónica Oficial en PDF</strong> adjunta.</div>
+            </td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Items Breakdown -->
+    <mj-section background-color="#ffffff" padding="4px 25px 15px 25px">
+      <mj-column width="100%">
+        <mj-text font-size="10px" color="#797979" text-transform="uppercase" letter-spacing="2px" font-weight="600" padding-bottom="6px">
+          Resumen de Fragancias Solicitadas
+        </mj-text>
+        <mj-table css-class="item-table" padding="0">
+          <thead>
+            <tr>
+              <th style="width: 60%;">Fragancia</th>
+              <th style="width: 15%; text-align: center;">Cant.</th>
+              <th style="width: 25%; text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if items %}
+              {% for it in items %}
+              <tr>
+                <td>
+                  <div style="font-weight: 600; color: #000000;">{{ it.nombre }}</div>
+                  {% if it.linea %}
+                  <div style="font-size: 10px; color: #a8a8a8; text-transform: uppercase; letter-spacing: 1px;">{{ it.linea }}</div>
+                  {% endif %}
+                </td>
+                <td style="text-align: center; color: #5f5f5f;">{{ it.qty }}</td>
+                <td style="text-align: right; font-weight: 600; color: #000000;">
+                  {% if it.precio == 0 %}
+                    <span style="color: #000000; font-weight: 600; text-transform: uppercase; font-size: 10px;">PREMIO</span>
+                  {% else %}
+                    ${{ "{:,}".format(it.precio * it.qty).replace(',', '.') }}
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="3" style="text-align: center; color: #a8a8a8; padding: 15px 0;">Detalle no disponible</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Totals Summary -->
+    <mj-section background-color="#ffffff" padding="0px 25px 20px 25px">
+      <mj-column width="100%">
+        <mj-table padding="0">
+          {% if descuento and descuento > 0 %}
+          <tr>
+            <td style="padding: 4px 0; font-size: 12px; color: #797979;">Subtotal</td>
+            <td style="padding: 4px 0; font-size: 12px; text-align: right; color: #2d2d2e;">${{ "{:,}".format(total + descuento).replace(',', '.') }}</td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0; font-size: 12px; color: #000000; font-weight: 600;">Descuento Cupón ({{ cupon_codigo }})</td>
+            <td style="padding: 4px 0; font-size: 12px; text-align: right; color: #000000; font-weight: 600;">-${{ "{:,}".format(descuento).replace(',', '.') }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td style="padding: 10px 0 0 0; font-size: 13px; font-weight: 600; color: #000000; border-top: 1px solid #000000; text-transform: uppercase; letter-spacing: 2px;">Total de la Orden</td>
+            <td style="padding: 10px 0 0 0; font-size: 20px; font-weight: 600; text-align: right; color: #000000; border-top: 1px solid #000000;">
+              <span class="brand-serif">${{ "{:,}".format(total).replace(',', '.') if total else '$0' }}</span>
+            </td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Payment Instructions / Next steps -->
+    <mj-section background-color="#f6f6f6" padding="18px 25px 20px 25px" border-top="1px solid #e2e2e2">
+      <mj-column width="100%">
+        <mj-text font-size="10px" color="#797979" text-transform="uppercase" letter-spacing="2px" font-weight="600" padding-bottom="4px">
+          Siguientes Pasos
+        </mj-text>
+        <mj-text font-size="12px" color="#5f5f5f" line-height="18px">
+          Si elegiste pago por transferencia o pasarela, tu pedido quedará reservado por 24 horas. Para dudas o comprobantes directos, puedes escribirnos con tu número de orden a nuestro canal oficial.
+        </mj-text>
+        <mj-button background-color="#000000" color="#ffffff" font-size="10px" font-weight="500" letter-spacing="2px" text-transform="uppercase" inner-padding="11px 26px" href="https://siyash.cl/cliente/cuenta" border-radius="0px" padding-top="14px">
+          VER ESTADO EN MI CUENTA &rarr;
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section background-color="#000000" padding="22px 20px 18px 20px">
+      <mj-column width="100%">
+        <mj-image src="https://siyash.cl/static/img/LogoSiyash-02-t.png" alt="Siyash Perfumería" width="95px" align="center" padding="0 0 10px 0" href="https://siyash.cl/" />
+        <mj-text align="center" font-size="10px" color="#a8a8a8" padding-top="2px" line-height="16px">
+          Santiago de Chile &bull; contacto@siyash.cl &bull; WhatsApp +56 9 3223 8816
+        </mj-text>
+        <mj-divider border-width="1px" border-style="solid" border-color="#2d2d2e" width="50%" padding="12px 0" />
+        <mj-text align="center" font-size="9px" color="#797979">
+          &copy; 2026 Siyash Perfumería. Todos los derechos reservados.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>

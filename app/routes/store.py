@@ -595,19 +595,18 @@ def api_pedido():
 
         if session.get('customer_email'):
             try:
-                from ..mailer import send_order_confirmation_email
-                send_order_confirmation_email(session['customer_email'], {
+                from ..mailer import send_order_placed_email
+                send_order_placed_email(session['customer_email'], {
                     'id': order_id,
                     'nombre': nombre,
                     'items': final_items,
                     'subtotal': subtotal,
                     'descuento': descuento,
                     'cupon_codigo': cupon_codigo,
-                    'total': total,
-                    'puntos_ganados': puntos_ganados if customer_id else 0
+                    'total': total
                 })
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[STORE ERROR] Error al enviar correo de pedido realizado: {e}")
 
         return jsonify({'ok': True, 'msg': 'Pedido registrado correctamente'})
     except Exception as e:
@@ -746,3 +745,144 @@ def api_checkout_shopify():
     if cupon_codigo:
         checkout_url += f"?discount={urllib.parse.quote(cupon_codigo)}"
     return jsonify({'ok': True, 'checkout_url': checkout_url})
+
+
+@store_bp.route('/pedido/<int:order_id>/boleta')
+def descargar_boleta_pedido(order_id):
+    """Descarga de la Boleta Electrónica PDF oficial."""
+    from flask import Response, abort
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    cur.execute("SELECT * FROM orders WHERE id = %s", [order_id])
+    order = cur.fetchone()
+    if not order:
+        abort(404)
+
+    # Verificación de permisos: dueño del pedido o sesión admin
+    customer_id = session.get('customer_id')
+    user_id = session.get('user_id')
+    if not user_id and order.get('customer_id') and order['customer_id'] != customer_id:
+        abort(403)
+
+    items = []
+    if order.get('items_json'):
+        try:
+            items = json.loads(order['items_json'])
+        except Exception:
+            items = []
+
+    order_data = {
+        'id': order['id'],
+        'nombre': order.get('nombre') or 'Cliente Siyash',
+        'telefono': order.get('telefono') or '',
+        'email': session.get('customer_email') or 'contacto@siyash.cl',
+        'total': order.get('total') or 0,
+        'descuento': order.get('descuento') or 0,
+        'cupon_codigo': order.get('cupon_codigo') or '',
+        'puntos_ganados': order.get('puntos_ganados') or 0,
+        'fecha': order['created_at'].strftime("%d/%m/%Y %H:%M") if order.get('created_at') else None,
+        'metodo_pago': 'Shopify Payments / Webpay' if 'SHOPIFY' in str(order.get('link_token', '')) else 'Webpay / Transferencia',
+        'items': items
+    }
+
+    from ..boleta import generate_boleta_pdf
+    pdf_bytes = generate_boleta_pdf(order_data)
+
+    filename = f"Boleta_Siyash_{order_id:06d}.pdf"
+    return Response(
+        pdf_bytes,
+        mimetype='application/pdf',
+        headers={'Content-Disposition': f'inline; filename="{filename}"'}
+    )
+
+
+@store_bp.route('/api/webhooks/shopify/order-paid', methods=['POST'])
+@csrf.exempt
+def shopify_webhook_order_paid():
+    """
+    Webhook que recibe notificación de Shopify cuando una orden es pagada en https://admin.shopify.com/store/dcw11w-0p.
+    1. Registra o actualiza la orden a 'pagado'.
+    2. Acredita puntos al cliente si está registrado.
+    3. Genera la Boleta Electrónica PDF y dispara send_order_confirmation_email con el PDF adjunto.
+    """
+    import hmac, hashlib, base64
+    data_raw = request.get_data()
+
+    shopify_secret = os.environ.get('SHOPIFY_CLIENT_SECRET', '')
+    hmac_header = request.headers.get('X-Shopify-Hmac-Sha256')
+    if shopify_secret and hmac_header:
+        digest = hmac.new(shopify_secret.encode('utf-8'), data_raw, hashlib.sha256).digest()
+        computed_hmac = base64.b64encode(digest).decode('utf-8')
+        if not hmac.compare_digest(computed_hmac, hmac_header):
+            return jsonify({'ok': False, 'error': 'HMAC inválido'}), 401
+
+    try:
+        payload = json.loads(data_raw.decode('utf-8'))
+    except Exception:
+        return jsonify({'ok': False, 'error': 'JSON inválido'}), 400
+
+    shopify_order_id = payload.get('id')
+    total_price = float(payload.get('total_price') or 0)
+    customer = payload.get('customer') or {}
+    email = customer.get('email') or payload.get('email')
+    first_name = customer.get('first_name') or ''
+    last_name = customer.get('last_name') or ''
+    nombre = f"{first_name} {last_name}".strip() or 'Cliente Shopify'
+    telefono = customer.get('phone') or payload.get('phone') or ''
+
+    line_items = payload.get('line_items') or []
+    items = []
+    for it in line_items:
+        items.append({
+            'sku': it.get('sku') or f"SHPF-{it.get('variant_id', '0')}",
+            'nombre': it.get('name') or it.get('title'),
+            'qty': int(it.get('quantity') or 1),
+            'precio': int(float(it.get('price') or 0))
+        })
+
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    customer_id = None
+    if email:
+        cur.execute("SELECT id, puntos FROM customers WHERE email = %s", [email])
+        c_row = cur.fetchone()
+        if c_row:
+            customer_id = c_row['id']
+
+    puntos_ganados = int(total_price // 100) if customer_id else 0
+    items_json = json.dumps(items, ensure_ascii=False)
+
+    # Insertar la orden con status 'pagado'
+    cur.execute('''INSERT INTO orders (link_token, customer_id, nombre, telefono, items_json, total, puntos_ganados, status)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, 'pagado')''',
+                [f"SHOPIFY-{shopify_order_id}", customer_id, nombre, telefono, items_json, int(total_price), puntos_ganados])
+    db.commit()
+    local_order_id = cur.lastrowid
+
+    if customer_id and puntos_ganados > 0:
+        cur.execute("UPDATE customers SET puntos = puntos + %s WHERE id = %s", [puntos_ganados, customer_id])
+        cur.execute('''INSERT INTO customer_points_history (customer_id, puntos, motivo, order_id)
+                       VALUES (%s, %s, %s, %s)''',
+                    [customer_id, puntos_ganados, 'Compra Shopify confirmada', local_order_id])
+        db.commit()
+
+    if email:
+        try:
+            from ..mailer import send_order_confirmation_email
+            order_data = {
+                'id': local_order_id,
+                'nombre': nombre,
+                'telefono': telefono,
+                'email': email,
+                'items': items,
+                'total': int(total_price),
+                'puntos_ganados': puntos_ganados,
+                'metodo_pago': 'Shopify Payments'
+            }
+            send_order_confirmation_email(email, order_data, attach_boleta=True)
+        except Exception as e:
+            print(f"[SHOPIFY WEBHOOK ERROR] Error al enviar confirmación con boleta: {e}")
+
+    return jsonify({'ok': True, 'local_order_id': local_order_id})
+

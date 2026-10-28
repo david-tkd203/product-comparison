@@ -354,6 +354,9 @@
                 <span class="inline-block px-3 py-1 text-[10px] uppercase tracking-widest2 font-medium {{ 'bg-brand-black text-brand-white' if order['status'] == 'entregado' else 'bg-brand-100 text-brand-800' }}">
                   {{ order['status']|capitalize }}
                 </span>
+                <a href="/pedido/{{ order['id'] }}/boleta" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] uppercase tracking-wider bg-brand-white border border-brand-200 text-brand-black hover:border-brand-black transition-colors" title="Descargar Boleta PDF">
+                  <span>🧾</span> Boleta
+                </a>
               </div>
             </div>
 
