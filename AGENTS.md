@@ -91,7 +91,6 @@ There is no automated test suite. Verify changes manually via browser or `curl`.
 | `/retail` | Side-by-side wholesale vs 3 retailers, margin calc |
 | `/catalogo` | Internal retail catalog (view only) |
 | `/pedidos` | View client orders (name, phone, items, status) |
-| `/estudio` | Market study dashboard (brand stats, opportunities) |
 | `/retail/export` | Export retail comparison to CSV |
 | `/sync-cosmetic`, `/sync-silk`, `/sync-multimarca` | Trigger Shopify sync |
 

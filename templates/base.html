@@ -95,7 +95,6 @@
         <a href="/admin/premios" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/premios' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Premios</a>
         <a href="/admin/cupones" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/cupones' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Cupones</a>
         <a href="/admin/cyber" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900 font-semibold' if request.path == '/admin/cyber' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Cyber / Analítica</a>
-        <a href="/estudio" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/estudio' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Estudio</a>
       </div>
 
       <!-- Right side -->
@@ -133,7 +132,6 @@
         <a href="/admin/premios" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/premios' else 'text-slate-600 hover:bg-slate-50' }}">Premios / Fidelización</a>
         <a href="/admin/cupones" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/cupones' else 'text-slate-600 hover:bg-slate-50' }}">Cupones y Descuentos</a>
         <a href="/admin/cyber" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900 font-semibold' if request.path == '/admin/cyber' else 'text-slate-600 hover:bg-slate-50' }}">Cyber / Analítica</a>
-        <a href="/estudio" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/estudio' else 'text-slate-600 hover:bg-slate-50' }}">Estudio</a>
         {% if session.get('username') %}
         <div class="border-t border-slate-100 pt-2 mt-1 px-3">
           <p class="text-xs text-slate-500 mb-1">{{ session['username'] }}</p>
