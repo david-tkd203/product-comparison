@@ -15,6 +15,10 @@
         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
         Activar catálogo completo
       </a>
+      <a href="/admin/sync-shopify" class="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white text-xs font-medium rounded hover:bg-emerald-700 transition-colors shadow-sm" title="Sincronizar productos activos con Shopify vía API (con EAN y metacampos)">
+        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        Sincronizar a Shopify (API)
+      </a>
       <a href="/admin/sync-shopify-variants" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors" title="Vincular automáticamente los IDs de Shopify con la base de datos">
         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
         Vincular productos desde Shopify
@@ -23,7 +27,7 @@
         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
         Descargar CSV Shopify
       </a>
-      <a href="https://dcw11w-0p.myshopify.com/admin/oauth/authorize?client_id=c7c86c013557a82ada1098651381f1fb&scope=write_products,read_products&redirect_uri=https://siyash.cl/admin" target="_blank" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-xs font-medium rounded hover:bg-indigo-700 transition-colors" title="Autorizar App en Shopify para sincronización directa en 1 clic">
+      <a href="https://dcw11w-0p.myshopify.com/admin/oauth/authorize?client_id=c7c86c013557a82ada1098651381f1fb&scope=write_products,read_products,write_price_rules,write_customers&redirect_uri=https://siyash.cl/admin" target="_blank" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-xs font-medium rounded hover:bg-indigo-700 transition-colors" title="Autorizar App en Shopify para sincronización directa en 1 clic">
         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
         Autorizar App Shopify
       </a>
@@ -81,6 +85,13 @@
             {% if p.get('ean') %}
               <div class="font-mono text-slate-400 text-[10px]" title="Código EAN Universal">EAN: {{ p['ean'] }}</div>
             {% endif %}
+            <form method="post" action="/admin/productos/{{ p['sku'] }}/sync-shopify" class="inline-block mt-1">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <button type="submit" class="inline-flex items-center gap-1 text-[9px] text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded transition-colors" title="Sincronizar este perfume con Shopify vía API">
+                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Sync Shopify
+              </button>
+            </form>
           </td>
           <td class="px-4 py-2 text-center text-xs text-slate-600">{{ p['genero_norm'] }}</td>
           <td class="px-4 py-2 text-center">

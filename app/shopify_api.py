@@ -330,3 +330,224 @@ def sync_customer_to_shopify(customer_data, db=None):
     if shopify_cust_id:
         return True, shopify_cust_id, None
     return False, None, f"No se pudo sincronizar el cliente con Shopify: {err_post}"
+
+
+def sync_product_to_shopify(p, db=None):
+    """
+    Sincroniza un producto individual de Siyash con Shopify:
+    - Título, Vendor (marca), Product Type: 'Perfume'
+    - Tags (marca, género, familia olfativa, formato)
+    - Descripción enriquecida en HTML
+    - Imagen (URL de alta resolución)
+    - Variante con SKU, Barcode (EAN) y Precio de venta
+    - Metacampos oficiales:
+        * facts.ean: Código EAN-13 universal
+        * custom.ean: Código EAN-13 (fallback)
+        * custom.aroma_family: Familia olfativa
+        * custom.concentracion: Concentración / Formato (EDP, EDT, etc.)
+    Retorna: (ok: bool, shopify_product_id: str, shopify_variant_id: str, error_msg: str)
+    """
+    shop, token = get_shopify_credentials(db)
+    if not token:
+        return False, None, None, "No se encontró el Shopify Access Token en la configuración."
+
+    sku = str(p.get('sku') or '').strip()
+    if not sku:
+        return False, None, None, "El producto no tiene SKU válido."
+
+    ean = str(p.get('ean') or '').strip()
+    title = str(p.get('nombre') or sku).strip()
+    vendor = str(p.get('linea') or 'Siyash').strip()
+    formato = str(p.get('formato') or '').strip()
+    aroma_family = str(p.get('aroma_family') or '').strip()
+    genero = str(p.get('genero') or '').strip()
+    try:
+        precio = int(p.get('precio_venta') or 0)
+    except (ValueError, TypeError):
+        precio = 0
+
+    image_url = str(p.get('imagen') or '').strip()
+    shopify_prod_id = p.get('shopify_product_id')
+    shopify_var_id = p.get('shopify_variant_id')
+
+    # Tags para colecciones y filtros automáticos en Shopify
+    tag_list = ["perfumeria", "siyash"]
+    if genero:
+        tag_list.append(genero)
+    if aroma_family:
+        tag_list.append(aroma_family)
+    if formato:
+        tag_list.append(formato)
+    if vendor and vendor.lower() != 'siyash':
+        tag_list.append(vendor)
+
+    # Variante nativa (el barcode nativo de Shopify es para el EAN/GTIN)
+    variant_data = {
+        "sku": sku,
+        "price": str(precio),
+        "requires_shipping": True,
+        "taxable": True
+    }
+    if ean:
+        variant_data["barcode"] = ean
+    if shopify_var_id:
+        try:
+            variant_data["id"] = int(shopify_var_id)
+        except (ValueError, TypeError):
+            pass
+
+    # Metacampos homologados con las definiciones de Shopify
+    metafields = []
+    if ean:
+        metafields.append({
+            "namespace": "facts",
+            "key": "ean",
+            "value": ean,
+            "type": "single_line_text_field"
+        })
+        metafields.append({
+            "namespace": "custom",
+            "key": "ean",
+            "value": ean,
+            "type": "single_line_text_field"
+        })
+    if aroma_family:
+        metafields.append({
+            "namespace": "custom",
+            "key": "aroma_family",
+            "value": aroma_family,
+            "type": "single_line_text_field"
+        })
+    if formato:
+        metafields.append({
+            "namespace": "custom",
+            "key": "concentracion",
+            "value": formato,
+            "type": "single_line_text_field"
+        })
+
+    # Descripción HTML enriquecida
+    desc_html = f"<p><strong>{title}</strong> original de la casa <strong>{vendor}</strong>.</p>"
+    if formato:
+        desc_html += f"<p><strong>Concentración / Formato:</strong> {formato}</p>"
+    if aroma_family:
+        desc_html += f"<p><strong>Familia Olfativa:</strong> {aroma_family}</p>"
+    if p.get('aromas'):
+        desc_html += f"<p><strong>Notas Aromáticas:</strong> {p['aromas']}</p>"
+    desc_html += "<p><em>Garantía Siyash: 100% original, importación directa.</em></p>"
+
+    # 1. Si ya tiene shopify_product_id, intentar actualizar vía PUT
+    if shopify_prod_id:
+        put_payload = {
+            "product": {
+                "id": int(shopify_prod_id),
+                "title": title,
+                "vendor": vendor,
+                "product_type": "Perfume",
+                "body_html": desc_html,
+                "tags": ", ".join(tag_list),
+                "variants": [variant_data]
+            }
+        }
+        if metafields:
+            put_payload["product"]["metafields"] = metafields
+
+        ok_put, status, res_put, err_put = _shopify_request(
+            shop, token, 'PUT', f'products/{shopify_prod_id}.json', put_payload
+        )
+        if ok_put:
+            res_prod = res_put.get('product', {})
+            vars_list = res_prod.get('variants', [])
+            ret_var_id = str(vars_list[0].get('id', '')) if vars_list else str(shopify_var_id or '')
+            _save_product_shopify_ids(db, sku, str(shopify_prod_id), ret_var_id)
+            return True, str(shopify_prod_id), ret_var_id, None
+        
+        # Si no fue 404, reportar error; si fue 404, se continúa a crear uno nuevo
+        if status != 404:
+            return False, None, None, f"Error actualizando en Shopify: {err_put}"
+
+    # 2. Crear producto nuevo vía POST
+    post_payload = {
+        "product": {
+            "title": title,
+            "vendor": vendor,
+            "product_type": "Perfume",
+            "body_html": desc_html,
+            "tags": ", ".join(tag_list),
+            "status": "active",
+            "published_scope": "global",
+            "variants": [variant_data]
+        }
+    }
+    if metafields:
+        post_payload["product"]["metafields"] = metafields
+    if image_url and image_url.startswith('http'):
+        post_payload["product"]["images"] = [{"src": image_url}]
+
+    ok_post, status, res_post, err_post = _shopify_request(
+        shop, token, 'POST', 'products.json', post_payload
+    )
+    if not ok_post:
+        return False, None, None, f"Error creando producto en Shopify: {err_post}"
+
+    res_prod = res_post.get('product', {})
+    new_prod_id = str(res_prod.get('id', ''))
+    vars_list = res_prod.get('variants', [])
+    new_var_id = str(vars_list[0].get('id', '')) if vars_list else ''
+
+    _save_product_shopify_ids(db, sku, new_prod_id, new_var_id)
+    return True, new_prod_id, new_var_id, None
+
+
+def _save_product_shopify_ids(db, sku, prod_id, var_id):
+    if not db or not sku:
+        return
+    try:
+        cur = db.cursor()
+        cur.execute(
+            "UPDATE products SET shopify_product_id = %s, shopify_variant_id = %s, shopify_synced_at = NOW() WHERE sku = %s",
+            [prod_id, var_id, sku]
+        )
+        if hasattr(db, 'commit'):
+            db.commit()
+    except Exception as e:
+        logger.warning(f"Error guardando IDs Shopify para SKU {sku}: {e}")
+
+
+def sync_catalog_to_shopify(db=None, limit=100):
+    """
+    Sincroniza el catálogo activo en Siyash con Shopify aplicando metacampos y EAN.
+    """
+    import time
+    if not db:
+        return 0, 0, ["Base de datos no disponible"]
+
+    cur = db.cursor(dictionary=True)
+    sql = """
+        SELECT sku, ean, nombre, linea, genero, formato, aroma_family,
+               precio_mayorista, precio_venta, stock, imagen, aromas,
+               shopify_product_id, shopify_variant_id
+        FROM products
+        WHERE is_active = 1 AND stock > 0 AND precio_venta > 0
+        ORDER BY (shopify_product_id IS NOT NULL) ASC, linea, nombre
+    """
+    if limit and int(limit) > 0:
+        sql += f" LIMIT {int(limit)}"
+
+    cur.execute(sql)
+    products = cur.fetchall()
+
+    success_count = 0
+    error_count = 0
+    errors = []
+
+    for p in products:
+        ok, prod_id, var_id, err = sync_product_to_shopify(p, db=db)
+        if ok:
+            success_count += 1
+        else:
+            error_count += 1
+            errors.append(f"{p['sku']}: {err}")
+        time.sleep(0.35)
+
+    return success_count, error_count, errors

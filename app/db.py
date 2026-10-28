@@ -141,6 +141,8 @@ def init_db():
     _add_column_if_missing(cur, 'products', 'precio_mayorista', 'INT')
     _add_column_if_missing(cur, 'products', 'precio_venta', 'INT')
     _add_column_if_missing(cur, 'products', 'shopify_variant_id', 'VARCHAR(50) DEFAULT NULL')
+    _add_column_if_missing(cur, 'products', 'shopify_product_id', 'VARCHAR(50) DEFAULT NULL')
+    _add_column_if_missing(cur, 'products', 'shopify_synced_at', 'DATETIME DEFAULT NULL')
     _add_column_if_missing(cur, 'products', 'en_cyber', 'TINYINT(1) NOT NULL DEFAULT 0')
     _add_column_if_missing(cur, 'products', 'descuento_cyber_pct', 'INT NOT NULL DEFAULT 0')
     try:

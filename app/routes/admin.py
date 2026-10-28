@@ -452,85 +452,60 @@ def sync_shopify_variants():
     return redirect(url_for('admin.admin_inventario'))
 
 
-@admin_bp.route('/admin/sync-shopify')
+@admin_bp.route('/admin/sync-shopify', methods=['GET', 'POST'])
 @require_login
 def sync_shopify():
-    import urllib.request, json, time
+    from ..shopify_api import sync_catalog_to_shopify, get_shopify_credentials
     db = get_db()
-    cur = db.cursor(dictionary=True)
-    cur.execute("SELECT setting_value FROM settings WHERE setting_key = 'shopify_access_token'")
-    t_row = cur.fetchone()
-    token = t_row['setting_value'] if t_row else None
-    
-    cur.execute("SELECT setting_value FROM settings WHERE setting_key = 'shopify_shop'")
-    s_row = cur.fetchone()
-    shop = s_row['setting_value'] if s_row else 'dcw11w-0p.myshopify.com'
+    shop, token = get_shopify_credentials(db)
     
     if not token:
-        flash('Primero conecta Shopify abriendo el enlace de instalación.', 'error')
+        flash('Primero conecta Shopify con el Access Token para autorizar la API.', 'error')
         return redirect(url_for('admin.admin_inventario'))
         
-    cur.execute('''SELECT sku, nombre, linea, precio_venta, stock, imagen, aroma_family
-                   FROM products
-                   WHERE is_active = 1 AND stock > 0 AND precio_venta > 0''')
-    prods = cur.fetchall()
-    
-    success = 0
-    errors = 0
-    
-    for p in prods:
-        sku = p['sku']
-        title = p['nombre']
-        vendor = p['linea'] or 'Siyash'
-        price = str(p['precio_venta'])
-        image_url = p['imagen']
-        
-        payload = {
-            "product": {
-                "title": title,
-                "vendor": vendor,
-                "product_type": "Perfume",
-                "status": "active",
-                "published_scope": "global",
-                "variants": [
-                    {
-                        "sku": sku,
-                        "price": price,
-                        "requires_shipping": True
-                    }
-                ]
-            }
-        }
-        if image_url and image_url.startswith('http'):
-            payload["product"]["images"] = [{"src": image_url}]
-            
-        req = urllib.request.Request(
-            f"https://{shop}/admin/api/2024-01/products.json",
-            data=json.dumps(payload).encode('utf-8'),
-            headers={
-                "Content-Type": "application/json",
-                "X-Shopify-Access-Token": token
-            }
-        )
-        try:
-            with urllib.request.urlopen(req) as resp:
-                if resp.status in (200, 201):
-                    success += 1
-            time.sleep(0.5)
-        except Exception:
-            errors += 1
-            
-    flash(f'Sincronización completada: {success} productos creados en Shopify ({errors} errores).', 'success')
+    limit = request.args.get('limit', 100, type=int)
+    success, errors_count, error_msgs = sync_catalog_to_shopify(db=db, limit=limit)
+    if errors_count == 0:
+        flash(f'¡Sincronización exitosa con Shopify! {success} productos sincronizados con EAN y metacampos.', 'success')
+    else:
+        sample_err = f" (Ej: {error_msgs[0]})" if error_msgs else ""
+        flash(f'Sincronización con Shopify: {success} exitosos, {errors_count} con alertas{sample_err}.', 'warning')
     return redirect(url_for('admin.admin_inventario'))
+
+
+@admin_bp.route('/admin/productos/<sku>/sync-shopify', methods=['POST'])
+@require_login
+def admin_producto_sync_shopify(sku):
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    cur.execute("""
+        SELECT sku, ean, nombre, linea, genero, formato, aroma_family,
+               precio_mayorista, precio_venta, stock, imagen, aromas,
+               shopify_product_id, shopify_variant_id
+        FROM products WHERE sku = %s
+    """, [sku])
+    prod = cur.fetchone()
+    if not prod:
+        flash(f"Producto con SKU '{sku}' no encontrado.", 'error')
+        return redirect(url_for('admin.admin_inventario'))
+
+    from ..shopify_api import sync_product_to_shopify
+    ok, prod_id, var_id, err = sync_product_to_shopify(prod, db=db)
+    if ok:
+        flash(f"'{prod['nombre']}' sincronizado con Shopify exitosamente (ID: {prod_id}).", 'success')
+    else:
+        flash(f"Error sincronizando '{prod['nombre']}' con Shopify: {err}", 'error')
+
+    return redirect(request.referrer or url_for('admin.admin_inventario'))
 
 @admin_bp.route('/admin/export/shopify-csv')
 @require_login
 def export_shopify_csv():
-    import csv, io
+    import csv, io, re
     from ..db import _get_margen
     db = get_db()
     cur = db.cursor(dictionary=True)
-    cur.execute('''SELECT sku, nombre, linea, precio_mayorista, precio_venta, stock, imagen, aroma_family
+    cur.execute('''SELECT sku, ean, nombre, linea, genero, formato, precio_mayorista, precio_venta, stock, imagen, aroma_family
                    FROM products
                    WHERE is_active = 1 AND stock > 0
                    ORDER BY linea, nombre''')
@@ -544,8 +519,11 @@ def export_shopify_csv():
         'Published', 'Option1 Name', 'Option1 Value', 'Variant SKU', 'Variant Grams',
         'Variant Inventory Tracker', 'Variant Qty', 'Variant Inventory Policy',
         'Variant Fulfillment Service', 'Variant Price', 'Variant Compare At Price',
-        'Variant Requires Shipping', 'Variant Taxable', 'Image Src', 'Image Position',
-        'Status'
+        'Variant Requires Shipping', 'Variant Taxable', 'Variant Barcode', 'Image Src', 'Image Position',
+        'Status',
+        'EAN (product.metafields.facts.ean)',
+        'Familia Olfativa (product.metafields.custom.aroma_family)',
+        'Concentracion (product.metafields.custom.concentracion)'
     ]
     writer.writerow(headers)
 
@@ -565,7 +543,7 @@ def export_shopify_csv():
             p['linea'] or 'Siyash',
             'Health & Beauty > Personal Care > Cosmetics > Perfumes & Colognes',
             'Perfume',
-            f"{p['linea']}, {p['aroma_family'] or ''}".strip(', '),
+            f"{p['linea']}, {p['aroma_family'] or ''}, {p.get('genero') or ''}".strip(', '),
             'TRUE',
             'Title', 'Default Title',
             p['sku'],
@@ -578,9 +556,13 @@ def export_shopify_csv():
             '',
             'TRUE',
             'TRUE',
+            p.get('ean') or '',
             p['imagen'] or '',
             '1' if p['imagen'] else '',
-            'active'
+            'active',
+            p.get('ean') or '',
+            p.get('aroma_family') or '',
+            p.get('formato') or ''
         ])
 
     output.seek(0)
