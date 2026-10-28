@@ -202,15 +202,15 @@ def admin_inventario():
     cur = db.cursor(dictionary=True)
 
     # Optimized: Removed JOIN prices
-    sql = '''SELECT p.sku, p.nombre, p.linea, p.genero, p.stock, p.is_active, p.aroma_family,
+    sql = '''SELECT p.sku, p.ean, p.nombre, p.linea, p.genero, p.stock, p.is_active, p.aroma_family,
                     p.precio_mayorista AS precio_mayor,
                     p.precio_venta
              FROM products p'''
     params = []
     if query:
-        sql += ' WHERE (p.nombre LIKE %s OR p.sku LIKE %s OR p.linea LIKE %s)'
+        sql += ' WHERE (p.nombre LIKE %s OR p.sku LIKE %s OR p.linea LIKE %s OR (p.ean IS NOT NULL AND p.ean LIKE %s))'
         like = f'%{query}%'
-        params.extend([like, like, like])
+        params.extend([like, like, like, like])
     sql += ' ORDER BY p.linea, p.nombre'
 
     cur.execute(f'SELECT COUNT(*) AS cnt FROM ({sql}) AS t', params)

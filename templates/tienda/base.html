@@ -325,21 +325,47 @@
   <div class="px-4 sm:px-6 py-6 sm:py-8 border-b border-brand-100 flex items-center justify-between">
     <div class="flex-1 max-w-4xl mx-auto flex items-center gap-4">
       <svg class="w-6 h-6 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-5.2-5.2m2.2-5.3a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z"/></svg>
-      <input type="text" id="live-search-input" placeholder="Buscar por marca, aroma o nombre..." class="w-full text-xl sm:text-3xl font-serif text-brand-black bg-transparent focus:outline-none placeholder-brand-300" autocomplete="off">
+      <input type="text" id="live-search-input" placeholder="Buscar por nombre, SKU, EAN, marca o notas..." class="w-full text-xl sm:text-3xl font-serif text-brand-black bg-transparent focus:outline-none placeholder-brand-300" autocomplete="off">
     </div>
-    <button onclick="closeSearch()" class="text-brand-500 hover:text-brand-black transition-colors ml-4">
+    <button onclick="closeSearch()" class="text-brand-500 hover:text-brand-black transition-colors ml-4" aria-label="Cerrar búsqueda">
       <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
   </div>
   <div class="flex-1 overflow-y-auto bg-brand-50/50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
       <div id="search-loading" class="hidden text-center text-brand-400 text-xs tracking-widest2 uppercase mt-10">Buscando...</div>
-      <div id="search-results" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-        <!-- Resultados inyectados por JS -->
+      
+      <!-- Direct Matches Section -->
+      <div id="search-direct-container" class="hidden mb-12">
+        <div class="flex items-center justify-between mb-6 pb-2 border-b border-brand-200">
+          <h3 class="text-xs font-bold uppercase tracking-widest2 text-brand-900 flex items-center gap-2">
+            <span>Coincidencias Directas</span>
+            <span id="search-direct-count" class="text-[10px] bg-brand-black text-brand-white px-2 py-0.5 rounded-full"></span>
+          </h3>
+          <span class="text-[10px] text-brand-400 tracking-wider">SKU / EAN / Nombre</span>
+        </div>
+        <div id="search-results" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+          <!-- Direct items -->
+        </div>
       </div>
+
+      <!-- Similar / Recommendations Section -->
+      <div id="search-similar-container" class="hidden mb-12">
+        <div class="flex items-center justify-between mb-6 pb-2 border-b border-brand-200">
+          <h3 class="text-xs font-bold uppercase tracking-widest2 text-brand-700 flex items-center gap-2">
+            <span>✨ Fragancias Similares Recomendadas</span>
+            <span class="text-[9px] bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full">Misma familia / Casa</span>
+          </h3>
+          <span class="text-[10px] text-brand-400 tracking-wider">Inspiraciones y alternativas</span>
+        </div>
+        <div id="search-similar-results" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+          <!-- Similar items -->
+        </div>
+      </div>
+
       <div id="search-empty" class="hidden text-center text-brand-400 mt-20">
         <p class="font-serif italic text-2xl text-brand-300 mb-4">No encontramos fragancias que coincidan.</p>
-        <p class="text-[10px] tracking-widest2 uppercase">Intenta con otra palabra clave</p>
+        <p class="text-[10px] tracking-widest2 uppercase">Intenta buscar por SKU, código EAN, marca o familia olfativa</p>
       </div>
     </div>
   </div>
@@ -861,50 +887,105 @@ function closeSearch() {
   setTimeout(() => { m.classList.add('hidden'); }, 300);
 }
 
-document.getElementById('live-search-input').addEventListener('input', function(e) {
-  clearTimeout(searchTimeout);
-  const q = e.target.value.trim();
-  const res = document.getElementById('search-results');
-  const empty = document.getElementById('search-empty');
-  const loader = document.getElementById('search-loading');
+function renderSearchCard(p) {
+  const imgUrl = p.imagen ? (p.imagen.includes('?') ? p.imagen + '&width=200' : p.imagen + '?width=200') : '';
+  const img = p.imagen ? '<img src="'+imgUrl+'" class="w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-300" alt="'+p.nombre+'">' : '<div class="w-full h-full flex items-center justify-center text-brand-300 font-serif italic text-xs">Sin foto</div>';
   
-  if (q.length < 2) {
-    res.innerHTML = '';
-    empty.classList.add('hidden');
-    loader.classList.add('hidden');
-    return;
+  const eanTag = p.ean ? `<span class="text-[9px] font-mono text-brand-400 block truncate" title="EAN: ${p.ean}">EAN: ${p.ean}</span>` : '';
+  const skuTag = `<span class="text-[9px] font-mono text-brand-500 font-semibold truncate">SKU: ${p.sku}</span>`;
+  
+  let priceHtml = `<p class="text-xs font-semibold text-brand-900">$${new Intl.NumberFormat('es-CL').format(p.precio_venta)}</p>`;
+  if (p.precio_original && p.precio_original > p.precio_venta) {
+    priceHtml = `
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <p class="text-xs font-bold text-red-600">$${new Intl.NumberFormat('es-CL').format(p.precio_venta)}</p>
+        <p class="text-[10px] text-brand-400 line-through">$${new Intl.NumberFormat('es-CL').format(p.precio_original)}</p>
+      </div>
+    `;
   }
-  
-  loader.classList.remove('hidden');
-  res.innerHTML = '';
-  empty.classList.add('hidden');
-  
-  searchTimeout = setTimeout(() => {
-    fetch('/api/search?q=' + encodeURIComponent(q))
-      .then(r => r.json())
-      .then(data => {
-        loader.classList.add('hidden');
-        if (data.length === 0) {
-          empty.classList.remove('hidden');
-        } else {
-          let html = '';
-          data.forEach(p => {
-            const imgUrl = p.imagen ? (p.imagen.includes('?') ? p.imagen + '&width=150' : p.imagen + '?width=150') : '';
-            const img = p.imagen ? '<img src="'+imgUrl+'" class="w-full h-full object-contain p-4">' : '<div class="w-full h-full flex items-center justify-center text-brand-300 font-serif italic text-sm">Sin foto</div>';
-            html += `
-              <a href="/producto/${p.sku}" class="group block bg-brand-white border border-brand-100 p-2 hover:border-brand-black transition-colors">
-                <div class="aspect-[4/5] bg-brand-50 mb-3 overflow-hidden relative">${img}</div>
-                <p class="text-[8px] tracking-widest uppercase text-brand-400 mb-1 line-clamp-1">${p.linea}</p>
-                <h4 class="font-serif text-sm text-brand-black leading-tight line-clamp-1 mb-2">${p.nombre}</h4>
-                <p class="text-xs font-semibold text-brand-900">$${new Intl.NumberFormat('es-CL').format(p.precio_venta)}</p>
-              </a>
-            `;
-          });
-          res.innerHTML = html;
-        }
-      });
-  }, 300);
-});
+
+  return `
+    <a href="/producto/${p.sku}" class="group block bg-brand-white border border-brand-100 p-2.5 hover:border-brand-black transition-all hover:shadow-sm">
+      <div class="aspect-[4/5] bg-brand-50 mb-2 overflow-hidden relative">${img}</div>
+      <div class="flex items-center justify-between text-[8px] tracking-wider uppercase text-brand-400 mb-1">
+        <span class="truncate max-w-[65%] font-medium">${p.linea || ''}</span>
+        ${p.aroma_family ? `<span class="truncate text-brand-500 text-[8px]">${p.aroma_family}</span>` : ''}
+      </div>
+      <h4 class="font-serif text-xs text-brand-black leading-tight line-clamp-1 mb-1.5 group-hover:underline">${p.nombre}</h4>
+      <div class="flex items-center justify-between border-t border-brand-50 pt-1.5 mb-1.5 gap-1">
+        ${skuTag}
+        ${eanTag}
+      </div>
+      ${priceHtml}
+    </a>
+  `;
+}
+
+const searchInput = document.getElementById('live-search-input');
+if (searchInput) {
+  searchInput.addEventListener('input', function(e) {
+    clearTimeout(searchTimeout);
+    const q = e.target.value.trim();
+    const directCont = document.getElementById('search-direct-container');
+    const directRes = document.getElementById('search-results');
+    const directCount = document.getElementById('search-direct-count');
+    const similarCont = document.getElementById('search-similar-container');
+    const similarRes = document.getElementById('search-similar-results');
+    const empty = document.getElementById('search-empty');
+    const loader = document.getElementById('search-loading');
+
+    if (q.length < 2) {
+      if (directCont) directCont.classList.add('hidden');
+      if (similarCont) similarCont.classList.add('hidden');
+      if (directRes) directRes.innerHTML = '';
+      if (similarRes) similarRes.innerHTML = '';
+      if (empty) empty.classList.add('hidden');
+      if (loader) loader.classList.add('hidden');
+      return;
+    }
+
+    if (loader) loader.classList.remove('hidden');
+    if (empty) empty.classList.add('hidden');
+
+    searchTimeout = setTimeout(() => {
+      fetch('/api/search?q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(data => {
+          if (loader) loader.classList.add('hidden');
+          const direct = Array.isArray(data) ? data : (data.direct || []);
+          const similar = data.similar || [];
+
+          if (direct.length === 0 && similar.length === 0) {
+            if (directCont) directCont.classList.add('hidden');
+            if (similarCont) similarCont.classList.add('hidden');
+            if (empty) empty.classList.remove('hidden');
+            return;
+          }
+
+          if (empty) empty.classList.add('hidden');
+
+          if (direct.length > 0) {
+            if (directRes) directRes.innerHTML = direct.map(renderSearchCard).join('');
+            if (directCount) directCount.textContent = direct.length;
+            if (directCont) directCont.classList.remove('hidden');
+          } else {
+            if (directCont) directCont.classList.add('hidden');
+          }
+
+          if (similar.length > 0) {
+            if (similarRes) similarRes.innerHTML = similar.map(renderSearchCard).join('');
+            if (similarCont) similarCont.classList.remove('hidden');
+          } else {
+            if (similarCont) similarCont.classList.add('hidden');
+          }
+        })
+        .catch(err => {
+          if (loader) loader.classList.add('hidden');
+          console.error('Error en live search:', err);
+        });
+    }, 180);
+  });
+}
 
 </script>
 </body>

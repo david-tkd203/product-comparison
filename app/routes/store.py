@@ -47,7 +47,7 @@ def _get_margen(db):
 
 
 def _tienda_sql():
-    return '''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato, p.aroma_family, p.stock,
+    return '''SELECT p.sku, p.ean, p.nombre, p.linea, p.genero, p.formato, p.aroma_family, p.stock,
                      p.precio_mayorista, p.precio_venta, p.imagen, p.aromas,
                      p.en_cyber, p.descuento_cyber_pct
               FROM products p
@@ -309,7 +309,7 @@ def tienda_producto(sku):
     db = get_db()
     cur = db.cursor(dictionary=True)
     # Search for product in catalog (case-insensitive)
-    cur.execute('''SELECT p.sku, p.nombre, p.linea, p.genero, p.formato, p.aroma_family, p.stock,
+    cur.execute('''SELECT p.sku, p.ean, p.nombre, p.linea, p.genero, p.formato, p.aroma_family, p.stock,
                           p.precio_mayorista, p.precio_venta, p.imagen, p.aromas, p.is_active,
                           p.en_cyber, p.descuento_cyber_pct
                    FROM products p
@@ -353,29 +353,105 @@ def tienda_producto(sku):
 def api_search():
     q = request.args.get('q', '').strip()
     if not q or len(q) < 2:
-        return jsonify([])
-    
+        return jsonify({'ok': True, 'direct': [], 'similar': [], 'total': 0})
+
     db = get_db()
     cur = db.cursor(dictionary=True)
-    
+
+    exact = q
+    starts_with = f"{q}%"
+    contains = f"%{q}%"
+
     sql = """
-        SELECT sku, nombre, linea, precio_venta, imagen, en_cyber, descuento_cyber_pct 
-        FROM products 
-        WHERE is_active = 1 AND stock > 0 
-        AND (nombre LIKE %s OR linea LIKE %s OR sku LIKE %s)
-        ORDER BY (imagen IS NOT NULL) DESC, precio_venta DESC
-        LIMIT 10
+        SELECT p.sku, p.ean, p.nombre, p.linea, p.formato, p.genero, p.aroma_family,
+               p.precio_venta, p.imagen, p.en_cyber, p.descuento_cyber_pct,
+               (
+                 CASE 
+                   WHEN LOWER(p.sku) = LOWER(%s) OR p.ean = %s THEN 100
+                   WHEN LOWER(p.nombre) LIKE LOWER(%s) THEN 80
+                   WHEN LOWER(p.linea) LIKE LOWER(%s) THEN 60
+                   WHEN LOWER(p.nombre) LIKE LOWER(%s) THEN 40
+                   WHEN LOWER(p.aromas) LIKE LOWER(%s) OR LOWER(p.aroma_family) LIKE LOWER(%s) THEN 25
+                   ELSE 10
+                 END
+               ) AS relevance_score
+        FROM products p
+        WHERE p.is_active = 1 AND p.stock > 0 
+          AND (
+            p.sku LIKE %s 
+            OR (p.ean IS NOT NULL AND p.ean LIKE %s)
+            OR p.nombre LIKE %s 
+            OR p.linea LIKE %s 
+            OR p.aroma_family LIKE %s
+            OR p.aromas LIKE %s
+          )
+        ORDER BY relevance_score DESC, (p.imagen IS NOT NULL) DESC, p.precio_venta DESC
+        LIMIT 12
     """
-    like = f'%{q}%'
-    cur.execute(sql, [like, like, like])
-    results = cur.fetchall()
-    for r in results:
+
+    cur.execute(sql, [
+        exact, exact, starts_with, exact, contains, contains, contains,
+        contains, contains, contains, contains, contains, contains
+    ])
+    direct_results = cur.fetchall()
+
+    for r in direct_results:
         if r.get('en_cyber') == 1 and (r.get('descuento_cyber_pct') or 0) > 0:
             pct = int(r['descuento_cyber_pct'])
             r['precio_original'] = r['precio_venta']
             r['precio_venta'] = int(round((r['precio_venta'] * (100 - pct)) / 1000) * 1000)
-    
-    return jsonify(results)
+
+    # Recomendaciones reactivas de fragancias similares (misma marca o misma familia olfativa)
+    similar_results = []
+    if direct_results:
+        matched_skus = [r['sku'] for r in direct_results]
+        families = list({r['aroma_family'] for r in direct_results if r.get('aroma_family')})
+        brands = list({r['linea'] for r in direct_results if r.get('linea')})
+
+        similar_conds = []
+        similar_params = []
+
+        format_strings = ','.join(['%s'] * len(matched_skus))
+        similar_conds.append(f"p.sku NOT IN ({format_strings})")
+        similar_params.extend(matched_skus)
+
+        or_conds = []
+        if families:
+            fam_placeholders = ','.join(['%s'] * len(families))
+            or_conds.append(f"p.aroma_family IN ({fam_placeholders})")
+            similar_params.extend(families)
+        if brands:
+            brand_placeholders = ','.join(['%s'] * len(brands))
+            or_conds.append(f"p.linea IN ({brand_placeholders})")
+            similar_params.extend(brands)
+
+        if or_conds:
+            similar_sql = f"""
+                SELECT p.sku, p.ean, p.nombre, p.linea, p.formato, p.genero, p.aroma_family,
+                       p.precio_venta, p.imagen, p.en_cyber, p.descuento_cyber_pct
+                FROM products p
+                WHERE p.is_active = 1 AND p.stock > 0
+                  AND {' AND '.join(similar_conds)}
+                  AND ({' OR '.join(or_conds)})
+                ORDER BY (p.imagen IS NOT NULL) DESC, p.precio_venta DESC
+                LIMIT 6
+            """
+            cur.execute(similar_sql, similar_params)
+            similar_results = cur.fetchall()
+
+            for sr in similar_results:
+                if sr.get('en_cyber') == 1 and (sr.get('descuento_cyber_pct') or 0) > 0:
+                    pct = int(sr['descuento_cyber_pct'])
+                    sr['precio_original'] = sr['precio_venta']
+                    sr['precio_venta'] = int(round((sr['precio_venta'] * (100 - pct)) / 1000) * 1000)
+
+    return jsonify({
+        'ok': True,
+        'direct': direct_results,
+        'similar': similar_results,
+        'total': len(direct_results),
+        'query': q
+    })
 
 def _validate_coupon_logic(cur, codigo, subtotal, customer_id=None):
     codigo = (codigo or '').strip().upper()
