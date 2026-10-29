@@ -6,6 +6,7 @@ Gestiona sincronización de:
 """
 
 import os
+import re
 import json
 import logging
 import urllib.request
@@ -382,14 +383,18 @@ def sync_product_to_shopify(p, db=None):
         tag_list.append(vendor)
 
     # Variante nativa (el barcode nativo de Shopify es para el EAN/GTIN)
+    clean_ean = re.sub(r'[^0-9]', '', ean)
     variant_data = {
         "sku": sku,
         "price": str(precio),
         "requires_shipping": True,
         "taxable": True
     }
-    if ean:
+    if clean_ean:
+        variant_data["barcode"] = clean_ean
+    elif ean:
         variant_data["barcode"] = ean
+
     if shopify_var_id:
         try:
             variant_data["id"] = int(shopify_var_id)
@@ -398,31 +403,27 @@ def sync_product_to_shopify(p, db=None):
 
     # Metacampos homologados con las definiciones de Shopify
     metafields = []
-    if ean:
+    # facts.ean requiere estándar numérico GTIN (8, 12, 13 o 14 dígitos)
+    if clean_ean and len(clean_ean) in (8, 12, 13, 14):
         metafields.append({
             "namespace": "facts",
             "key": "ean",
-            "value": ean,
+            "value": clean_ean,
             "type": "single_line_text_field"
         })
-        metafields.append({
-            "namespace": "custom",
-            "key": "ean",
-            "value": ean,
-            "type": "single_line_text_field"
-        })
+
     if aroma_family:
         metafields.append({
             "namespace": "custom",
             "key": "aroma_family",
-            "value": aroma_family,
+            "value": str(aroma_family)[:200],
             "type": "single_line_text_field"
         })
     if formato:
         metafields.append({
             "namespace": "custom",
             "key": "concentracion",
-            "value": formato,
+            "value": str(formato)[:200],
             "type": "single_line_text_field"
         })
 
@@ -455,6 +456,13 @@ def sync_product_to_shopify(p, db=None):
         ok_put, status, res_put, err_put = _shopify_request(
             shop, token, 'PUT', f'products/{shopify_prod_id}.json', put_payload
         )
+        # Si falló por formato de metacampos, reintentar actualización sin metacampos
+        if not ok_put and metafields and ("value" in str(err_put).lower() or "metafield" in str(err_put).lower()):
+            put_payload["product"].pop("metafields", None)
+            ok_put, status, res_put, err_put = _shopify_request(
+                shop, token, 'PUT', f'products/{shopify_prod_id}.json', put_payload
+            )
+
         if ok_put:
             res_prod = res_put.get('product', {})
             vars_list = res_prod.get('variants', [])
@@ -487,6 +495,14 @@ def sync_product_to_shopify(p, db=None):
     ok_post, status, res_post, err_post = _shopify_request(
         shop, token, 'POST', 'products.json', post_payload
     )
+
+    # Reintento de resiliencia: si un metacampo específico falló en validación, reintentar creación limpia sin metacampos
+    if not ok_post and metafields and ("value" in str(err_post).lower() or "metafield" in str(err_post).lower()):
+        post_payload["product"].pop("metafields", None)
+        ok_post, status, res_post, err_post = _shopify_request(
+            shop, token, 'POST', 'products.json', post_payload
+        )
+
     if not ok_post:
         return False, None, None, f"Error creando producto en Shopify: {err_post}"
 
