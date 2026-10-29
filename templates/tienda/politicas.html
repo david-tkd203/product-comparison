@@ -1,0 +1,240 @@
+{% extends "tienda/base.html" %}
+
+{% block title %}Políticas y Términos Oficiales · Siyash Perfumería{% endblock %}
+
+{% block content %}
+<div class="pt-24 sm:pt-32 pb-24 px-4 sm:px-6">
+  <div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-12">
+      <span class="text-[10px] tracking-widest2 uppercase text-brand-400 block mb-2">Transparencia y Confianza</span>
+      <h1 class="font-serif text-4xl sm:text-5xl text-brand-black tracking-tight mb-4">Políticas & Términos Oficiales</h1>
+      <p class="text-xs sm:text-sm text-brand-500 font-light max-w-xl mx-auto leading-relaxed">
+        En Siyash nos comprometemos con la autenticidad, la protección de tus datos y una experiencia de compra transparente y segura en todo Chile.
+      </p>
+    </div>
+
+    <!-- Navegación por pestañas -->
+    <div class="flex flex-wrap items-center justify-center gap-2 border-b border-brand-200 pb-4 mb-12 text-xs font-medium uppercase tracking-wider">
+      <a href="/terminos-servicio" class="px-4 py-2 rounded-sm transition-all {{ 'bg-brand-black text-brand-white font-semibold' if active_tab == 'terminos' else 'text-brand-600 hover:text-brand-black hover:bg-brand-50' }}">
+        Términos del Servicio
+      </a>
+      <a href="/politica-privacidad" class="px-4 py-2 rounded-sm transition-all {{ 'bg-brand-black text-brand-white font-semibold' if active_tab == 'privacidad' else 'text-brand-600 hover:text-brand-black hover:bg-brand-50' }}">
+        Privacidad
+      </a>
+      <a href="/politica-reembolso" class="px-4 py-2 rounded-sm transition-all {{ 'bg-brand-black text-brand-white font-semibold' if active_tab == 'reembolso' else 'text-brand-600 hover:text-brand-black hover:bg-brand-50' }}">
+        Devoluciones & Reembolsos
+      </a>
+      <a href="/politica-envio" class="px-4 py-2 rounded-sm transition-all {{ 'bg-brand-black text-brand-white font-semibold' if active_tab == 'envio' else 'text-brand-600 hover:text-brand-black hover:bg-brand-50' }}">
+        Envíos & Despacho
+      </a>
+      <a href="/contacto" class="px-4 py-2 rounded-sm transition-all {{ 'bg-brand-black text-brand-white font-semibold' if active_tab == 'contacto' else 'text-brand-600 hover:text-brand-black hover:bg-brand-50' }}">
+        Contacto Oficial
+      </a>
+    </div>
+
+    <!-- Contenido Editorial de la Política Seleccionada -->
+    <div class="bg-brand-white border border-brand-100 p-8 sm:p-12 shadow-[0_4px_30px_rgba(0,0,0,0.02)] space-y-8 text-sm text-brand-700 leading-relaxed font-light">
+
+      {% if active_tab == 'terminos' %}
+      <section>
+        <span class="text-[9px] tracking-widest2 uppercase text-brand-400 block mb-1">Última actualización: Octubre 2026</span>
+        <h2 class="font-serif text-2xl sm:text-3xl text-brand-black mb-6">Términos del Servicio</h2>
+        
+        <div class="space-y-6">
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">1. Ámbito de Aplicación</h3>
+            <p>
+              Bienvenido a Siyash Perfumería (siyash.cl). Al navegar en nuestro sitio, registrar una cuenta o adquirir nuestros productos, aceptas expresamente quedar vinculado por los presentes Términos del Servicio. Si no estás de acuerdo con alguna cláusula, te recomendamos abstenerte de utilizar la plataforma.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">2. Garantía de Autenticidad</h3>
+            <p>
+              Todos los perfumes, decants y productos ofrecidos en Siyash son <strong>100% originales</strong>, nuevos y sellados en sus cajas de fábrica. No comercializamos imitaciones, réplicas ni testers no autorizados. Cada unidad cuenta con su código de barras internacional EAN y su respectivo Batch Code de trazabilidad del fabricante.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">3. Precios y Moneda</h3>
+            <p>
+              Todos los precios informados en siyash.cl están expresados en <strong>Pesos Chilenos (CLP)</strong>. Nos reservamos el derecho de modificar los precios y promociones sin previo aviso; sin embargo, las compras ya confirmadas mantendrán el valor acordado al momento del pago.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">4. Registro y Seguridad de Cuenta</h3>
+            <p>
+              El usuario es responsable de mantener la confidencialidad de sus credenciales de acceso. Siyash no se responsabiliza por el uso no autorizado de cuentas resultante del descuido del usuario en la protección de sus contraseñas.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">5. Legislación Aplicable</h3>
+            <p>
+              Estos términos se rigen íntegramente por las leyes de la República de Chile, especialmente la Ley N° 19.496 sobre Protección de los Derechos de los Consumidores y la Ley N° 19.628 sobre Protección de la Vida Privada.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {% elif active_tab == 'privacidad' %}
+      <section>
+        <span class="text-[9px] tracking-widest2 uppercase text-brand-400 block mb-1">Última actualización: Octubre 2026</span>
+        <h2 class="font-serif text-2xl sm:text-3xl text-brand-black mb-6">Política de Privacidad y Tratamiento de Datos</h2>
+        
+        <div class="space-y-6">
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">1. Compromiso de Confidencialidad</h3>
+            <p>
+              En Siyash valoramos profundamente tu privacidad. Toda la información personal recopilada (nombre, correo electrónico, teléfono y dirección de despacho) es tratada de conformidad con la Ley N° 19.628 de la República de Chile. <strong>Nunca venderemos, alquilaremos ni compartiremos tus datos con terceros</strong> para fines publicitarios ajenos a nuestra operación.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">2. Finalidad del Tratamiento</h3>
+            <p>Tus datos son utilizados exclusivamente para:</p>
+            <ul class="list-disc pl-5 mt-2 space-y-1 text-xs">
+              <li>Procesar, preparar y despachar tus pedidos a tu domicilio o sucursal.</li>
+              <li>Acreditar tus puntos y beneficios en el Club Siyash.</li>
+              <li>Mantenerte informado sobre el seguimiento de tu envío por correo o WhatsApp.</li>
+              <li>Brindarte atención al cliente rápida ante consultas o requerimientos.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">3. Seguridad Criptográfica</h3>
+            <p>
+              Tus contraseñas se almacenan protegidas mediante algoritmos de derivación de claves criptográficas seguras (PBKDF2/SHA-256). Ningún miembro del equipo de Siyash tiene acceso a tu contraseña en texto plano. Las comunicaciones entre tu navegador y nuestro servidor están protegidas por certificados SSL/TLS con cifrado de 256 bits.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">4. Derechos del Titular (ARCO)</h3>
+            <p>
+              Tienes derecho a solicitar en cualquier momento el acceso, rectificación, cancelación o bloqueo de tus datos personales escribiéndonos directamente a <a href="mailto:contacto@siyash.cl" class="underline text-brand-black font-medium">contacto@siyash.cl</a>.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {% elif active_tab == 'reembolso' %}
+      <section>
+        <span class="text-[9px] tracking-widest2 uppercase text-brand-400 block mb-1">Garantía Legal y Satisfacción</span>
+        <h2 class="font-serif text-2xl sm:text-3xl text-brand-black mb-6">Política de Devoluciones y Reembolsos</h2>
+        
+        <div class="space-y-6">
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">1. Garantía Legal (Ley N° 19.496)</h3>
+            <p>
+              Todos nuestros productos cuentan con la <strong>Garantía Legal de 6 meses</strong> establecida en la Ley del Consumidor de Chile. Si el producto presenta una falla de fabricación (por ejemplo, atomizador defectuoso, pérdida de líquido de origen o daño imputable al transporte), tienes derecho a la reparación gratuita, cambio por una unidad nueva o la devolución íntegra de tu dinero.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">2. Naturaleza de los Productos (Cosmética y Perfumes)</h3>
+            <p>
+              Por razones estrictas de higiene, salubridad y seguridad de uso personal, <strong>no se aceptan devoluciones por mero gusto o cambio de opinión si el producto ha sido abierto, manipulado o desprecintado del celofán de fábrica</strong>. Para optar a un cambio por decisión del cliente, el perfume debe encontrarse exactamente en su condición original, con su precinto plástico intacto y sin signos de uso.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">3. Procedimiento para Solicitar un Reembolso</h3>
+            <ol class="list-decimal pl-5 mt-2 space-y-2 text-xs">
+              <li>Envía un mensaje a nuestro WhatsApp oficial o a <a href="mailto:contacto@siyash.cl" class="underline text-brand-black font-medium">contacto@siyash.cl</a> indicando tu número de pedido (ej: <code>SIY-ORD-000123</code>).</li>
+              <li>Adjunta una fotografía o video nítido donde se aprecie el detalle del frasco, el lote (*Batch Code*) y la caja.</li>
+              <li>Una vez evaluado y recepcionado el producto devuelto en nuestra bodega, el reembolso se procesará dentro de un plazo de 48 a 72 horas hábiles mediante transferencia electrónica a la cuenta que nos indiques.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      {% elif active_tab == 'envio' %}
+      <section>
+        <span class="text-[9px] tracking-widest2 uppercase text-brand-400 block mb-1">Cobertura Nacional</span>
+        <h2 class="font-serif text-2xl sm:text-3xl text-brand-black mb-6">Política de Envíos y Despachos</h2>
+        
+        <div class="space-y-6">
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">1. Cobertura</h3>
+            <p>
+              Despachamos a todas las comunas de la Región Metropolitana y a lo largo de todo Chile continental e insular, utilizando alianzas con los principales operadores logísticos del país (Blue Express, Starken y Chilexpress).
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">2. Plazos de Preparación y Entrega</h3>
+            <ul class="list-disc pl-5 mt-2 space-y-1 text-xs">
+              <li><strong>Preparación en bodega:</strong> Todos los pedidos se arman, validan fotográficamente y rotulan con código de barras dentro de las <strong>24 a 48 horas hábiles</strong> posteriores a la confirmación del pago.</li>
+              <li><strong>Región Metropolitana:</strong> Entrega estimada de 1 a 3 días hábiles.</li>
+              <li><strong>Otras Regiones:</strong> Entrega estimada de 2 a 5 días hábiles (pudiendo extenderse en zonas extremas según el operador logístico).</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">3. Empaque Especial de Alta Protección</h3>
+            <p>
+              Los perfumes son piezas frágiles de alta cosmética. En Siyash empacamos cada frasco en cajas reforzadas con protección acolchada antichoque, selladas con precinto de seguridad para asegurar que recibas tu perfume en perfecto estado estético y funcional.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-serif text-lg text-brand-black font-medium mb-2">4. Seguimiento en Línea</h3>
+            <p>
+              Apenas tu paquete es entregado al courier, recibirás por correo electrónico o WhatsApp tu número de seguimiento oficial para monitorear el trayecto de tu compra en tiempo real.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {% elif active_tab == 'contacto' %}
+      <section>
+        <span class="text-[9px] tracking-widest2 uppercase text-brand-400 block mb-1">Atención Personalizada</span>
+        <h2 class="font-serif text-2xl sm:text-3xl text-brand-black mb-6">Información de Contacto</h2>
+        
+        <div class="grid sm:grid-cols-2 gap-8 my-8">
+          <div class="border border-brand-200 p-6 bg-brand-50/50">
+            <h3 class="font-serif text-base text-brand-black font-medium mb-3 flex items-center gap-2">
+              <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              Correo Electrónico Oficial
+            </h3>
+            <p class="text-xs text-brand-500 mb-2">Para consultas generales, validación de compras o garantías:</p>
+            <a href="mailto:contacto@siyash.cl" class="text-sm font-semibold text-brand-black hover:underline">contacto@siyash.cl</a>
+          </div>
+
+          <div class="border border-brand-200 p-6 bg-brand-50/50">
+            <h3 class="font-serif text-base text-brand-black font-medium mb-3 flex items-center gap-2">
+              <svg class="w-5 h-5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+              WhatsApp & Asesoría
+            </h3>
+            <p class="text-xs text-brand-500 mb-2">Coordinación de entregas y recomendaciones de fragancias:</p>
+            <p class="text-sm font-semibold text-brand-black">+56 9 8456 2110</p>
+          </div>
+        </div>
+
+        <div class="space-y-4 pt-4 border-t border-brand-100">
+          <div>
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-brand-black mb-1">Horarios de Atención</h4>
+            <p class="text-xs text-brand-600">Lunes a Viernes de 09:00 a 19:00 hrs. Sábados de 10:00 a 14:00 hrs.</p>
+          </div>
+          <div>
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-brand-black mb-1">Centro de Operaciones y Despacho</h4>
+            <p class="text-xs text-brand-600">Santiago, Región Metropolitana, Chile.</p>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+    </div>
+
+    <!-- Back to Store -->
+    <div class="mt-10 text-center">
+      <a href="/perfumes" class="inline-flex items-center gap-2 text-xs font-medium tracking-widest uppercase text-brand-500 hover:text-brand-black transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+        <span>Volver a la Colección</span>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

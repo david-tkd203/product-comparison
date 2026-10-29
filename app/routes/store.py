@@ -291,6 +291,26 @@ def tienda_mujer():
 def tienda_nosotros():
     return render_template('tienda/nosotros.html')
 
+@store_bp.route('/terminos-servicio')
+def tienda_terminos():
+    return render_template('tienda/politicas.html', active_tab='terminos')
+
+@store_bp.route('/politica-privacidad')
+def tienda_privacidad():
+    return render_template('tienda/politicas.html', active_tab='privacidad')
+
+@store_bp.route('/politica-reembolso')
+def tienda_reembolso():
+    return render_template('tienda/politicas.html', active_tab='reembolso')
+
+@store_bp.route('/politica-envio')
+def tienda_envio():
+    return render_template('tienda/politicas.html', active_tab='envio')
+
+@store_bp.route('/contacto')
+def tienda_contacto():
+    return render_template('tienda/politicas.html', active_tab='contacto')
+
 @store_bp.route('/catalogo')
 def tienda_catalogo_alias():
     return _catalogo_response(None)

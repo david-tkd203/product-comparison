@@ -54,6 +54,11 @@ def registro():
         flash('La contraseña debe contener al menos 6 caracteres.', 'error')
         return render_template('tienda/cliente_registro.html', nombre=nombre, email=email, telefono=telefono), 400
 
+    terminos = request.form.get('terminos_consent')
+    if not terminos:
+        flash('Debes aceptar los Términos del Servicio y la Política de Privacidad para crear tu cuenta.', 'error')
+        return render_template('tienda/cliente_registro.html', nombre=nombre, email=email, telefono=telefono), 400
+
     db = get_db()
     cur = db.cursor(dictionary=True)
 
@@ -65,8 +70,8 @@ def registro():
     password_hash = generate_password_hash(password)
 
     cur.execute(
-        """INSERT INTO customers (email, password_hash, nombre, telefono, puntos, is_active)
-           VALUES (%s, %s, %s, %s, 100, 1)""",
+        """INSERT INTO customers (email, password_hash, nombre, telefono, puntos, is_active, terminos_aceptados_at)
+           VALUES (%s, %s, %s, %s, 100, 1, NOW())""",
         [email, password_hash, nombre, telefono]
     )
     customer_id = cur.lastrowid

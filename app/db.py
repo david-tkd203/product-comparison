@@ -362,6 +362,7 @@ def init_db():
     _add_column_if_missing(cur, 'coupons', 'shopify_price_rule_id', 'VARCHAR(50) DEFAULT NULL')
     _add_column_if_missing(cur, 'coupons', 'shopify_discount_code_id', 'VARCHAR(50) DEFAULT NULL')
     _add_column_if_missing(cur, 'customers', 'shopify_customer_id', 'VARCHAR(50) DEFAULT NULL')
+    _add_column_if_missing(cur, 'customers', 'terminos_aceptados_at', 'DATETIME DEFAULT NULL')
 
     try:
         cur.execute('SELECT COUNT(*) FROM coupons')
