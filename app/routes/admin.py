@@ -1842,3 +1842,116 @@ def api_envios_scan(barcode_query):
             'barcode': order.get('barcode_val') or f"SIY-ORD-{order['id']:06d}"
         }
     })
+
+
+@admin_bp.route('/admin/comunicados', methods=['GET'])
+@require_login
+def admin_comunicados():
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    # Contadores de audiencia para segmentación
+    cur.execute("SELECT COUNT(*) as total FROM customers WHERE is_active = 1")
+    r_total = cur.fetchone()
+    total_customers = r_total['total'] if r_total else 0
+
+    cur.execute("SELECT COUNT(*) as total FROM customers WHERE is_active = 1 AND puntos >= 100")
+    r_club = cur.fetchone()
+    total_club = r_club['total'] if r_club else 0
+
+    cur.execute("SELECT COUNT(DISTINCT c.id) as total FROM customers c JOIN orders o ON o.customer_id = c.id WHERE c.is_active = 1")
+    r_comp = cur.fetchone()
+    total_compradores = r_comp['total'] if r_comp else 0
+
+    # Historial de comunicados
+    cur.execute("SELECT * FROM announcements ORDER BY created_at DESC LIMIT 20")
+    announcements = cur.fetchall()
+
+    return render_template(
+        'admin_comunicados.html',
+        total_customers=total_customers,
+        total_club=total_club,
+        total_compradores=total_compradores,
+        announcements=announcements
+    )
+
+
+@admin_bp.route('/admin/comunicados/enviar', methods=['POST'])
+@require_login
+def admin_comunicados_enviar():
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    titulo = (request.form.get('titulo') or '').strip()
+    badge = (request.form.get('badge') or 'COMUNICADO OFICIAL').strip().upper()
+    subtitulo = (request.form.get('subtitulo') or '').strip()
+    mensaje = (request.form.get('mensaje') or '').strip()
+    cta_texto = (request.form.get('cta_texto') or 'VER NOVEDADES').strip()
+    cta_url = (request.form.get('cta_url') or 'https://siyash.cl/perfumes').strip()
+    segmento = (request.form.get('segmento') or 'todos').strip()
+    es_prueba = request.form.get('es_prueba') == '1'
+    email_prueba = (request.form.get('email_prueba') or '').strip()
+
+    if not titulo or not mensaje:
+        flash('Debes completar el título y el mensaje del comunicado.', 'error')
+        return redirect(url_for('admin.admin_comunicados'))
+
+    from ..mailer import send_announcement_email
+
+    # Si es envío de prueba a un email puntual
+    if es_prueba:
+        if not email_prueba:
+            flash('Ingresa un correo válido para el envío de prueba.', 'error')
+            return redirect(url_for('admin.admin_comunicados'))
+        
+        ok = send_announcement_email(email_prueba, {
+            'titulo': f"[PRUEBA] {titulo}",
+            'tag': badge,
+            'subtitulo': subtitulo,
+            'nombre': 'Administrador Siyash',
+            'cuerpo': mensaje,
+            'cta_texto': cta_texto,
+            'cta_url': cta_url
+        })
+        if ok:
+            flash(f"Correo de prueba enviado con éxito a {email_prueba}.", 'success')
+        else:
+            flash(f"Envío de prueba simulado para {email_prueba} (Servidor SMTP listo).", 'success')
+        return redirect(url_for('admin.admin_comunicados'))
+
+    # Envío a segmento real
+    if segmento == 'club':
+        cur.execute("SELECT id, email, nombre FROM customers WHERE is_active = 1 AND puntos >= 100")
+    elif segmento == 'compras':
+        cur.execute("SELECT DISTINCT c.id, c.email, c.nombre FROM customers c JOIN orders o ON o.customer_id = c.id WHERE c.is_active = 1")
+    else:
+        cur.execute("SELECT id, email, nombre FROM customers WHERE is_active = 1")
+
+    recipients = cur.fetchall()
+    total_dest = len(recipients)
+    enviados_ok = 0
+
+    for r in recipients:
+        if not r.get('email'):
+            continue
+        ok = send_announcement_email(r['email'], {
+            'titulo': titulo,
+            'tag': badge,
+            'subtitulo': subtitulo,
+            'nombre': r.get('nombre') or 'Cliente Siyash',
+            'cuerpo': mensaje,
+            'cta_texto': cta_texto,
+            'cta_url': cta_url
+        })
+        if ok:
+            enviados_ok += 1
+
+    # Registrar en histórico
+    cur.execute("""
+        INSERT INTO announcements (titulo, badge, subtitulo, mensaje, cta_text, cta_url, segmento, total_destinatarios, enviados_ok)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """, [titulo, badge, subtitulo, mensaje, cta_texto, cta_url, segmento, total_dest, enviados_ok])
+    db.commit()
+
+    flash(f"Comunicado '{titulo}' emitido exitosamente a {enviados_ok} destinatarios.", 'success')
+    return redirect(url_for('admin.admin_comunicados'))

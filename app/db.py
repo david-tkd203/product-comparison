@@ -359,6 +359,22 @@ def init_db():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ''')
 
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS announcements (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            titulo VARCHAR(255) NOT NULL,
+            badge VARCHAR(50) DEFAULT 'COMUNICADO',
+            subtitulo VARCHAR(255),
+            mensaje TEXT NOT NULL,
+            cta_text VARCHAR(100),
+            cta_url VARCHAR(255),
+            segmento VARCHAR(50) DEFAULT 'todos',
+            total_destinatarios INT DEFAULT 0,
+            enviados_ok INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ''')
+
     _add_column_if_missing(cur, 'coupons', 'shopify_price_rule_id', 'VARCHAR(50) DEFAULT NULL')
     _add_column_if_missing(cur, 'coupons', 'shopify_discount_code_id', 'VARCHAR(50) DEFAULT NULL')
     _add_column_if_missing(cur, 'customers', 'shopify_customer_id', 'VARCHAR(50) DEFAULT NULL')
