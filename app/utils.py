@@ -76,12 +76,15 @@ def parse_excel(filepath):
         'linea':   ['linea', 'marca', 'brand', 'marcas', 'line'],
         'nombre':  ['nombre', 'name', 'producto', 'product', 'descripcion', 'description', 'desc', 'titulo', 'title', 'item'],
         'sku':     ['sku', 'codigo', 'code', 'cod', 'id', 'referencia', 'ref', 'reference'],
-        'ean':     ['ean', 'upc', 'barcode', 'codigo de barras', 'codbarra', 'cod barras', 'gtin', 'codigobarras'],
         'genero':  ['genero', 'gender', 'sexo', 'gener', 'gnero'],
         'formato': ['formato', 'format', 'presentacion', 'tamano', 'tamanio', 'tam', 'tipo', 'talla', 'size', 'volumen', 'ml'],
         'precio':  ['precio', 'price', 'precio mayorista', 'costo', 'cost', 'valor', 'precio unitario',
                      'p mayorista', 'precio_mayorista', 'p unitario', 'p neto', 'neto', 'importe',
                      'total', 'valorneto', 'precioneto'],
+    }
+
+    OPTIONAL_ALIASES = {
+        'ean':     ['ean', 'upc', 'barcode', 'codigo de barras', 'codbarra', 'cod barras', 'gtin', 'codigobarras'],
     }
 
     rename_map = {}
@@ -93,21 +96,33 @@ def parse_excel(filepath):
                 found.add(target)
                 break
 
+    for target, aliases in OPTIONAL_ALIASES.items():
+        for col in data.columns:
+            if col in aliases or any(a in col for a in aliases):
+                rename_map[col] = target
+                found.add(target)
+                break
+
     missing = set(COLUMN_ALIASES.keys()) - found
     if missing:
+        missing_names = ", ".join(missing)
+        detected_names = ", ".join(data.columns.tolist())
         raise ValueError(
-            f'No se encontraron las columnas: {", ".join(missing)}. '
-            f'Columnas detectadas: {", ".join(data.columns.tolist())}. '
+            f'No se encontraron las columnas obligatorias: {missing_names}. '
+            f'Columnas detectadas: {detected_names}. '
             f'El archivo debe tener columnas como: SKU, Nombre, Precio, Linea.'
         )
 
     data = data.rename(columns=rename_map)
+    if 'ean' not in data.columns:
+        data['ean'] = ''
+
     data = data[['linea', 'nombre', 'sku', 'ean', 'genero', 'formato', 'precio']]
     data = data.dropna(subset=['sku'])
     data['sku'] = data['sku'].astype(str).str.strip()
     data['precio'] = pd.to_numeric(data['precio'], errors='coerce').fillna(0).astype(int)
     for col in ['nombre', 'linea', 'ean', 'genero', 'formato']:
-        data[col] = data[col].astype(str).str.strip()
+        data[col] = data[col].fillna('').astype(str).str.strip()
     return data
 
 AROMA_FAMILIES = {

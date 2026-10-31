@@ -1,20 +1,167 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 class="text-2xl font-bold text-slate-900 mb-6">Subir Lista de Precios</h1>
+<div class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-[10px] tracking-widest2 uppercase bg-slate-900 text-white px-2.5 py-0.5 rounded-full font-semibold">Catálogo Mayorista</span>
+        <span class="text-xs text-slate-500">· Importador y Actualizador de Precios</span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight font-serif">Subir Lista de Precios</h1>
+      <p class="text-xs text-slate-500 mt-1">Carga tu planilla Excel (.xlsx). Podrás previsualizar los productos detectados antes de insertarlos a la base de datos.</p>
+    </div>
+  </div>
 
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-lg">
-  <p class="text-sm text-slate-500 mb-4">Seleccioná el archivo Excel con el mismo formato que la lista mayorista.</p>
-  <form method="post" enctype="multipart/form-data" class="space-y-4">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1">Archivo .xlsx</label>
-      <input type="file" name="file" accept=".xlsx" required class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <!-- Formulario de Subida -->
+    <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-7">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-slate-900 mb-4 flex items-center gap-2">
+        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        <span>Cargar Archivo Excel</span>
+      </h2>
+
+      <form id="uploadForm" method="post" enctype="multipart/form-data" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="action" id="formAction" value="import"/>
+        
+        <div>
+          <label class="block text-[10px] uppercase tracking-widest font-semibold text-slate-700 mb-1.5">Archivo Excel (.xlsx) *</label>
+          <input type="file" id="excelFile" name="file" accept=".xlsx" required class="block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-800 hover:file:bg-slate-200 cursor-pointer">
+          <p class="text-[11px] text-slate-400 mt-1">Columnas clave: SKU, Nombre, Línea/Marca, Precio (EAN es opcional).</p>
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase tracking-widest font-semibold text-slate-700 mb-1.5">Fecha de la Lista de Precios *</label>
+          <input type="date" id="importDate" name="import_date" value="{{ today_date }}" required class="px-3 py-2 border border-slate-200 rounded-lg text-xs w-full focus:outline-none focus:ring-2 focus:ring-slate-800">
+          <p class="text-[10px] text-slate-400 mt-1">Si ya existe esta fecha, se actualizarán los precios de los productos.</p>
+        </div>
+
+        <div class="pt-2 flex flex-col gap-2">
+          <button type="button" onclick="previewExcel()" id="btnPreview" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            <span>Previsualizar Catálogo</span>
+          </button>
+
+          <button type="submit" id="btnSubmit" class="w-full py-3 bg-slate-900 hover:bg-black text-white text-xs font-semibold uppercase tracking-wider rounded-lg shadow-sm hover:shadow transition-all flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            <span>Importar a Base de Datos</span>
+          </button>
+        </div>
+      </form>
     </div>
-    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de precios</label>
-      <input type="date" name="import_date" class="px-3 py-2 border border-slate-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500">
+
+    <!-- Área de Previsualización -->
+    <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-7 min-h-[350px]">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <div>
+          <h3 class="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+            <span>Previsualización del Archivo</span>
+          </h3>
+          <span id="previewCount" class="text-[11px] text-slate-400">Ningún archivo cargado aún.</span>
+        </div>
+        <span id="previewStatus" class="hidden text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+          Formato Válido
+        </span>
+      </div>
+
+      <div id="previewSpinner" class="hidden text-center py-16 text-slate-400">
+        <svg class="animate-spin h-6 w-6 text-slate-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <p class="text-xs">Analizando columnas y filas del Excel...</p>
+      </div>
+
+      <div id="previewTableContainer" class="hidden overflow-x-auto max-h-[420px] overflow-y-auto">
+        <table class="w-full text-left text-xs text-slate-700">
+          <thead class="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-semibold sticky top-0 z-10 border-b border-slate-200">
+            <tr>
+              <th class="px-3 py-2">SKU</th>
+              <th class="px-3 py-2">EAN</th>
+              <th class="px-3 py-2">Marca</th>
+              <th class="px-3 py-2">Producto</th>
+              <th class="px-3 py-2">Género</th>
+              <th class="px-3 py-2 text-right">Precio Mayorista</th>
+            </tr>
+          </thead>
+          <tbody id="previewTbody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+
+      <div id="previewEmpty" class="text-center py-20 text-slate-400 text-xs">
+        <svg class="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Seleccioná un archivo y hacé click en "Previsualizar Catálogo" para ver las primeras filas y validar que las columnas coincidan.
+      </div>
     </div>
-    <button type="submit" class="w-full px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">Importar</button>
-  </form>
+  </div>
 </div>
+
+<script>
+function previewExcel() {
+  const fileInput = document.getElementById('excelFile');
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert('Por favor selecciona un archivo .xlsx primero.');
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
+  const spinner = document.getElementById('previewSpinner');
+  const empty = document.getElementById('previewEmpty');
+  const tableCont = document.getElementById('previewTableContainer');
+  const countSpan = document.getElementById('previewCount');
+  const statusSpan = document.getElementById('previewStatus');
+  const tbody = document.getElementById('previewTbody');
+
+  empty.classList.add('hidden');
+  tableCont.classList.add('hidden');
+  spinner.classList.remove('hidden');
+
+  fetch('/upload/preview', {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': csrfToken
+    },
+    body: formData
+  })
+  .then(r => r.json())
+  .then(res => {
+    spinner.classList.add('hidden');
+    if (!res.ok) {
+      alert('Error en el Excel: ' + res.error);
+      empty.classList.remove('hidden');
+      return;
+    }
+
+    countSpan.textContent = `Detectados ${res.total_rows} productos en total (mostrando primeros ${res.sample.length})`;
+    statusSpan.classList.remove('hidden');
+
+    let html = '';
+    res.sample.forEach(row => {
+      html += `
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="px-3 py-1.5 font-mono font-semibold text-slate-800 whitespace-nowrap">${row.sku || '—'}</td>
+          <td class="px-3 py-1.5 font-mono text-slate-500 whitespace-nowrap">${row.ean || '<span class="text-slate-300">Vacío</span>'}</td>
+          <td class="px-3 py-1.5 whitespace-nowrap">${row.linea || '—'}</td>
+          <td class="px-3 py-1.5 max-w-[200px] truncate" title="${row.nombre}">${row.nombre || '—'}</td>
+          <td class="px-3 py-1.5 whitespace-nowrap">${row.genero || '—'}</td>
+          <td class="px-3 py-1.5 text-right font-semibold text-slate-900 whitespace-nowrap">$${new Intl.NumberFormat('es-CL').format(row.precio)}</td>
+        </tr>
+      `;
+    });
+
+    tbody.innerHTML = html;
+    tableCont.classList.remove('hidden');
+  })
+  .catch(err => {
+    spinner.classList.add('hidden');
+    empty.classList.remove('hidden');
+    alert('Error al procesar el archivo: ' + err);
+  });
+}
+</script>
 {% endblock %}

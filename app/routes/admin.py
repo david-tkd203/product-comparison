@@ -99,18 +99,19 @@ def admin_productos():
 @admin_bp.route('/upload', methods=['GET', 'POST'])
 @require_login
 def upload():
+    today_str = datetime.today().strftime('%Y-%m-%d')
     if request.method == 'POST':
         file = request.files.get('file')
         import_date_str = request.form.get('import_date', '').strip()
         if not file or not file.filename.endswith('.xlsx'):
             flash('Subí un archivo .xlsx válido', 'error')
-            return render_template('upload.html')
+            return render_template('upload.html', today_date=today_str)
         if import_date_str:
             try:
                 import_date = datetime.strptime(import_date_str, '%Y-%m-%d').date()
             except ValueError:
                 flash('Fecha inválida. Usá YYYY-MM-DD', 'error')
-                return render_template('upload.html')
+                return render_template('upload.html', today_date=today_str)
         else:
             import_date = datetime.today().date()
 
@@ -122,16 +123,14 @@ def upload():
             data = parse_excel(filepath)
         except Exception as e:
             flash(f'Error al leer el Excel: {e}', 'error')
-            return render_template('upload.html')
+            return render_template('upload.html', today_date=today_str)
 
         db = get_db()
         cur = db.cursor(dictionary=True)
         try:
+            # Si ya existe la importación con esa fecha, actualizamos en lugar de abortar
             cur.execute('SELECT id FROM imports WHERE import_date = %s', [import_date])
-            if cur.fetchone():
-                flash(f'Ya existe una importación con fecha {import_date}.', 'error')
-                db.close()
-                return render_template('upload.html')
+            existing_import = cur.fetchone()
 
             count = 0
             for _, row in data.iterrows():
@@ -140,7 +139,7 @@ def upload():
                 cur.execute('''INSERT INTO products (sku, nombre, linea, ean, genero, formato, aroma_family)
                                VALUES (%s, %s, %s, %s, %s, %s, %s)
                                ON DUPLICATE KEY UPDATE nombre=VALUES(nombre), linea=VALUES(linea),
-                               ean=VALUES(ean), genero=VALUES(genero), formato=VALUES(formato),
+                               ean=COALESCE(NULLIF(VALUES(ean), ''), ean), genero=VALUES(genero), formato=VALUES(formato),
                                aroma_family=COALESCE(aroma_family, VALUES(aroma_family))''',
                        [row['sku'], row['nombre'], row['linea'], row['ean'],
                         _norm_genero(row['genero']), row['formato'], aroma])
@@ -148,22 +147,61 @@ def upload():
                        [row['sku'], import_date, row['precio']])
                 count += 1
 
-            cur.execute('INSERT INTO imports (filename, import_date, product_count) VALUES (%s, %s, %s)',
-                   [file.filename, import_date, count])
+            if existing_import:
+                cur.execute('UPDATE imports SET filename = %s, product_count = %s WHERE id = %s',
+                            [file.filename, count, existing_import['id']])
+                flash(f'Actualizada lista con fecha {import_date}: {count} productos procesados.', 'success')
+            else:
+                cur.execute('INSERT INTO imports (filename, import_date, product_count) VALUES (%s, %s, %s)',
+                            [file.filename, import_date, count])
+                flash(f'Importados exitosamente {count} productos con fecha {import_date}.', 'success')
+            
             db.commit()
             
-            # OPTIMIZATION: Materialize prices for storefront automatically
+            # Materializar caché de precios y tienda
             rebuild_storefront_cache(db)
-            
-            flash(f'Importados {count} productos con fecha {import_date}', 'success')
+
         except Exception as e:
             db.rollback()
-            flash(f'Error: {e}', 'error')
+            flash(f'Error al guardar en base de datos: {e}', 'error')
         finally:
             cur.close()
-            db.close()
         return redirect(url_for('admin.admin_productos'))
-    return render_template('upload.html')
+    return render_template('upload.html', today_date=today_str)
+
+
+@admin_bp.route('/upload/preview', methods=['POST'])
+@require_login
+def upload_preview():
+    file = request.files.get('file')
+    if not file or not file.filename.endswith('.xlsx'):
+        return jsonify({'ok': False, 'error': 'Por favor sube un archivo con extensión .xlsx'}), 400
+
+    filepath = os.path.join('uploads', f"temp_preview_{file.filename}")
+    os.makedirs('uploads', exist_ok=True)
+    file.save(filepath)
+
+    try:
+        data = parse_excel(filepath)
+    except Exception as e:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({'ok': False, 'error': str(e)}), 400
+
+    sample = data.head(15).to_dict(orient='records')
+    total_rows = len(data)
+
+    if os.path.exists(filepath):
+        try:
+            os.remove(filepath)
+        except Exception:
+            pass
+
+    return jsonify({
+        'ok': True,
+        'total_rows': total_rows,
+        'sample': sample
+    })
 
 @admin_bp.route('/compare')
 @require_login
