@@ -48,18 +48,40 @@ def require_login(f):
 def parse_excel(filepath):
     df = pd.read_excel(filepath, engine='openpyxl', header=None)
 
-    TARGET_KEYWORDS = ['sku', 'nombre', 'precio', 'linea']
-    best_row = HEADER_ROW
+    if df.empty or len(df) == 0:
+        raise ValueError('El archivo Excel est\u00e1 completamente vac\u00edo.')
+
+    # Lista ampliada de palabras clave y sin\u00f3nimos de columnas esenciales
+    KEYWORD_GROUPS = [
+        ['sku', 'codigo', 'code', 'cod', 'id', 'referencia', 'ref'],
+        ['nombre', 'name', 'producto', 'product', 'descripcion', 'titulo', 'item'],
+        ['precio', 'price', 'costo', 'valor', 'neto', 'mayorista', 'importe'],
+        ['linea', 'marca', 'brand', 'marcas', 'line']
+    ]
+
+    best_row = 0
     best_score = 0
-    for r in range(min(12, len(df))):
-        row_vals = [str(v).strip().lower().replace('\ufffd', '') for v in df.iloc[r].tolist() if isinstance(v, str) or not pd.isna(v)]
+    # Escanear hasta las primeras 25 filas para detectar la fila de encabezados
+    max_scan = min(25, len(df))
+    for r in range(max_scan):
+        row_vals = [
+            unicodedata.normalize('NFKD', str(v).strip().lower())
+            .encode('ASCII', 'ignore').decode('utf-8')
+            for v in df.iloc[r].tolist() if pd.notna(v) and str(v).strip()
+        ]
         row_text = ' '.join(row_vals)
-        score = sum(1 for kw in TARGET_KEYWORDS if kw in row_text)
+        
+        # Puntaje basado en cu\u00e1ntos grupos de columnas requeridas est\u00e1n presentes en la fila
+        score = sum(1 for group in KEYWORD_GROUPS if any(kw in row_text for kw in group))
         if score > best_score:
             best_score = score
             best_row = r
 
-    headers = [str(h).strip() for h in df.iloc[best_row].tolist()]
+    # Si ninguna fila coincidi\u00f3, usar la fila 0 como fallback
+    if best_score == 0:
+        best_row = 0
+
+    headers = [str(h).strip() if pd.notna(h) else f"col_{idx}" for idx, h in enumerate(df.iloc[best_row].tolist())]
     data = df.iloc[best_row + 1:].copy()
     data.columns = headers
 
@@ -72,24 +94,26 @@ def parse_excel(filepath):
         return re.sub(r'[^a-z0-9 ]', '', s)
     data.columns = [_norm(c) for c in data.columns]
 
-    COLUMN_ALIASES = {
-        'linea':   ['linea', 'marca', 'brand', 'marcas', 'line'],
-        'nombre':  ['nombre', 'name', 'producto', 'product', 'descripcion', 'description', 'desc', 'titulo', 'title', 'item'],
+    # Columnas estrictamente obligatorias para poder crear y cotizar el producto
+    REQUIRED_ALIASES = {
         'sku':     ['sku', 'codigo', 'code', 'cod', 'id', 'referencia', 'ref', 'reference'],
-        'genero':  ['genero', 'gender', 'sexo', 'gener', 'gnero'],
-        'formato': ['formato', 'format', 'presentacion', 'tamano', 'tamanio', 'tam', 'tipo', 'talla', 'size', 'volumen', 'ml'],
+        'nombre':  ['nombre', 'name', 'producto', 'product', 'descripcion', 'description', 'desc', 'titulo', 'title', 'item'],
         'precio':  ['precio', 'price', 'precio mayorista', 'costo', 'cost', 'valor', 'precio unitario',
                      'p mayorista', 'precio_mayorista', 'p unitario', 'p neto', 'neto', 'importe',
                      'total', 'valorneto', 'precioneto'],
     }
 
+    # Columnas opcionales (si la planilla no las trae, se infieren o se dejan limpias por defecto)
     OPTIONAL_ALIASES = {
+        'linea':   ['linea', 'marca', 'brand', 'marcas', 'line'],
         'ean':     ['ean', 'upc', 'barcode', 'codigo de barras', 'codbarra', 'cod barras', 'gtin', 'codigobarras'],
+        'genero':  ['genero', 'gender', 'sexo', 'gener', 'gnero'],
+        'formato': ['formato', 'format', 'presentacion', 'tamano', 'tamanio', 'tam', 'tipo', 'talla', 'size', 'volumen', 'ml'],
     }
 
     rename_map = {}
     found = set()
-    for target, aliases in COLUMN_ALIASES.items():
+    for target, aliases in REQUIRED_ALIASES.items():
         for col in data.columns:
             if col in aliases or any(a in col for a in aliases):
                 rename_map[col] = target
@@ -98,31 +122,71 @@ def parse_excel(filepath):
 
     for target, aliases in OPTIONAL_ALIASES.items():
         for col in data.columns:
-            if col in aliases or any(a in col for a in aliases):
+            if col not in rename_map and (col in aliases or any(a in col for a in aliases)):
                 rename_map[col] = target
                 found.add(target)
                 break
 
-    missing = set(COLUMN_ALIASES.keys()) - found
+    missing = set(REQUIRED_ALIASES.keys()) - found
     if missing:
-        missing_names = ", ".join(missing)
-        detected_names = ", ".join(data.columns.tolist())
+        missing_names = ', '.join(sorted(missing))
+        detected_names = ', '.join(data.columns.tolist())
         raise ValueError(
-            f'No se encontraron las columnas obligatorias: {missing_names}. '
-            f'Columnas detectadas: {detected_names}. '
-            f'El archivo debe tener columnas como: SKU, Nombre, Precio, Linea.'
+            f'No se encontraron las columnas minimas obligatorias: {missing_names}. '
+            f'Columnas detectadas en el Excel: {detected_names}. '
+            f'El archivo debe contener al menos: SKU (o Codigo), Nombre (o Producto) y Precio.'
         )
 
     data = data.rename(columns=rename_map)
-    if 'ean' not in data.columns:
-        data['ean'] = ''
 
-    data = data[['linea', 'nombre', 'sku', 'ean', 'genero', 'formato', 'precio']]
+    # Inicializar columnas opcionales que falten
+    for opt in ['linea', 'ean', 'genero', 'formato']:
+        if opt not in data.columns:
+            data[opt] = ''
+
+    # Limpieza y saneamiento robusto de SKU
     data = data.dropna(subset=['sku'])
     data['sku'] = data['sku'].astype(str).str.strip()
-    data['precio'] = pd.to_numeric(data['precio'], errors='coerce').fillna(0).astype(int)
+    data = data[data['sku'].str.len() > 0]
+    data = data[data['sku'].str.lower() != 'nan']
+
+    # Saneamiento de precio: soporta strings como "$25.990", " 25,990 ", "25990.0", etc.
+    def _clean_price(val):
+        if pd.isna(val):
+            return 0
+        val_str = str(val).strip()
+        val_str = re.sub(r'[^0-9.,]', '', val_str)
+        if not val_str:
+            return 0
+        if '.' in val_str and ',' in val_str:
+            val_str = val_str.replace('.', '').replace(',', '.')
+        elif '.' in val_str and len(val_str.split('.')[-1]) == 3:
+            val_str = val_str.replace('.', '')
+        elif ',' in val_str:
+            val_str = val_str.replace(',', '.')
+        try:
+            return int(round(float(val_str)))
+        except Exception:
+            return 0
+
+    data['precio'] = data['precio'].apply(_clean_price)
+
+    # Inferencia de Marca / Linea si venia vacia
+    def _infer_linea(row):
+        cur_l = str(row['linea']).strip()
+        if cur_l and cur_l.lower() != 'nan':
+            return cur_l
+        name = str(row['nombre']).strip()
+        if name:
+            return name.split()[0].upper()
+        return 'Siyash'
+
+    data['linea'] = data.apply(_infer_linea, axis=1)
+
     for col in ['nombre', 'linea', 'ean', 'genero', 'formato']:
         data[col] = data[col].fillna('').astype(str).str.strip()
+
+    data = data[['linea', 'nombre', 'sku', 'ean', 'genero', 'formato', 'precio']]
     return data
 
 AROMA_FAMILIES = {
