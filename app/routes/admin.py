@@ -1,5 +1,6 @@
 import json
 import os
+import uuid
 from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, make_response, session
 from ..db import get_db, rebuild_storefront_cache, set_setting
@@ -103,7 +104,7 @@ def upload():
     if request.method == 'POST':
         file = request.files.get('file')
         import_date_str = request.form.get('import_date', '').strip()
-        if not file or not file.filename.endswith('.xlsx'):
+        if not file or not file.filename or not file.filename.lower().endswith('.xlsx'):
             flash('Subí un archivo .xlsx válido', 'error')
             return render_template('upload.html', today_date=today_str)
         if import_date_str:
@@ -115,13 +116,17 @@ def upload():
         else:
             import_date = datetime.today().date()
 
-        filepath = os.path.join('uploads', file.filename)
         os.makedirs('uploads', exist_ok=True)
-        file.save(filepath)
-
+        unique_name = f"upload_{uuid.uuid4().hex}_{file.filename}"
+        filepath = os.path.join('uploads', unique_name)
+        
         try:
+            file.save(filepath)
             data = parse_excel(filepath)
         except Exception as e:
+            if os.path.exists(filepath):
+                try: os.remove(filepath)
+                except Exception: pass
             flash(f'Error al leer el Excel: {e}', 'error')
             return render_template('upload.html', today_date=today_str)
 
@@ -134,18 +139,30 @@ def upload():
 
             count = 0
             for _, row in data.iterrows():
-                fams = _classify_family({'salida': [str(row['nombre'])]})
+                fams = _classify_family({'salida': [str(row.get('nombre', ''))]})
                 aroma = fams[0] if fams else None
+                sku_val = str(row['sku']).strip()[:50]
+                nombre_val = str(row['nombre']).strip()
+                linea_val = str(row.get('linea', '')).strip()[:100]
+                ean_val = str(row.get('ean', '')).strip()[:50]
+                if ean_val.lower() == 'nan': ean_val = ''
+                genero_val = str(_norm_genero(row.get('genero', ''))).strip()[:50]
+                formato_val = str(row.get('formato', '')).strip()[:50]
+                if formato_val.lower() == 'nan': formato_val = ''
+                precio_val = int(row.get('precio', 0) or 0)
+
                 cur.execute('''INSERT INTO products (sku, nombre, linea, ean, genero, formato, aroma_family)
                                VALUES (%s, %s, %s, %s, %s, %s, %s)
                                ON DUPLICATE KEY UPDATE nombre=VALUES(nombre), linea=VALUES(linea),
                                ean=COALESCE(NULLIF(VALUES(ean), ''), ean), genero=VALUES(genero), formato=VALUES(formato),
                                aroma_family=COALESCE(aroma_family, VALUES(aroma_family))''',
-                       [row['sku'], row['nombre'], row['linea'], row['ean'],
-                        _norm_genero(row['genero']), row['formato'], aroma])
+                       [sku_val, nombre_val, linea_val, ean_val,
+                        genero_val, formato_val, aroma])
                 cur.execute('INSERT INTO prices (sku, import_date, precio) VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE precio = VALUES(precio)',
-                       [row['sku'], import_date, row['precio']])
+                       [sku_val, import_date, precio_val])
                 count += 1
+                if count % 500 == 0:
+                    db.commit()
 
             if existing_import:
                 cur.execute('UPDATE imports SET filename = %s, product_count = %s WHERE id = %s',
@@ -158,14 +175,20 @@ def upload():
             
             db.commit()
             
-            # Materializar caché de precios y tienda
-            rebuild_storefront_cache(db)
+            # Materializar caché de precios y tienda de forma segura
+            try:
+                rebuild_storefront_cache(db)
+            except Exception as cache_err:
+                print(f"Warning: rebuild_storefront_cache failed: {cache_err}")
 
         except Exception as e:
             db.rollback()
             flash(f'Error al guardar en base de datos: {e}', 'error')
         finally:
             cur.close()
+            if os.path.exists(filepath):
+                try: os.remove(filepath)
+                except Exception: pass
         return redirect(url_for('admin.admin_productos'))
     return render_template('upload.html', today_date=today_str)
 
@@ -174,34 +197,53 @@ def upload():
 @require_login
 def upload_preview():
     file = request.files.get('file')
-    if not file or not file.filename.endswith('.xlsx'):
+    if not file or not file.filename or not file.filename.lower().endswith('.xlsx'):
         return jsonify({'ok': False, 'error': 'Por favor sube un archivo con extensión .xlsx'}), 400
 
-    filepath = os.path.join('uploads', f"temp_preview_{file.filename}")
     os.makedirs('uploads', exist_ok=True)
-    file.save(filepath)
+    temp_filename = f"preview_{uuid.uuid4().hex}.xlsx"
+    filepath = os.path.join('uploads', temp_filename)
 
     try:
+        file.save(filepath)
         data = parse_excel(filepath)
+
+        # Convertir a tipos nativos para serialización JSON segura (evitar TypeError de numpy/NaN)
+        sample = []
+        for _, r in data.head(20).iterrows():
+            ean_str = str(r.get('ean', '') or '').strip()
+            if ean_str.lower() == 'nan': ean_str = ''
+            linea_str = str(r.get('linea', '') or '').strip()
+            if linea_str.lower() == 'nan': linea_str = ''
+            formato_str = str(r.get('formato', '') or '').strip()
+            if formato_str.lower() == 'nan': formato_str = ''
+
+            sample.append({
+                'sku': str(r.get('sku', '') or '').strip()[:50],
+                'ean': ean_str[:50],
+                'linea': linea_str[:100],
+                'nombre': str(r.get('nombre', '') or '').strip(),
+                'genero': str(r.get('genero', '') or '').strip()[:50],
+                'formato': formato_str[:50],
+                'precio': int(r.get('precio', 0) or 0)
+            })
+
+        total_rows = int(len(data))
+
+        return jsonify({
+            'ok': True,
+            'total_rows': total_rows,
+            'sample': sample
+        })
     except Exception as e:
-        if os.path.exists(filepath):
-            os.remove(filepath)
         return jsonify({'ok': False, 'error': str(e)}), 400
+    finally:
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except Exception:
+                pass
 
-    sample = data.head(15).to_dict(orient='records')
-    total_rows = len(data)
-
-    if os.path.exists(filepath):
-        try:
-            os.remove(filepath)
-        except Exception:
-            pass
-
-    return jsonify({
-        'ok': True,
-        'total_rows': total_rows,
-        'sample': sample
-    })
 
 @admin_bp.route('/compare')
 @require_login
@@ -213,6 +255,7 @@ def compare():
     a_date = request.args.get('a', '')
     b_date = request.args.get('b', '')
     diffs = []
+    summary = None
     if a_date and b_date:
         cur.execute('''
             SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
@@ -224,8 +267,41 @@ def compare():
             JOIN prices pb ON p.sku = pb.sku AND pb.import_date = %s
         ''', [a_date, b_date])
         diffs = cur.fetchall()
+
+        subieron = sum(1 for d in diffs if d['diff'] > 0)
+        bajaron = sum(1 for d in diffs if d['diff'] < 0)
+        iguales = sum(1 for d in diffs if d['diff'] == 0)
+
+        # Nuevos y Bajas de productos entre fechas
+        try:
+            cur.execute('''
+                SELECT COUNT(*) as c FROM prices pb
+                WHERE pb.import_date = %s AND pb.sku NOT IN (SELECT sku FROM prices pa WHERE pa.import_date = %s)
+            ''', [b_date, a_date])
+            nuevos = cur.fetchone()['c']
+
+            cur.execute('''
+                SELECT COUNT(*) as c FROM prices pa
+                WHERE pa.import_date = %s AND pa.sku NOT IN (SELECT sku FROM prices pb WHERE pb.import_date = %s)
+            ''', [a_date, b_date])
+            bajas = cur.fetchone()['c']
+        except Exception:
+            nuevos = 0
+            bajas = 0
+
+        summary = {
+            'a_date': a_date,
+            'b_date': b_date,
+            'total': len(diffs),
+            'subieron': subieron,
+            'bajaron': bajaron,
+            'iguales': iguales,
+            'nuevos': nuevos,
+            'bajas': bajas
+        }
+
     db.close()
-    return render_template('compare.html', imports=imports, a=a_date, b=b_date, diffs=diffs)
+    return render_template('compare.html', imports=imports, a=a_date, b=b_date, diffs=diffs, summary=summary)
 
 @admin_bp.route('/admin/inventario')
 @require_login

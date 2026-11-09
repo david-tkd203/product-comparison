@@ -37,14 +37,14 @@
         </div>
 
         <div class="pt-2 flex flex-col gap-2">
-          <button type="button" onclick="previewExcel()" id="btnPreview" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-1.5">
+          <button type="button" onclick="previewExcel()" id="btnPreview" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
             <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
             <span>Previsualizar Catálogo</span>
           </button>
 
-          <button type="submit" id="btnSubmit" class="w-full py-3 bg-slate-900 hover:bg-black text-white text-xs font-semibold uppercase tracking-wider rounded-lg shadow-sm hover:shadow transition-all flex items-center justify-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            <span>Importar a Base de Datos</span>
+          <button type="submit" id="btnSubmit" class="w-full py-3 bg-slate-900 hover:bg-black text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            <span id="btnSubmitText">Subir e Importar Excel</span>
           </button>
         </div>
       </form>
@@ -59,9 +59,20 @@
           </h3>
           <span id="previewCount" class="text-[11px] text-slate-400">Ningún archivo cargado aún.</span>
         </div>
-        <span id="previewStatus" class="hidden text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-          Formato Válido
-        </span>
+        <div class="flex items-center gap-2">
+          <span id="previewStatus" class="hidden text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+            Formato Válido
+          </span>
+          <button type="button" id="btnConfirmPreview" onclick="document.getElementById('uploadForm').requestSubmit()" class="hidden px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all flex items-center gap-1.5 cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            <span>Subir este Excel</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="previewError" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2">
+        <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span id="previewErrorText"></span>
       </div>
 
       <div id="previewSpinner" class="hidden text-center py-16 text-slate-400">
@@ -97,6 +108,18 @@
 </div>
 
 <script>
+document.getElementById('uploadForm').addEventListener('submit', function() {
+  const btn = document.getElementById('btnSubmit');
+  const txt = document.getElementById('btnSubmitText');
+  const btnPreview = document.getElementById('btnPreview');
+  const btnConfirm = document.getElementById('btnConfirmPreview');
+  btn.disabled = true;
+  btnPreview.disabled = true;
+  if (btnConfirm) btnConfirm.disabled = true;
+  btn.classList.add('opacity-75', 'cursor-not-allowed');
+  txt.textContent = 'Subiendo y procesando Excel...';
+});
+
 function previewExcel() {
   const fileInput = document.getElementById('excelFile');
   if (!fileInput.files || fileInput.files.length === 0) {
@@ -115,10 +138,16 @@ function previewExcel() {
   const tableCont = document.getElementById('previewTableContainer');
   const countSpan = document.getElementById('previewCount');
   const statusSpan = document.getElementById('previewStatus');
+  const confirmBtn = document.getElementById('btnConfirmPreview');
+  const errBox = document.getElementById('previewError');
+  const errTxt = document.getElementById('previewErrorText');
   const tbody = document.getElementById('previewTbody');
 
   empty.classList.add('hidden');
   tableCont.classList.add('hidden');
+  errBox.classList.add('hidden');
+  confirmBtn.classList.add('hidden');
+  statusSpan.classList.add('hidden');
   spinner.classList.remove('hidden');
 
   fetch('/upload/preview', {
@@ -128,17 +157,27 @@ function previewExcel() {
     },
     body: formData
   })
-  .then(r => r.json())
+  .then(async r => {
+    let data;
+    try {
+      data = await r.json();
+    } catch (e) {
+      const text = await r.text();
+      if (r.status === 429 || text.includes('Too Many')) {
+        throw new Error('Demasiadas peticiones (429). Por favor aguarda unos segundos.');
+      }
+      throw new Error(`Error en el servidor (${r.status}). Verifica el formato del archivo.`);
+    }
+    if (!r.ok || !data.ok) {
+      throw new Error(data && data.error ? data.error : 'Error desconocido al procesar el archivo');
+    }
+    return data;
+  })
   .then(res => {
     spinner.classList.add('hidden');
-    if (!res.ok) {
-      alert('Error en el Excel: ' + res.error);
-      empty.classList.remove('hidden');
-      return;
-    }
-
     countSpan.textContent = `Detectados ${res.total_rows} productos en total (mostrando primeros ${res.sample.length})`;
     statusSpan.classList.remove('hidden');
+    confirmBtn.classList.remove('hidden');
 
     let html = '';
     res.sample.forEach(row => {
@@ -160,7 +199,8 @@ function previewExcel() {
   .catch(err => {
     spinner.classList.add('hidden');
     empty.classList.remove('hidden');
-    alert('Error al procesar el archivo: ' + err);
+    errTxt.textContent = err.message || err;
+    errBox.classList.remove('hidden');
   });
 }
 </script>

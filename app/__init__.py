@@ -10,7 +10,7 @@ from .db import close_db_connection
 csrf = CSRFProtect()
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=["120 per minute", "3000 per hour"],
+    default_limits=["300 per minute", "6000 per hour"],
     storage_uri="memory://"
 )
 
@@ -95,6 +95,10 @@ def create_app():
     from .routes.sync import sync_bp
     from .routes.customer import customer_bp
     
+    # Exempt admin backoffice and background sync from rate limiting
+    limiter.exempt(admin_bp)
+    limiter.exempt(sync_bp)
+
     app.register_blueprint(store_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(sync_bp)
