@@ -80,6 +80,21 @@ def _get_margen(db):
             return 30.0
     return 30.0
 
+def _get_costo_envio(db):
+    row = _query(db, "SELECT setting_value FROM settings WHERE setting_key = 'costo_envio'").fetchone()
+    if row and row['setting_value'] is not None:
+        try:
+            return int(float(row['setting_value']))
+        except (ValueError, TypeError):
+            return 3990
+    return 3990
+
+def _get_incluir_envio(db):
+    row = _query(db, "SELECT setting_value FROM settings WHERE setting_key = 'incluir_envio_en_precio'").fetchone()
+    if row and row['setting_value'] is not None:
+        return str(row['setting_value']).strip() in ('1', 'true', 'True')
+    return False
+
 def set_setting(db, key, value):
     """Insert or update a key-value pair in the settings table."""
     cur = db.cursor()
@@ -96,6 +111,7 @@ def set_setting(db, key, value):
 def rebuild_storefront_cache(db):
     '''Materialize heavy joins into the products table directly for 0% CPU on storefront.'''
     factor = 1 + _get_margen(db) / 100.0
+    costo_envio = _get_costo_envio(db) if _get_incluir_envio(db) else 0
     cur = db.cursor()
     
     # Storefront only needs `imagen` and `aromas`. It used to JOIN, but we cache it here.
@@ -110,14 +126,14 @@ def rebuild_storefront_cache(db):
             p.aromas = COALESCE(cp.aromas, mp.aromas)
     ''')
     
-    # Pre-calculate prices
+    # Pre-calculate prices (wholesale * margin + shipping_cost if free shipping mode is active)
     cur.execute('''
         UPDATE products p
         JOIN (SELECT sku, MAX(import_date) AS max_date FROM prices GROUP BY sku) latest ON latest.sku = p.sku
         JOIN prices pr ON pr.sku = latest.sku AND pr.import_date = latest.max_date
         SET p.precio_mayorista = pr.precio,
-            p.precio_venta = (ROUND((pr.precio * %s + 10) / 1000) * 1000 - 10)
-    ''', [factor])
+            p.precio_venta = (ROUND((pr.precio * %s + %s + 10) / 1000) * 1000 - 10)
+    ''', [factor, costo_envio])
     db.commit()
 
 def init_db():
@@ -477,6 +493,14 @@ def init_db():
         cur.execute("SELECT COUNT(*) FROM settings WHERE setting_key = 'cyber_mode_active'")
         if cur.fetchone()[0] == 0:
             cur.execute("INSERT INTO settings (setting_key, setting_value) VALUES ('cyber_mode_active', '0')")
+        
+        cur.execute("SELECT COUNT(*) FROM settings WHERE setting_key = 'costo_envio'")
+        if cur.fetchone()[0] == 0:
+            cur.execute("INSERT INTO settings (setting_key, setting_value) VALUES ('costo_envio', '3990')")
+
+        cur.execute("SELECT COUNT(*) FROM settings WHERE setting_key = 'incluir_envio_en_precio'")
+        if cur.fetchone()[0] == 0:
+            cur.execute("INSERT INTO settings (setting_key, setting_value) VALUES ('incluir_envio_en_precio', '0')")
     except Exception:
         pass
 

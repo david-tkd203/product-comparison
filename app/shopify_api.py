@@ -567,3 +567,119 @@ def sync_catalog_to_shopify(db=None, limit=100):
         time.sleep(0.35)
 
     return success_count, error_count, errors
+
+
+def sync_free_shipping_to_shopify(enable=True, discount_code='ENVIOGRATIS', db=None):
+    """
+    Sincroniza o actualiza la regla de Envío Gratis en Shopify (PriceRule target_type: shipping_line).
+    Si enable=True: crea la regla con 100% de descuento en el costo de envío y código ENVIOGRATIS.
+    Si enable=False: desactiva/elimina la regla de envío gratis de Shopify.
+    """
+    shop, token = get_shopify_credentials(db)
+    if not token:
+        return False, "Shopify no está conectado o falta el token de acceso."
+
+    rule_key = 'shopify_free_shipping_rule_id'
+    existing_rule_id = None
+    if db:
+        try:
+            cur = db.cursor(dictionary=True)
+            cur.execute("SELECT setting_value FROM settings WHERE setting_key = %s", [rule_key])
+            row = cur.fetchone()
+            if row and row['setting_value']:
+                existing_rule_id = str(row['setting_value']).strip()
+        except Exception:
+            pass
+
+    if not enable:
+        if existing_rule_id:
+            delete_coupon_from_shopify(existing_rule_id, db=db)
+            if db:
+                from .db import set_setting
+                set_setting(db, rule_key, '')
+        return True, "Envío gratis desactivado en Shopify."
+
+    # Configuración de regla de envío gratis (100% de descuento en flete)
+    payload = {
+        "price_rule": {
+            "title": discount_code,
+            "target_type": "shipping_line",
+            "target_selection": "all",
+            "allocation_method": "across",
+            "value_type": "percentage",
+            "value": "-100.0",
+            "customer_selection": "all",
+            "starts_at": datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+        }
+    }
+
+    rule_id = existing_rule_id
+    if rule_id:
+        ok_put, status, res_put, err_put = _shopify_request(
+            shop, token, 'PUT', f'price_rules/{rule_id}.json', payload
+        )
+        if not ok_put and status == 404:
+            rule_id = None
+        elif not ok_put:
+            return False, f"Error actualizando regla en Shopify: {err_put}"
+
+    if not rule_id:
+        ok_post, status, res_post, err_post = _shopify_request(
+            shop, token, 'POST', 'price_rules.json', payload
+        )
+        if not ok_post:
+            return False, f"Error creando regla de envío gratis en Shopify: {err_post}"
+        rule_id = str(res_post.get('price_rule', {}).get('id', ''))
+        if rule_id and db:
+            from .db import set_setting
+            set_setting(db, rule_key, rule_id)
+
+    # Crear código de descuento en Shopify
+    if rule_id:
+        code_payload = {"discount_code": {"code": discount_code}}
+        _shopify_request(shop, token, 'POST', f'price_rules/{rule_id}/discount_codes.json', code_payload)
+
+    return True, f"Regla de Envío Gratis activada en Shopify con código {discount_code}."
+
+
+def sync_prices_to_shopify_variants(db=None, limit=200):
+    """
+    Sincroniza rápidamente los precios de venta actualizados (con margen + costo de envío)
+    a las variantes de Shopify vinculadas.
+    """
+    import time
+    shop, token = get_shopify_credentials(db)
+    if not token or not db:
+        return 0, 0, "Shopify no conectado o sin base de datos"
+
+    cur = db.cursor(dictionary=True)
+    cur.execute('''
+        SELECT sku, precio_venta, shopify_variant_id 
+        FROM products 
+        WHERE shopify_variant_id IS NOT NULL 
+          AND is_active = 1 
+          AND stock > 0 
+          AND precio_venta > 0
+        LIMIT %s
+    ''', [limit])
+    rows = cur.fetchall()
+
+    updated = 0
+    errors = 0
+    for r in rows:
+        var_id = r['shopify_variant_id']
+        price = str(r['precio_venta'])
+        payload = {
+            "variant": {
+                "id": int(var_id),
+                "price": price
+            }
+        }
+        ok, status, _, err = _shopify_request(shop, token, 'PUT', f'variants/{var_id}.json', payload, timeout=5)
+        if ok:
+            updated += 1
+        else:
+            errors += 1
+        time.sleep(0.15)
+
+    return updated, errors, None

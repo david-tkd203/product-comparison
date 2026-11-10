@@ -838,6 +838,10 @@ def api_checkout_shopify():
 
     checkout_params = []
     cupon_codigo = str(data.get('cupon_codigo') or '').strip().upper()
+    if not cupon_codigo:
+        from ..db import _get_incluir_envio
+        if _get_incluir_envio(db):
+            cupon_codigo = 'ENVIOGRATIS'
     if cupon_codigo:
         checkout_params.append(f"discount={urllib.parse.quote(cupon_codigo)}")
 

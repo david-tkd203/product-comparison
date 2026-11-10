@@ -311,8 +311,10 @@ def admin_inventario():
     per_page = 50
 
     db = get_db()
-    from ..db import _get_margen
+    from ..db import _get_margen, _get_costo_envio, _get_incluir_envio
     margen = _get_margen(db)
+    costo_envio = _get_costo_envio(db)
+    incluir_envio = _get_incluir_envio(db)
     cur = db.cursor(dictionary=True)
 
     # Optimized: Removed JOIN prices
@@ -342,7 +344,8 @@ def admin_inventario():
 
     return render_template('inventario.html', products=products, query=query,
                            total=total, page=page, per_page=per_page, total_pages=total_pages,
-                           margen_tienda=margen, activos=activos,
+                           margen_tienda=margen, costo_envio=costo_envio, incluir_envio=incluir_envio,
+                           activos=activos,
                            familias=sorted(AROMA_FAMILIES.keys()))
 
 @admin_bp.route('/admin/activar-todo')
@@ -382,19 +385,67 @@ def update_inventory():
 @admin_bp.route('/admin/config', methods=['POST'])
 @require_login
 def admin_config():
-    margen = request.form.get('margen_tienda', '').strip().replace(',', '.')
-    try:
-        m = float(margen)
-        if not (0 <= m <= 500):
-            raise ValueError()
-    except ValueError:
-        flash('El margen debe ser un número entre 0 y 500', 'error')
-        return redirect(url_for('admin.admin_inventario'))
     db = get_db()
-    set_setting(db, 'margen_pct', int(m) if m == int(m) else m)
-    rebuild_storefront_cache(db) # Important: rebuild cache when margin changes
+    from ..db import _get_costo_envio, _get_incluir_envio, set_setting, rebuild_storefront_cache
+    from ..shopify_api import sync_free_shipping_to_shopify, sync_prices_to_shopify_variants
+
+    margen = request.form.get('margen_tienda', '').strip().replace(',', '.')
+    costo_envio_raw = request.form.get('costo_envio', '').strip().replace('$', '').replace('.', '').replace(',', '')
+    action = request.form.get('action', 'save')
+
+    if margen:
+        try:
+            m = float(margen)
+            if not (0 <= m <= 500):
+                raise ValueError()
+            set_setting(db, 'margen_pct', int(m) if m == int(m) else m)
+        except ValueError:
+            flash('El margen debe ser un número entre 0 y 500', 'error')
+            db.close()
+            return redirect(url_for('admin.admin_inventario'))
+
+    if costo_envio_raw:
+        try:
+            c = int(costo_envio_raw)
+            if c < 0:
+                raise ValueError()
+            set_setting(db, 'costo_envio', c)
+        except ValueError:
+            flash('El costo de envío debe ser un número entero mayor o igual a 0', 'error')
+            db.close()
+            return redirect(url_for('admin.admin_inventario'))
+
+    current_envio_active = _get_incluir_envio(db)
+
+    if action == 'toggle_envio':
+        # Alternar la suma de costo de envío
+        new_state = not current_envio_active
+        set_setting(db, 'incluir_envio_en_precio', '1' if new_state else '0')
+        rebuild_storefront_cache(db)
+        
+        # Consumo de la API de Shopify
+        ok_sh, msg_sh = sync_free_shipping_to_shopify(enable=new_state, db=db)
+        updated_vars, _, _ = sync_prices_to_shopify_variants(db=db, limit=150)
+        
+        costo_actual = _get_costo_envio(db)
+        if new_state:
+            flash(f'¡Envío Gratis activado! Se sumaron ${costo_actual:,} CLP al precio de los productos. Shopify: {msg_sh} ({updated_vars} variantes sincronizadas)', 'success')
+        else:
+            flash(f'Envío Gratis desactivado. Precios recalculados con margen base. Shopify: {msg_sh} ({updated_vars} variantes actualizadas)', 'info')
+
+    elif action == 'sync_shopify':
+        # Sincronización explícita de precios y regla de envío gratis a Shopify
+        rebuild_storefront_cache(db)
+        ok_sh, msg_sh = sync_free_shipping_to_shopify(enable=current_envio_active, db=db)
+        updated_vars, err_vars, _ = sync_prices_to_shopify_variants(db=db, limit=200)
+        flash(f'Precios y Regla de Envío sincronizados con Shopify: {msg_sh} ({updated_vars} variantes actualizadas, {err_vars} con error u omitidas).', 'success')
+
+    else:
+        # Guardar normal
+        rebuild_storefront_cache(db)
+        flash('Ajustes de margen y costo de envío guardados correctamente.', 'success')
+
     db.close()
-    flash(f'Margen de la tienda actualizado a {int(m) if m == int(m) else m}%', 'success')
     return redirect(url_for('admin.admin_inventario'))
 
 @admin_bp.route('/pedidos')

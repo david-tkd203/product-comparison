@@ -35,15 +35,68 @@
 
   </div>
 
-  <!-- Margin config -->
-  <form method="post" action="/admin/config" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-end gap-3 shrink-0">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-    <div>
-      <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Margen tienda (%)</label>
-      <input type="number" name="margen_tienda" min="0" max="500" step="0.5" value="{{ margen_tienda }}" class="w-24 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-700 focus:border-transparent">
+  <!-- Margin & Free Shipping Config Box -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5 shrink-0 w-full lg:w-auto">
+    <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-2 mb-3">
+      <span class="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Estrategia de Precios y Envío
+      </span>
+      {% if incluir_envio %}
+        <span class="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          Envío Gratis Activo (+${{ "{:,}".format(costo_envio).replace(',', '.') }})
+        </span>
+      {% else %}
+        <span class="text-[10px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+          Solo Margen Base
+        </span>
+      {% endif %}
     </div>
-    <button type="submit" class="px-4 py-2 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-700 transition-colors">Guardar</button>
-  </form>
+
+    <form method="post" action="/admin/config" class="flex flex-col sm:flex-row flex-wrap items-end gap-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      
+      <div>
+        <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1 font-semibold">Margen (%)</label>
+        <div class="relative">
+          <input type="number" name="margen_tienda" min="0" max="500" step="0.5" value="{{ margen_tienda }}" class="w-24 px-3 py-2 pr-6 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-700 focus:border-transparent">
+          <span class="absolute right-2.5 top-2.5 text-xs text-slate-400 font-bold">%</span>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1 font-semibold" title="Valor editable del flete por producto para absorber en el precio">Costo de Envío ($ CLP)</label>
+        <div class="relative">
+          <span class="absolute left-2.5 top-2.5 text-xs text-slate-400 font-bold">$</span>
+          <input type="number" name="costo_envio" min="0" max="50000" step="10" value="{{ costo_envio }}" class="w-28 pl-6 pr-2 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-700 focus:border-transparent" placeholder="3990">
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button type="submit" name="action" value="save" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors border border-slate-200" title="Guardar margen y costo de envío sin alterar el estado de envío gratis">
+          Guardar
+        </button>
+
+        {% if incluir_envio %}
+          <button type="submit" name="action" value="toggle_envio" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all flex items-center gap-1.5 cursor-pointer" title="Quitar costo de envío de los precios y remover regla de envío gratis de Shopify">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            <span>Desactivar Envío Gratis</span>
+          </button>
+        {% else %}
+          <button type="submit" name="action" value="toggle_envio" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all flex items-center gap-1.5 cursor-pointer" title="Suma el costo de envío a los precios y crea/activa la regla de Envío Gratis en Shopify vía API">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+            <span>Sumar Envío y Dejar Envío Gratis (Shopify)</span>
+          </button>
+        {% endif %}
+
+        <button type="submit" name="action" value="sync_shopify" class="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-medium rounded-lg transition-colors flex items-center gap-1" title="Sincronizar precios de variantes y regla de envío gratis a Shopify">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span>Sync Shopify</span>
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <form method="get" class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 sm:p-4 mb-4">
@@ -70,7 +123,9 @@
           <th class="text-center px-4 py-3 font-semibold text-slate-600">Género</th>
           <th class="text-center px-4 py-3 font-semibold text-slate-600">Familia olfativa</th>
           <th class="text-right px-4 py-3 font-semibold text-slate-600">Mayorista</th>
-          <th class="text-right px-4 py-3 font-semibold text-slate-600">Tienda ({{ margen_tienda }}%)</th>
+          <th class="text-right px-4 py-3 font-semibold text-slate-600">
+            Tienda ({{ margen_tienda }}%{% if incluir_envio %} + ${{ "{:,}".format(costo_envio).replace(',', '.') }}{% endif %})
+          </th>
           <th class="text-center px-4 py-3 font-semibold text-slate-600">Stock</th>
           <th class="text-center px-4 py-3 font-semibold text-slate-600">Visible en tienda</th>
         </tr>
