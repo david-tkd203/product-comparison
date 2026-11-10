@@ -251,48 +251,101 @@ def compare():
     db = get_db()
     cur = db.cursor(dictionary=True)
     cur.execute('SELECT import_date, filename, product_count FROM imports ORDER BY import_date DESC')
-    imports = cur.fetchall()
-    a_date = request.args.get('a', '')
-    b_date = request.args.get('b', '')
+    raw_imports = cur.fetchall()
+
+    imports = []
+    for imp in raw_imports:
+        d_str = str(imp['import_date'])
+        imports.append({
+            'import_date': d_str,
+            'filename': imp.get('filename') or '',
+            'product_count': imp.get('product_count') or 0
+        })
+
+    a_date = request.args.get('a', '').strip()
+    b_date = request.args.get('b', '').strip()
+    query = request.args.get('q', '').strip()
+    filtro_estado = request.args.get('estado', '').strip()
+
+    # Si no se indicaron fechas, auto-seleccionar la más reciente (b) y la anterior (a)
+    if not b_date and imports:
+        b_date = imports[0]['import_date']
+    if not a_date and len(imports) >= 2:
+        a_date = imports[1]['import_date']
+    elif not a_date and imports:
+        a_date = imports[0]['import_date']
+
     diffs = []
     summary = None
+
     if a_date and b_date:
-        cur.execute('''
-            SELECT p.sku, p.nombre, p.linea, p.genero, p.formato,
-                   pa.precio as precio_a, pb.precio as precio_b,
-                   (pb.precio - pa.precio) as diff,
-                   CASE WHEN pa.precio > 0 THEN ROUND((pb.precio - pa.precio) * 100.0 / pa.precio, 1) END as pct
-            FROM products p
-            JOIN prices pa ON p.sku = pa.sku AND pa.import_date = %s
-            JOIN prices pb ON p.sku = pb.sku AND pb.import_date = %s
-        ''', [a_date, b_date])
-        diffs = cur.fetchall()
+        # Full Outer Union para capturar subidas, bajadas, iguales, nuevos y de baja
+        sql = '''
+            SELECT 
+                p.sku, 
+                p.nombre, 
+                p.linea, 
+                p.genero, 
+                p.formato,
+                p.precio_venta,
+                pa.precio AS precio_a,
+                pb.precio AS precio_b,
+                (COALESCE(pb.precio, 0) - COALESCE(pa.precio, 0)) AS diff,
+                CASE 
+                    WHEN pa.precio IS NOT NULL AND pa.precio > 0 AND pb.precio IS NOT NULL 
+                    THEN ROUND((pb.precio - pa.precio) * 100.0 / pa.precio, 1)
+                    ELSE NULL
+                END AS pct,
+                CASE 
+                    WHEN pa.precio IS NULL THEN 'nuevo'
+                    WHEN pb.precio IS NULL THEN 'baja'
+                    WHEN pb.precio > pa.precio THEN 'subio'
+                    WHEN pb.precio < pa.precio THEN 'bajo'
+                    ELSE 'igual'
+                END AS estado
+            FROM (
+                SELECT sku FROM prices WHERE import_date = %s
+                UNION
+                SELECT sku FROM prices WHERE import_date = %s
+            ) union_skus
+            JOIN products p ON p.sku = union_skus.sku
+            LEFT JOIN prices pa ON pa.sku = union_skus.sku AND pa.import_date = %s
+            LEFT JOIN prices pb ON pb.sku = union_skus.sku AND pb.import_date = %s
+        '''
+        params = [a_date, b_date, a_date, b_date]
 
-        subieron = sum(1 for d in diffs if d['diff'] > 0)
-        bajaron = sum(1 for d in diffs if d['diff'] < 0)
-        iguales = sum(1 for d in diffs if d['diff'] == 0)
+        if query:
+            sql += ' WHERE (p.nombre LIKE %s OR p.sku LIKE %s OR p.linea LIKE %s)'
+            like = f'%{query}%'
+            params.extend([like, like, like])
 
-        # Nuevos y Bajas de productos entre fechas
-        try:
-            cur.execute('''
-                SELECT COUNT(*) as c FROM prices pb
-                WHERE pb.import_date = %s AND pb.sku NOT IN (SELECT sku FROM prices pa WHERE pa.import_date = %s)
-            ''', [b_date, a_date])
-            nuevos = cur.fetchone()['c']
+        sql += '''
+            ORDER BY 
+                CASE 
+                    WHEN pa.precio IS NULL THEN 1
+                    WHEN pb.precio > pa.precio THEN 2
+                    WHEN pb.precio < pa.precio THEN 3
+                    WHEN pb.precio IS NULL THEN 5
+                    ELSE 4
+                END,
+                ABS(COALESCE(pb.precio, 0) - COALESCE(pa.precio, 0)) DESC,
+                p.nombre ASC
+        '''
 
-            cur.execute('''
-                SELECT COUNT(*) as c FROM prices pa
-                WHERE pa.import_date = %s AND pa.sku NOT IN (SELECT sku FROM prices pb WHERE pb.import_date = %s)
-            ''', [a_date, b_date])
-            bajas = cur.fetchone()['c']
-        except Exception:
-            nuevos = 0
-            bajas = 0
+        cur.execute(sql, params)
+        all_diffs = cur.fetchall()
+
+        # Calcular métricas de resumen
+        subieron = sum(1 for d in all_diffs if d['estado'] == 'subio')
+        bajaron = sum(1 for d in all_diffs if d['estado'] == 'bajo')
+        iguales = sum(1 for d in all_diffs if d['estado'] == 'igual')
+        nuevos = sum(1 for d in all_diffs if d['estado'] == 'nuevo')
+        bajas = sum(1 for d in all_diffs if d['estado'] == 'baja')
 
         summary = {
             'a_date': a_date,
             'b_date': b_date,
-            'total': len(diffs),
+            'total': len(all_diffs),
             'subieron': subieron,
             'bajaron': bajaron,
             'iguales': iguales,
@@ -300,8 +353,26 @@ def compare():
             'bajas': bajas
         }
 
+        # Filtrar por tab de estado seleccionado
+        if filtro_estado:
+            if filtro_estado == 'subieron':
+                diffs = [d for d in all_diffs if d['estado'] == 'subio']
+            elif filtro_estado == 'bajaron':
+                diffs = [d for d in all_diffs if d['estado'] == 'bajo']
+            elif filtro_estado == 'nuevos':
+                diffs = [d for d in all_diffs if d['estado'] == 'nuevo']
+            elif filtro_estado == 'bajas':
+                diffs = [d for d in all_diffs if d['estado'] == 'baja']
+            elif filtro_estado == 'iguales':
+                diffs = [d for d in all_diffs if d['estado'] == 'igual']
+            else:
+                diffs = all_diffs
+        else:
+            diffs = all_diffs
+
     db.close()
-    return render_template('compare.html', imports=imports, a=a_date, b=b_date, diffs=diffs, summary=summary)
+    return render_template('compare.html', imports=imports, a=a_date, b=b_date,
+                           diffs=diffs, summary=summary, query=query, estado=filtro_estado)
 
 @admin_bp.route('/admin/inventario')
 @require_login
