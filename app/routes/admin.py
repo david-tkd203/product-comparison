@@ -488,35 +488,44 @@ def admin_config():
 
     current_envio_active = _get_incluir_envio(db)
 
-    if action == 'toggle_envio':
-        # Alternar la suma de costo de envío
-        new_state = not current_envio_active
-        set_setting(db, 'incluir_envio_en_precio', '1' if new_state else '0')
-        rebuild_storefront_cache(db)
-        
-        # Consumo de la API de Shopify
-        ok_sh, msg_sh = sync_free_shipping_to_shopify(enable=new_state, db=db)
-        updated_vars, _, _ = sync_prices_to_shopify_variants(db=db, limit=150)
-        
-        costo_actual = _get_costo_envio(db)
-        if new_state:
-            flash(f'¡Envío Gratis activado! Se sumaron ${costo_actual:,} CLP al precio de los productos. Shopify: {msg_sh} ({updated_vars} variantes sincronizadas)', 'success')
+    try:
+        if action == 'toggle_envio':
+            # Alternar la suma de costo de envío
+            new_state = not current_envio_active
+            set_setting(db, 'incluir_envio_en_precio', '1' if new_state else '0')
+            rebuild_storefront_cache(db)
+            costo_actual = _get_costo_envio(db)
+
+            # Consumo de la API de Shopify
+            ok_sh, msg_sh = sync_free_shipping_to_shopify(enable=new_state, db=db)
+            updated_vars, _, _ = sync_prices_to_shopify_variants(db=db, limit=150)
+
+            if new_state:
+                flash(f'¡Envío Gratis activado! Se sumaron ${costo_actual:,} CLP al precio de los productos. Shopify: {msg_sh} ({updated_vars} variantes sincronizadas)', 'success')
+            else:
+                flash(f'Envío Gratis desactivado. Precios recalculados con margen base. Shopify: {msg_sh} ({updated_vars} variantes actualizadas)', 'info')
+
+        elif action == 'sync_shopify':
+            # Sincronización explícita de precios y regla de envío gratis a Shopify
+            rebuild_storefront_cache(db)
+            ok_sh, msg_sh = sync_free_shipping_to_shopify(enable=current_envio_active, db=db)
+            updated_vars, err_vars, _ = sync_prices_to_shopify_variants(db=db, limit=200)
+            flash(f'Precios y Regla de Envío sincronizados con Shopify: {msg_sh} ({updated_vars} variantes actualizadas, {err_vars} con error u omitidas).', 'success')
+
         else:
-            flash(f'Envío Gratis desactivado. Precios recalculados con margen base. Shopify: {msg_sh} ({updated_vars} variantes actualizadas)', 'info')
+            # Guardar normal
+            rebuild_storefront_cache(db)
+            flash('Ajustes de margen y costo de envío guardados correctamente.', 'success')
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception("Error en /admin/config")
+        flash(f'Error al aplicar configuración ({type(e).__name__}): {e}', 'error')
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 
-    elif action == 'sync_shopify':
-        # Sincronización explícita de precios y regla de envío gratis a Shopify
-        rebuild_storefront_cache(db)
-        ok_sh, msg_sh = sync_free_shipping_to_shopify(enable=current_envio_active, db=db)
-        updated_vars, err_vars, _ = sync_prices_to_shopify_variants(db=db, limit=200)
-        flash(f'Precios y Regla de Envío sincronizados con Shopify: {msg_sh} ({updated_vars} variantes actualizadas, {err_vars} con error u omitidas).', 'success')
-
-    else:
-        # Guardar normal
-        rebuild_storefront_cache(db)
-        flash('Ajustes de margen y costo de envío guardados correctamente.', 'success')
-
-    db.close()
     return redirect(url_for('admin.admin_inventario'))
 
 @admin_bp.route('/pedidos')

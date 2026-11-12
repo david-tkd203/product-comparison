@@ -115,6 +115,8 @@ def _shopify_graphql(shop, token, query, variables=None, timeout=10):
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             status_code = resp.getcode()
             body_json = json.loads(resp.read().decode('utf-8'))
+            if not isinstance(body_json, dict):
+                return False, status_code, {}, "Unexpected GraphQL response format"
             if body_json.get('errors'):
                 return False, status_code, body_json, str(body_json['errors'])
             return True, status_code, body_json.get('data') or {}, None
@@ -773,25 +775,33 @@ def sync_prices_to_shopify_variants(db=None, limit=200):
         return 0, 0, "Shopify no conectado o sin base de datos"
 
     cur = db.cursor(dictionary=True)
-    cur.execute('''
-        SELECT sku, precio_venta, shopify_variant_id 
-        FROM products 
-        WHERE shopify_variant_id IS NOT NULL 
-          AND is_active = 1 
-          AND stock > 0 
-          AND precio_venta > 0
-        LIMIT %s
-    ''', [limit])
-    rows = cur.fetchall()
+    try:
+        cur.execute('''
+            SELECT sku, precio_venta, shopify_variant_id 
+            FROM products 
+            WHERE shopify_variant_id IS NOT NULL
+              AND shopify_variant_id != ''
+              AND is_active = 1 
+              AND stock > 0 
+              AND precio_venta > 0
+            LIMIT %s
+        ''', [limit])
+        rows = cur.fetchall()
+    finally:
+        cur.close()
 
     updated = 0
     errors = 0
     for r in rows:
-        var_id = r['shopify_variant_id']
+        try:
+            var_id = int(str(r['shopify_variant_id']).strip())
+        except (ValueError, TypeError):
+            errors += 1
+            continue
         price = str(r['precio_venta'])
         payload = {
             "variant": {
-                "id": int(var_id),
+                "id": var_id,
                 "price": price
             }
         }
