@@ -90,6 +90,47 @@ def _shopify_request(shop, token, method, path, payload=None, timeout=8):
         return False, 0, {}, str(e)
 
 
+def _shopify_graphql(shop, token, query, variables=None, timeout=10):
+    """
+    Ejecuta una consulta o mutación GraphQL autenticada contra la Shopify Admin API.
+    """
+    url = f"https://{shop}/admin/api/2024-01/graphql.json"
+    headers = {
+        "X-Shopify-Access-Token": token,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "Siyash-Perfumeria/1.0"
+    }
+    payload = {"query": query}
+    if variables is not None:
+        payload["variables"] = variables
+
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode('utf-8'),
+        headers=headers,
+        method='POST'
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            status_code = resp.getcode()
+            body_json = json.loads(resp.read().decode('utf-8'))
+            if body_json.get('errors'):
+                return False, status_code, body_json, str(body_json['errors'])
+            return True, status_code, body_json.get('data') or {}, None
+    except urllib.error.HTTPError as e:
+        error_body = ""
+        try:
+            error_body = e.read().decode('utf-8')
+        except Exception:
+            error_body = str(e)
+        logger.warning(f"Shopify GraphQL HTTPError {e.code}: {error_body}")
+        return False, e.code, {}, error_body
+    except Exception as e:
+        logger.warning(f"Shopify GraphQL Exception: {e}")
+        return False, 0, {}, str(e)
+
+
 def sync_coupon_to_shopify(coupon, db=None):
     """
     Sincroniza un cupón de Siyash con el motor de descuentos de Shopify (PriceRule + DiscountCode).
@@ -571,27 +612,47 @@ def sync_catalog_to_shopify(db=None, limit=100):
 
 def sync_free_shipping_to_shopify(enable=True, discount_code='ENVIOGRATIS', db=None):
     """
-    Sincroniza o actualiza la regla de Envío Gratis en Shopify (PriceRule target_type: shipping_line).
-    Si enable=True: crea la regla con 100% de descuento en el costo de envío y código ENVIOGRATIS.
-    Si enable=False: desactiva/elimina la regla de envío gratis de Shopify.
+    Sincroniza o actualiza el Envío Gratis en Shopify.
+    Prioriza Descuento Automático combinable vía GraphQL (`discountAutomaticFreeShippingCreate`)
+    para que NO ocupe ni bloquee los cupones de descuento creados en /admin/cupones.
+    Si el token no tiene el permiso `write_discounts`, hace fallback a PriceRule REST.
     """
     shop, token = get_shopify_credentials(db)
     if not token:
         return False, "Shopify no está conectado o falta el token de acceso."
 
+    auto_key = 'shopify_free_shipping_auto_id'
     rule_key = 'shopify_free_shipping_rule_id'
+    existing_auto_id = None
     existing_rule_id = None
+
     if db:
         try:
             cur = db.cursor(dictionary=True)
-            cur.execute("SELECT setting_value FROM settings WHERE setting_key = %s", [rule_key])
-            row = cur.fetchone()
-            if row and row['setting_value']:
-                existing_rule_id = str(row['setting_value']).strip()
+            cur.execute("SELECT setting_key, setting_value FROM settings WHERE setting_key IN (%s, %s)", [auto_key, rule_key])
+            for row in cur.fetchall():
+                if row['setting_key'] == auto_key and row['setting_value']:
+                    existing_auto_id = str(row['setting_value']).strip()
+                elif row['setting_key'] == rule_key and row['setting_value']:
+                    existing_rule_id = str(row['setting_value']).strip()
         except Exception:
             pass
 
     if not enable:
+        if existing_auto_id:
+            del_mutation = """
+            mutation discountAutomaticDelete($id: ID!) {
+              discountAutomaticDelete(id: $id) {
+                deletedAutomaticDiscountId
+                userErrors { field message }
+              }
+            }
+            """
+            _shopify_graphql(shop, token, del_mutation, {"id": existing_auto_id})
+            if db:
+                from .db import set_setting
+                set_setting(db, auto_key, '')
+
         if existing_rule_id:
             delete_coupon_from_shopify(existing_rule_id, db=db)
             if db:
@@ -599,7 +660,67 @@ def sync_free_shipping_to_shopify(enable=True, discount_code='ENVIOGRATIS', db=N
                 set_setting(db, rule_key, '')
         return True, "Envío gratis desactivado en Shopify."
 
-    # Configuración de regla de envío gratis (100% de descuento en flete)
+    # 1. Intentar Descuento Automático combinable vía GraphQL (no usa código ni bloquea cupones)
+    if existing_auto_id:
+        upd_mutation = """
+        mutation discountAutomaticFreeShippingUpdate($id: ID!, $freeShippingAutomaticDiscount: DiscountAutomaticFreeShippingInput!) {
+          discountAutomaticFreeShippingUpdate(id: $id, freeShippingAutomaticDiscount: $freeShippingAutomaticDiscount) {
+            automaticDiscountNode { id }
+            userErrors { field message }
+          }
+        }
+        """
+        upd_vars = {
+            "id": existing_auto_id,
+            "freeShippingAutomaticDiscount": {
+                "title": "Envío Gratis Siyash",
+                "startsAt": datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+                "appliesOnOneTimePurchase": True,
+                "destination": {"all": True},
+                "combinesWith": {"orderDiscounts": True, "productDiscounts": True}
+            }
+        }
+        ok_gql, _, res_gql, _ = _shopify_graphql(shop, token, upd_mutation, upd_vars)
+        node_id = (res_gql.get('discountAutomaticFreeShippingUpdate') or {}).get('automaticDiscountNode', {})
+        if ok_gql and node_id and node_id.get('id'):
+            return True, "Envío Gratis Automático activo en Shopify (100% compatible y combinable con tus cupones)."
+        existing_auto_id = None
+
+    create_mutation = """
+    mutation discountAutomaticFreeShippingCreate($freeShippingAutomaticDiscount: DiscountAutomaticFreeShippingInput!) {
+      discountAutomaticFreeShippingCreate(freeShippingAutomaticDiscount: $freeShippingAutomaticDiscount) {
+        automaticDiscountNode { id }
+        userErrors { field message }
+      }
+    }
+    """
+    create_vars = {
+        "freeShippingAutomaticDiscount": {
+            "title": "Envío Gratis Siyash",
+            "startsAt": datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+            "appliesOnOneTimePurchase": True,
+            "destination": {"all": True},
+            "combinesWith": {"orderDiscounts": True, "productDiscounts": True}
+        }
+    }
+    ok_gql, status_gql, res_gql, err_gql = _shopify_graphql(shop, token, create_mutation, create_vars)
+    if ok_gql:
+        payload_res = res_gql.get('discountAutomaticFreeShippingCreate') or {}
+        user_errors = payload_res.get('userErrors') or []
+        node = payload_res.get('automaticDiscountNode') or {}
+        if node.get('id'):
+            if db:
+                from .db import set_setting
+                set_setting(db, auto_key, node['id'])
+                # Limpiar regla manual antigua si existía para no duplicar
+                if existing_rule_id:
+                    delete_coupon_from_shopify(existing_rule_id, db=db)
+                    set_setting(db, rule_key, '')
+            return True, "Envío Gratis Automático activado en Shopify (combinable con todos tus cupones)."
+        if user_errors:
+            logger.warning(f"Shopify GraphQL userErrors: {user_errors}")
+
+    # 2. Fallback REST (si la App aún no fue reautorizada con el scope write_discounts)
     payload = {
         "price_rule": {
             "title": discount_code,
@@ -634,12 +755,11 @@ def sync_free_shipping_to_shopify(enable=True, discount_code='ENVIOGRATIS', db=N
             from .db import set_setting
             set_setting(db, rule_key, rule_id)
 
-    # Crear código de descuento en Shopify
     if rule_id:
         code_payload = {"discount_code": {"code": discount_code}}
         _shopify_request(shop, token, 'POST', f'price_rules/{rule_id}/discount_codes.json', code_payload)
 
-    return True, f"Regla de Envío Gratis activada en Shopify con código {discount_code}."
+    return True, f"Regla de Envío Gratis ({discount_code}) activada por REST. Nota: reautorizá la App Shopify en Inventario para activar el modo Automático combinable con cupones."
 
 
 def sync_prices_to_shopify_variants(db=None, limit=200):

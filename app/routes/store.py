@@ -841,7 +841,11 @@ def api_checkout_shopify():
     if not cupon_codigo:
         from ..db import _get_incluir_envio
         if _get_incluir_envio(db):
-            cupon_codigo = 'ENVIOGRATIS'
+            cur.execute("SELECT setting_value FROM settings WHERE setting_key = 'shopify_free_shipping_auto_id'")
+            auto_row = cur.fetchone()
+            has_auto = bool(auto_row and auto_row.get('setting_value'))
+            if not has_auto:
+                cupon_codigo = 'ENVIOGRATIS'
     if cupon_codigo:
         checkout_params.append(f"discount={urllib.parse.quote(cupon_codigo)}")
 
