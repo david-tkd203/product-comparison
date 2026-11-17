@@ -130,7 +130,7 @@ def tienda_home():
                  (p.precio_venta BETWEEN 25000 AND 80000) DESC,
                  p.stock DESC,
                  p.precio_venta ASC
-        LIMIT 8''')
+        LIMIT 24''')
     destacados = cur.fetchall()
     _enrich_products(destacados)
 
