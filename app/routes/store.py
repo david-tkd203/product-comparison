@@ -49,7 +49,10 @@ def _get_margen(db):
 def _tienda_sql():
     return '''SELECT p.sku, p.ean, p.nombre, p.linea, p.genero, p.formato, p.aroma_family, p.stock,
                      p.precio_mayorista, p.precio_venta, p.imagen, p.aromas,
-                     p.en_cyber, p.descuento_cyber_pct
+                     p.en_cyber, p.descuento_cyber_pct,
+                     COALESCE(p.views_count, 0) AS views_count,
+                     COALESCE(p.sales_count, 0) AS sales_count,
+                     COALESCE(p.popularity_score, 0) AS popularity_score
               FROM products p
               WHERE p.is_active = 1 AND p.stock > 0'''
 
@@ -120,7 +123,13 @@ def tienda_home():
     cur = db.cursor(dictionary=True)
     
     cur.execute(_tienda_sql() + '''
-        ORDER BY (imagen IS NOT NULL) DESC, precio_venta DESC
+        ORDER BY (p.imagen IS NOT NULL AND p.imagen != '') DESC,
+                 (p.popularity_score > 0) DESC,
+                 p.popularity_score DESC,
+                 p.views_count DESC,
+                 (p.precio_venta BETWEEN 25000 AND 80000) DESC,
+                 p.stock DESC,
+                 p.precio_venta ASC
         LIMIT 8''')
     destacados = cur.fetchall()
     _enrich_products(destacados)
@@ -242,7 +251,7 @@ def _catalogo_response(preset_genero=None):
         sql += ' AND ' + ' AND '.join(conditions)
 
     sort_map = {
-        'destacados': '(p.imagen IS NOT NULL) DESC, p.precio_venta DESC',
+        'destacados': "(p.imagen IS NOT NULL AND p.imagen != '') DESC, (p.popularity_score > 0) DESC, p.popularity_score DESC, p.views_count DESC, (p.precio_venta BETWEEN 25000 AND 80000) DESC, p.stock DESC, p.precio_venta ASC",
         'precio_asc': 'p.precio_venta ASC',
         'precio_desc': 'p.precio_venta DESC',
         'nombre': 'p.nombre ASC',
@@ -345,13 +354,17 @@ def tienda_producto(sku):
                        VALUES (%s, 1)
                        ON DUPLICATE KEY UPDATE views_count = views_count + 1''',
                     [product['sku']])
+        cur.execute('''UPDATE products
+                       SET views_count = COALESCE(views_count, 0) + 1,
+                           popularity_score = COALESCE(popularity_score, 0) + 1
+                       WHERE sku = %s''', [product['sku']])
     except Exception:
         pass
 
     _enrich_products([product])
 
     cur.execute(_tienda_sql() + ' AND p.sku != %s AND p.linea = %s '
-                + 'ORDER BY (p.imagen IS NOT NULL) DESC, p.precio_venta DESC LIMIT 4',
+                + "ORDER BY (p.imagen IS NOT NULL AND p.imagen != '') DESC, p.popularity_score DESC, (p.precio_venta BETWEEN 25000 AND 80000) DESC, p.stock DESC LIMIT 4",
                 [product['sku'], product['linea']])
     relacionados = cur.fetchall()
     if len(relacionados) < 4:
@@ -361,7 +374,7 @@ def tienda_producto(sku):
         if conds:
             extra_sql += ' AND (' + ' OR '.join(conds) + ')'
             extra_params.extend(pats)
-        extra_sql += ' ORDER BY (p.imagen IS NOT NULL) DESC, p.precio_venta DESC LIMIT %s'
+        extra_sql += " ORDER BY (p.imagen IS NOT NULL AND p.imagen != '') DESC, p.popularity_score DESC, (p.precio_venta BETWEEN 25000 AND 80000) DESC, p.stock DESC LIMIT %s"
         extra_params.append(4 - len(relacionados))
         cur.execute(extra_sql, extra_params)
         relacionados.extend(cur.fetchall())
@@ -685,7 +698,11 @@ def api_pedido():
 
         for i in final_items:
             if not str(i['sku']).startswith('REW-'):
-                cur.execute('UPDATE products SET stock = stock - %s WHERE sku = %s', [i['qty'], i['sku']])
+                cur.execute('''UPDATE products
+                               SET stock = stock - %s,
+                                   sales_count = COALESCE(sales_count, 0) + %s,
+                                   popularity_score = COALESCE(popularity_score, 0) + (%s * 20)
+                               WHERE sku = %s''', [i['qty'], i['qty'], i['qty'], i['sku']])
             
         db.commit()
 
@@ -969,6 +986,19 @@ def shopify_webhook_order_paid():
     cur.execute('''INSERT INTO orders (link_token, customer_id, nombre, telefono, items_json, total, puntos_ganados, status)
                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'pagado')''',
                 [f"SHOPIFY-{shopify_order_id}", customer_id, nombre, telefono, items_json, int(total_price), puntos_ganados])
+
+    for it in items:
+        it_sku = it.get('sku')
+        it_qty = int(it.get('qty') or 1)
+        if it_sku and not str(it_sku).startswith('REW-'):
+            try:
+                cur.execute('''UPDATE products
+                               SET sales_count = COALESCE(sales_count, 0) + %s,
+                                   popularity_score = COALESCE(popularity_score, 0) + (%s * 20)
+                               WHERE sku = %s''', [it_qty, it_qty, it_sku])
+            except Exception:
+                pass
+
     db.commit()
     local_order_id = cur.lastrowid
 

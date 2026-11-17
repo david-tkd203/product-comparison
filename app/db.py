@@ -1,4 +1,5 @@
 import os
+import json
 import mysql.connector
 from mysql.connector import pooling
 from flask import g, has_app_context
@@ -134,7 +135,55 @@ def rebuild_storefront_cache(db):
         SET p.precio_mayorista = pr.precio,
             p.precio_venta = (ROUND((pr.precio * %s + %s + 10) / 1000) * 1000 - 10)
     ''', [factor, costo_envio])
+
+    # Synchronize views count from product_views
+    try:
+        cur.execute('''
+            UPDATE products p
+            LEFT JOIN product_views pv ON pv.sku = p.sku
+            SET p.views_count = COALESCE(pv.views_count, 0)
+        ''')
+    except Exception:
+        pass
+
+    # Aggregate sales units from non-canceled orders
+    try:
+        cur.execute("SELECT items_json FROM orders WHERE status != 'cancelado'")
+        orders_rows = cur.fetchall()
+        sku_sales = {}
+        for row in orders_rows:
+            raw = row[0] if isinstance(row, (tuple, list)) else (row.get('items_json') if isinstance(row, dict) else None)
+            if not raw:
+                continue
+            try:
+                items = json.loads(raw) if isinstance(raw, str) else raw
+                if isinstance(items, list):
+                    for it in items:
+                        sku = it.get('sku')
+                        if sku and not str(sku).startswith('REW-'):
+                            qty = int(it.get('qty') or 1)
+                            sku_sales[sku] = sku_sales.get(sku, 0) + qty
+            except Exception:
+                pass
+
+        cur.execute("UPDATE products SET sales_count = 0")
+        if sku_sales:
+            for s_sku, s_qty in sku_sales.items():
+                cur.execute("UPDATE products SET sales_count = %s WHERE sku = %s", [s_qty, s_sku])
+    except Exception:
+        pass
+
+    # Materialize commercial popularity score = (sales * 20) + views
+    try:
+        cur.execute('''
+            UPDATE products
+            SET popularity_score = (COALESCE(sales_count, 0) * 20) + COALESCE(views_count, 0)
+        ''')
+    except Exception:
+        pass
+
     db.commit()
+    cur.close()
 
 def init_db():
     db = get_db()
@@ -161,12 +210,19 @@ def init_db():
     _add_column_if_missing(cur, 'products', 'shopify_synced_at', 'DATETIME DEFAULT NULL')
     _add_column_if_missing(cur, 'products', 'en_cyber', 'TINYINT(1) NOT NULL DEFAULT 0')
     _add_column_if_missing(cur, 'products', 'descuento_cyber_pct', 'INT NOT NULL DEFAULT 0')
+    _add_column_if_missing(cur, 'products', 'views_count', 'INT NOT NULL DEFAULT 0')
+    _add_column_if_missing(cur, 'products', 'sales_count', 'INT NOT NULL DEFAULT 0')
+    _add_column_if_missing(cur, 'products', 'popularity_score', 'INT NOT NULL DEFAULT 0')
     try:
         cur.execute('ALTER TABLE products ADD INDEX idx_cyber (en_cyber)')
     except Exception:
         pass
     try:
         cur.execute('ALTER TABLE products ADD INDEX idx_active_stock (is_active, stock)')
+    except Exception:
+        pass
+    try:
+        cur.execute('ALTER TABLE products ADD INDEX idx_popularity (popularity_score DESC, views_count DESC)')
     except Exception:
         pass
     try:

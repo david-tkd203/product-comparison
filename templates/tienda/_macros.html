@@ -17,6 +17,10 @@
       {% endif %}
       {% if p.get('en_cyber') and p.get('descuento_cyber_pct', 0) > 0 %}
       <span class="absolute top-3 right-3 bg-black text-amber-400 border border-amber-400/50 text-[9px] font-bold tracking-widest uppercase px-2 py-1 shadow-sm">CYBER -{{ p['descuento_cyber_pct'] }}%</span>
+      {% elif p.get('sales_count', 0) > 0 %}
+      <span class="absolute top-3 right-3 bg-brand-black text-brand-white text-[8px] tracking-widest uppercase px-2 py-1 shadow-sm">MÁS VENDIDO</span>
+      {% elif p.get('views_count', 0) >= 3 or p.get('popularity_score', 0) >= 5 %}
+      <span class="absolute top-3 right-3 bg-brand-white/95 text-brand-900 border border-brand-200 text-[8px] tracking-widest uppercase px-2 py-1 shadow-sm">TENDENCIA</span>
       {% endif %}
     </div>
     <p class="text-[9px] tracking-widest2 uppercase text-brand-400 mb-1.5">{{ p['linea'] }}</p>
