@@ -103,9 +103,21 @@
       <div>
         <label class="block text-[10px] uppercase tracking-widest font-semibold text-slate-500 mb-1">Atmósfera Visual</label>
         <select id="studio_theme" onchange="renderStudio()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-slate-900">
-          <option value="noir" selected>Noir & Silver (Siyash Signature — Negro Profundo & Plata)</option>
-          <option value="obsidian">Obsidian & Gold (Negro Azabache & Oro Champagne)</option>
+          <option value="obsidian" selected>Obsidian & Champagne Gold (Lujo Imperial Siyash)</option>
+          <option value="noir">Noir & Silver (Siyash Signature — Negro Profundo & Plata)</option>
+          <option value="sapphire">Midnight Sapphire (Zafiro Noche Profundo & Oro)</option>
+          <option value="ruby">Ruby Velvet (Borgoña Oscuro & Oro Champagne)</option>
           <option value="ivory">Édition Blanche (Marfil de Estudio & Tipografía Negra)</option>
+        </select>
+      </div>
+
+      <!-- Estilo de Presentación del Precio -->
+      <div>
+        <label class="block text-[10px] uppercase tracking-widest font-semibold text-slate-500 mb-1">Diseño del Precio</label>
+        <select id="price_style" onchange="renderStudio()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-slate-900">
+          <option value="jewelry" selected>Marco de Joyería Fina (Destacado & Sofisticado)</option>
+          <option value="sculpted">Tipografía Esculpida Grande (Imponente & Limpio)</option>
+          <option value="minimal">Sello Editorial con Filetes</option>
         </select>
       </div>
 
@@ -477,45 +489,74 @@ function renderStudio() {
   canvas.width = width;
   canvas.height = height;
 
-  const theme = document.getElementById('studio_theme').value || 'noir';
+  const theme = document.getElementById('studio_theme').value || 'obsidian';
+  const priceStyle = document.getElementById('price_style').value || 'jewelry';
   const frameStyle = document.getElementById('frame_style').value || 'double';
   const handle = document.getElementById('insta_handle').value || 'siyash.cl';
 
-  // Configuración de Paleta de Lujo Editorial
-  let bgGradCenter = '#15161b';
-  let bgGradEdge = '#070709';
-  let accentColor = '#D8D8D8'; // Plata fina
+  // Configuración de Paletas de Lujo Editorial
+  let bgGradCenter = '#211d17';
+  let bgGradEdge = '#090806';
+  let accentColor = '#D4AF37'; // Oro real
   let titleColor = '#FFFFFF';
-  let brandColor = '#A5AAB0';
-  let descColor = '#858A92';
-  let frameColor = 'rgba(255, 255, 255, 0.16)';
-  let glowColor = 'rgba(255, 255, 255, 0.08)';
+  let brandColor = '#EEDB98';
+  let priceColor = '#EEDB98';
+  let priceFrame = 'rgba(212, 175, 55, 0.55)';
+  let descColor = '#A9A293';
+  let frameColor = 'rgba(212, 175, 55, 0.3)';
+  let glowColor = 'rgba(212, 175, 55, 0.18)';
 
-  if (theme === 'obsidian') {
-    bgGradCenter = '#1c1a16';
-    bgGradEdge = '#090807';
-    accentColor = '#CBB279'; // Champagne Gold
-    titleColor = '#FDFCF7';
-    brandColor = '#CBB279';
-    descColor = '#9E9484';
-    frameColor = 'rgba(203, 178, 121, 0.22)';
-    glowColor = 'rgba(203, 178, 121, 0.12)';
+  if (theme === 'noir') {
+    bgGradCenter = '#181920';
+    bgGradEdge = '#060608';
+    accentColor = '#FFFFFF';
+    titleColor = '#FFFFFF';
+    brandColor = '#C8CCD0';
+    priceColor = '#FFFFFF';
+    priceFrame = 'rgba(255, 255, 255, 0.45)';
+    descColor = '#9499A2';
+    frameColor = 'rgba(255, 255, 255, 0.22)';
+    glowColor = 'rgba(255, 255, 255, 0.1)';
+  } else if (theme === 'sapphire') {
+    bgGradCenter = '#0e1a2f';
+    bgGradEdge = '#040913';
+    accentColor = '#E5C77A';
+    titleColor = '#FFFFFF';
+    brandColor = '#E5C77A';
+    priceColor = '#E5C77A';
+    priceFrame = 'rgba(229, 199, 122, 0.5)';
+    descColor = '#92A3BD';
+    frameColor = 'rgba(229, 199, 122, 0.28)';
+    glowColor = 'rgba(74, 125, 212, 0.2)';
+  } else if (theme === 'ruby') {
+    bgGradCenter = '#290d16';
+    bgGradEdge = '#0c0306';
+    accentColor = '#E8C97E';
+    titleColor = '#FFFFFF';
+    brandColor = '#E8C97E';
+    priceColor = '#E8C97E';
+    priceFrame = 'rgba(232, 201, 126, 0.5)';
+    descColor = '#B897A2';
+    frameColor = 'rgba(232, 201, 126, 0.28)';
+    glowColor = 'rgba(180, 40, 80, 0.2)';
   } else if (theme === 'ivory') {
     bgGradCenter = '#FFFFFF';
     bgGradEdge = '#EFECE6';
     accentColor = '#111111';
-    titleColor = '#0F0F0F';
-    brandColor = '#4B4B4B';
-    descColor = '#7A7A7A';
-    frameColor = 'rgba(0, 0, 0, 0.12)';
-    glowColor = 'rgba(0, 0, 0, 0.04)';
+    titleColor = '#0A0A0A';
+    brandColor = '#2A2A2A';
+    priceColor = '#0A0A0A';
+    priceFrame = 'rgba(0, 0, 0, 0.4)';
+    descColor = '#606060';
+    frameColor = 'rgba(0, 0, 0, 0.16)';
+    glowColor = 'rgba(0, 0, 0, 0.05)';
   }
 
   // 1. Fondo Editorial con Iluminación de Estudio Fotográfico
   const bgGrad = ctx.createRadialGradient(
     width / 2, 
-    currentFormat === 'post' ? height * 0.42 : height * 0.38, 
-    100, 
+    currentFormat === 'post' ? height * 0.40 : height * 0.36, 
+    120, 
     width / 2, 
     height / 2, 
     width * 0.88
@@ -526,7 +567,7 @@ function renderStudio() {
   ctx.fillRect(0, 0, width, height);
 
   // 2. Encuadre Editorial de Galería
-  const pad = currentFormat === 'post' ? 56 : 74;
+  const pad = currentFormat === 'post' ? 50 : 70;
   if (frameStyle === 'double') {
     // Marco exterior fino
     ctx.strokeStyle = frameColor;
@@ -544,50 +585,53 @@ function renderStudio() {
     ctx.strokeRect(pad, pad, width - (pad * 2), height - (pad * 2));
   }
 
-  // 3. Header de Marca (Siyash Haute Parfumerie)
-  const headerY = pad + (currentFormat === 'post' ? 52 : 78);
+  // 3. Header de Marca (Logo Grande & Prestigiado)
+  const headerY = pad + (currentFormat === 'post' ? 58 : 88);
+  const logoH = currentFormat === 'post' ? 68 : 86; // Aumentado significativamente para máxima visibilidad
+
   if (siyashLogo.complete && siyashLogo.naturalWidth > 0) {
-    const logoH = 42;
     const logoW = (siyashLogo.naturalWidth / siyashLogo.naturalHeight) * logoH;
-    ctx.drawImage(siyashLogo, (width - logoW) / 2, headerY - 20, logoW, logoH);
+    ctx.drawImage(siyashLogo, (width - logoW) / 2, headerY - (logoH / 2), logoW, logoH);
   } else {
     ctx.textAlign = 'center';
-    ctx.font = '500 24px "Cinzel", "Playfair Display", Georgia, serif';
+    ctx.font = '600 36px "Cinzel", "Playfair Display", Georgia, serif';
     ctx.fillStyle = titleColor;
-    ctx.fillText('S I Y A S H', width / 2, headerY);
+    ctx.letterSpacing = '6px';
+    ctx.fillText('S I Y A S H', width / 2, headerY + 10);
+    ctx.letterSpacing = '0px';
   }
 
   // Sub-header sutil
   ctx.textAlign = 'center';
-  ctx.font = '500 11px "Montserrat", -apple-system, sans-serif';
+  ctx.font = '600 14px "Montserrat", sans-serif';
   ctx.fillStyle = descColor;
-  ctx.letterSpacing = '6px';
-  ctx.fillText('HAUTE PARFUMERIE · SANTIAGO', width / 2, headerY + 42);
+  ctx.letterSpacing = '7px';
+  ctx.fillText('HAUTE PARFUMERIE · SANTIAGO', width / 2, headerY + (logoH / 2) + 26);
   ctx.letterSpacing = '0px';
 
   // Separador delicado en hairline
   ctx.strokeStyle = frameColor;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(width / 2 - 35, headerY + 60);
-  ctx.lineTo(width / 2 + 35, headerY + 60);
+  ctx.moveTo(width / 2 - 40, headerY + (logoH / 2) + 42);
+  ctx.lineTo(width / 2 + 40, headerY + (logoH / 2) + 42);
   ctx.stroke();
 
   // 4. Botella del Perfume (Protagonista de la Escena)
-  let imgBoxH = currentFormat === 'post' ? 470 : 680;
-  let imgBoxW = width * 0.72;
-  let imgCenterY = currentFormat === 'post' ? (height * 0.44) : (height * 0.42);
+  let imgBoxH = currentFormat === 'post' ? 410 : 660;
+  let imgBoxW = width * 0.70;
+  let imgCenterY = currentFormat === 'post' ? (height * 0.44) : (height * 0.41);
 
   // Pedestal de Iluminación Suave
   const pedestal = ctx.createRadialGradient(
     width / 2, imgCenterY + (imgBoxH * 0.32), 20, 
-    width / 2, imgCenterY + (imgBoxH * 0.32), 260
+    width / 2, imgCenterY + (imgBoxH * 0.32), 270
   );
   pedestal.addColorStop(0, glowColor);
   pedestal.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = pedestal;
   ctx.beginPath();
-  ctx.ellipse(width / 2, imgCenterY + (imgBoxH * 0.34), 260, 50, 0, 0, Math.PI * 2);
+  ctx.ellipse(width / 2, imgCenterY + (imgBoxH * 0.34), 270, 52, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Dibujar Botella si la imagen está cargada
@@ -604,21 +648,21 @@ function renderStudio() {
     ctx.save();
     const contactShadow = ctx.createRadialGradient(
       width / 2, drawY + drawH - 8, 10,
-      width / 2, drawY + drawH - 8, drawW * 0.44
+      width / 2, drawY + drawH - 8, drawW * 0.45
     );
-    contactShadow.addColorStop(0, (theme === 'ivory') ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.85)');
+    contactShadow.addColorStop(0, (theme === 'ivory') ? 'rgba(0,0,0,0.40)' : 'rgba(0,0,0,0.90)');
     contactShadow.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = contactShadow;
     ctx.beginPath();
-    ctx.ellipse(width / 2, drawY + drawH - 8, drawW * 0.44, 16, 0, 0, Math.PI * 2);
+    ctx.ellipse(width / 2, drawY + drawH - 8, drawW * 0.45, 18, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
     // Sombra de volumen difusa en la botella
     ctx.save();
-    ctx.shadowColor = (theme === 'ivory') ? 'rgba(0, 0, 0, 0.22)' : 'rgba(0, 0, 0, 0.75)';
-    ctx.shadowBlur = 45;
-    ctx.shadowOffsetY = 22;
+    ctx.shadowColor = (theme === 'ivory') ? 'rgba(0, 0, 0, 0.24)' : 'rgba(0, 0, 0, 0.85)';
+    ctx.shadowBlur = 48;
+    ctx.shadowOffsetY = 24;
     ctx.drawImage(productBottleImg, drawX, drawY, drawW, drawH);
     ctx.restore();
   } else {
@@ -626,29 +670,30 @@ function renderStudio() {
     ctx.fillStyle = (theme === 'ivory') ? '#EAE7E1' : '#14151B';
     ctx.fillRect((width - 240) / 2, imgCenterY - 140, 240, 280);
     ctx.fillStyle = descColor;
-    ctx.font = 'italic 18px "Cormorant Garamond", Georgia, serif';
+    ctx.font = 'italic 20px "Cormorant Garamond", Georgia, serif';
     ctx.fillText('Siyash Parfum', width / 2, imgCenterY);
   }
 
   // 5. Bloque Tipográfico Editorial (Información Inferior)
-  const infoStartY = currentFormat === 'post' ? (height - pad - 195) : (height - pad - 290);
+  const infoStartY = currentFormat === 'post' ? (height - pad - 235) : (height - pad - 360);
 
-  // Marca / Maison
+  // Marca / Maison (Grande y Espaciada)
   const marca = (currentProduct && currentProduct.linea ? currentProduct.linea : 'SIYASH').toUpperCase();
   ctx.textAlign = 'center';
-  ctx.font = '600 13px "Montserrat", sans-serif';
+  ctx.font = '700 20px "Montserrat", sans-serif';
   ctx.fillStyle = brandColor;
-  ctx.letterSpacing = '5px';
+  ctx.letterSpacing = '6px';
   ctx.fillText(marca, width / 2, infoStartY);
   ctx.letterSpacing = '0px';
 
-  // Nombre de la Fragancia (Alta Tipografía Serif)
+  // Nombre de la Fragancia (Letra Grande y Clara)
   const rawNombre = (currentProduct && currentProduct.nombre ? currentProduct.nombre : 'Fragancia Exclusiva');
-  ctx.font = '400 38px "Cormorant Garamond", "Cinzel", Georgia, serif';
+  const titleFontSize = currentFormat === 'post' ? 48 : 58;
+  ctx.font = `400 ${titleFontSize}px "Cormorant Garamond", "Cinzel", Georgia, serif`;
   ctx.fillStyle = titleColor;
 
   // Ajuste en máximo 2 líneas para nombres largos
-  const maxTitleW = width - (pad * 2) - 100;
+  const maxTitleW = width - (pad * 2) - 80;
   let words = rawNombre.split(' ');
   let lines = [];
   let curLine = '';
@@ -666,29 +711,98 @@ function renderStudio() {
     lines = [lines[0], lines[1] + '...'];
   }
 
-  let titleY = infoStartY + 44;
+  let titleY = infoStartY + 46;
   for (let l of lines) {
     ctx.fillText(l, width / 2, titleY);
-    titleY += 40;
+    titleY += (titleFontSize * 0.95);
   }
 
-  // Formato & Precio en Una Sola Línea Editorial de Lujo (Sin botones target ni etiquetas estridentes)
-  const formato = currentProduct && currentProduct.formato ? currentProduct.formato : '100 ML';
-  const precioTxt = currentProduct && currentProduct.precio_venta 
-    ? `$${Number(currentProduct.precio_venta).toLocaleString('es-CL')} CLP` 
+  // 6. PRECIO DESTACADO DE ALTA GAMA (Imponente y Súper Legible)
+  const precioVal = currentProduct && currentProduct.precio_venta 
+    ? `$${Number(currentProduct.precio_venta).toLocaleString('es-CL')}` 
     : '';
 
-  const metaY = titleY + 16;
-  ctx.font = '500 13px "Montserrat", sans-serif';
-  ctx.fillStyle = descColor;
-  ctx.letterSpacing = '3px';
-  ctx.fillText(`${formato.toUpperCase()}   ·   EAU DE PARFUM   ·   ${precioTxt}`, width / 2, metaY);
-  ctx.letterSpacing = '0px';
+  const formato = currentProduct && currentProduct.formato ? currentProduct.formato : '100 ML';
+  const priceY = titleY + 36;
 
-  // 6. Pie de Página Discreto & Sofisticado
-  const footerY = height - pad - (currentFormat === 'post' ? 22 : 36);
-  ctx.font = '400 10px "Montserrat", sans-serif';
-  ctx.fillStyle = (theme === 'ivory') ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.4)';
+  if (priceStyle === 'jewelry') {
+    // Estilo 1: Marco de Joyería Fina (Lujo Contemporáneo Destacado)
+    const priceFontSize = currentFormat === 'post' ? 46 : 56;
+    ctx.font = `700 ${priceFontSize}px "Cinzel", "Montserrat", sans-serif`;
+    const priceTextWidth = ctx.measureText(precioVal).width;
+    const boxW = Math.max(280, priceTextWidth + 60);
+    const boxH = currentFormat === 'post' ? 58 : 68;
+    const boxX = (width - boxW) / 2;
+    const boxY = priceY - (boxH / 2) - 6;
+
+    // Fondo sutil del marco
+    ctx.fillStyle = (theme === 'ivory') ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+
+    // Borde fino de joyería con acento metálico
+    ctx.strokeStyle = priceFrame;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+    // Texto del precio
+    ctx.fillStyle = priceColor;
+    ctx.letterSpacing = '2px';
+    ctx.fillText(precioVal, width / 2, priceY);
+    ctx.letterSpacing = '0px';
+
+    // Subtítulo de formato abajo
+    ctx.font = '500 14px "Montserrat", sans-serif';
+    ctx.fillStyle = descColor;
+    ctx.letterSpacing = '4px';
+    ctx.fillText(`${formato.toUpperCase()} · EAU DE PARFUM · 100% ORIGINAL`, width / 2, priceY + 44);
+    ctx.letterSpacing = '0px';
+
+  } else if (priceStyle === 'sculpted') {
+    // Estilo 2: Tipografía Esculpida Gigante
+    const priceFontSize = currentFormat === 'post' ? 56 : 70;
+    ctx.font = `700 ${priceFontSize}px "Cinzel", "Montserrat", sans-serif`;
+    ctx.fillStyle = priceColor;
+    ctx.letterSpacing = '3px';
+    ctx.fillText(precioVal, width / 2, priceY + 6);
+    ctx.letterSpacing = '0px';
+
+    ctx.font = '500 15px "Montserrat", sans-serif';
+    ctx.fillStyle = descColor;
+    ctx.letterSpacing = '4px';
+    ctx.fillText(`${formato.toUpperCase()} · EAU DE PARFUM`, width / 2, priceY + 46);
+    ctx.letterSpacing = '0px';
+
+  } else {
+    // Estilo 3: Sello Editorial con Filetes
+    const priceFontSize = currentFormat === 'post' ? 44 : 54;
+    ctx.font = `700 ${priceFontSize}px "Cinzel", "Montserrat", sans-serif`;
+    const priceTextWidth = ctx.measureText(precioVal).width;
+
+    ctx.strokeStyle = frameColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo((width - priceTextWidth) / 2 - 40, priceY - 14);
+    ctx.lineTo((width - priceTextWidth) / 2 - 10, priceY - 14);
+    ctx.moveTo((width + priceTextWidth) / 2 + 10, priceY - 14);
+    ctx.lineTo((width + priceTextWidth) / 2 + 40, priceY - 14);
+    ctx.stroke();
+
+    ctx.fillStyle = priceColor;
+    ctx.letterSpacing = '2px';
+    ctx.fillText(precioVal, width / 2, priceY);
+    ctx.letterSpacing = '0px';
+
+    ctx.font = '500 14px "Montserrat", sans-serif';
+    ctx.fillStyle = descColor;
+    ctx.letterSpacing = '4px';
+    ctx.fillText(`${formato.toUpperCase()} · ALTA FIJACIÓN`, width / 2, priceY + 38);
+    ctx.letterSpacing = '0px';
+  }
+
+  // 7. Pie de Página Discreto & Sofisticado
+  const footerY = height - pad - (currentFormat === 'post' ? 24 : 38);
+  ctx.font = '500 13px "Montserrat", sans-serif';
+  ctx.fillStyle = (theme === 'ivory') ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.45)';
   ctx.letterSpacing = '4px';
   ctx.fillText(`@${handle.replace('@','').toUpperCase()}   ·   DESPACHO A TODO CHILE`, width / 2, footerY);
   ctx.letterSpacing = '0px';
