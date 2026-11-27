@@ -67,82 +67,245 @@
   .scrollbar-none { -ms-overflow-style:none; scrollbar-width:none; }
   .scrollbar-none::-webkit-scrollbar { display:none; }
   /* Mobile menu animation */
-  #mobile-menu { transition: max-height 0.3s ease, opacity 0.3s ease; }
-  #mobile-menu.hidden { max-height:0; opacity:0; overflow:hidden; }
-  #mobile-menu:not(.hidden) { max-height:400px; opacity:1; }
+  #mobile-menu { transition: max-height 0.35s ease, opacity 0.25s ease; }
+  #mobile-menu.hidden { max-height:0; opacity:0; overflow:hidden; pointer-events:none; }
+  #mobile-menu:not(.hidden) { max-height:85vh; opacity:1; overflow-y:auto; }
+
+  /* Desktop hover support for dropdowns */
+  @media (min-width: 768px) {
+    .nav-dropdown:hover .dropdown-menu {
+      display: block;
+    }
+    .nav-dropdown:hover .dropdown-arrow {
+      transform: rotate(180deg);
+    }
+  }
 </style>
 </head>
 <body class="h-full bg-slate-50 text-slate-800 font-sans antialiased">
 
-<nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
+<nav class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
   <div class="max-w-7xl mx-auto px-3 sm:px-6">
-    <div class="flex items-center justify-between h-14">
-      <!-- Logo -->
-      <img src="/static/img/LogoSiyash-01-t.png" alt="Siyash Admin" class="h-6 sm:h-8 w-auto">
-
-      <!-- Desktop nav -->
-      <div class="hidden md:flex items-center gap-0.5">
-        <a href="/" target="_blank" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap text-indigo-600 hover:text-indigo-800 hover:bg-slate-50">Tienda</a>
-        <a href="/admin/productos" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/productos' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Precios</a>
-        <a href="/admin/inventario" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/inventario' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Inventario</a>
-        <a href="/upload" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/upload' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Subir</a>
-        <a href="/compare" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/compare' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comparar</a>
-        <a href="/retail" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/retail' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comparativa</a>
-        
-        <a href="/pedidos" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/pedidos' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Pedidos</a>
-        <a href="/admin/envios" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900 font-semibold' if request.path == '/admin/envios' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Envíos</a>
-        <a href="/admin/usuarios" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900 font-semibold' if request.path == '/admin/usuarios' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Usuarios</a>
-        <a href="/admin/premios" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/premios' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Premios</a>
-        <a href="/admin/cupones" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/cupones' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Cupones</a>
-        <a href="/admin/marketing" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900 font-semibold' if request.path == '/admin/marketing' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Marketing & Instagram</a>
-        <a href="/admin/comunicados" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900 font-semibold' if request.path == '/admin/comunicados' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Comunicados & Redes</a>
-        <a href="/admin/cyber" class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap {{ 'bg-slate-100 text-slate-900 font-semibold' if request.path == '/admin/cyber' else 'text-slate-500 hover:text-slate-700 hover:bg-slate-50' }}">Cyber / Analítica</a>
+    <div class="flex items-center justify-between h-14 gap-2">
+      
+      <!-- Logo + Direct Store Link -->
+      <div class="flex items-center gap-3 shrink-0">
+        <a href="/admin/productos" class="flex items-center" title="Panel de Administración Siyash">
+          <img src="/static/img/LogoSiyash-01-t.png" alt="Siyash Admin" class="h-6 sm:h-8 w-auto">
+        </a>
+        <a href="/" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all whitespace-nowrap" title="Abrir tienda pública en nueva pestaña">
+          <span>Tienda</span>
+          <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </a>
       </div>
 
-      <!-- Right side -->
+      <!-- Desktop nav (Categorized & Compact) -->
+      <div class="hidden md:flex items-center gap-1 lg:gap-1.5">
+        
+        <!-- 1. Pedidos (Direct) -->
+        <a href="/pedidos" class="px-2.5 lg:px-3 py-1.5 text-xs lg:text-sm font-medium rounded-lg transition-colors whitespace-nowrap {{ 'bg-slate-900 text-white font-semibold shadow-sm' if request.path == '/pedidos' else 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' }}">
+          Pedidos
+        </a>
+
+        <!-- 2. Inventario (Direct) -->
+        <a href="/admin/inventario" class="px-2.5 lg:px-3 py-1.5 text-xs lg:text-sm font-medium rounded-lg transition-colors whitespace-nowrap {{ 'bg-slate-900 text-white font-semibold shadow-sm' if request.path == '/admin/inventario' else 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' }}">
+          Inventario
+        </a>
+
+        <!-- 3. Catálogo & Precios (Dropdown) -->
+        {% set cat_active = request.path in ['/admin/productos', '/upload', '/compare', '/retail'] %}
+        <div class="relative nav-dropdown">
+          <button type="button" onclick="toggleDropdown(this)" class="inline-flex items-center gap-1 px-2.5 lg:px-3 py-1.5 text-xs lg:text-sm font-medium rounded-lg transition-colors whitespace-nowrap {{ 'bg-slate-900 text-white font-semibold shadow-sm' if cat_active else 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' }}">
+            <span>Catálogo</span>
+            <svg class="w-3.5 h-3.5 opacity-70 dropdown-arrow transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="dropdown-menu hidden absolute left-0 top-full pt-1.5 z-50 min-w-[210px]">
+            <div class="bg-white border border-slate-200 rounded-xl shadow-xl py-1 ring-1 ring-black/5 divide-y divide-slate-100">
+              <div class="py-1">
+                <a href="/admin/productos" class="flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors {{ 'bg-slate-50 text-slate-900 font-semibold' if request.path == '/admin/productos' else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+                  <span>Lista de Precios</span>
+                  {% if request.path == '/admin/productos' %}<span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>{% endif %}
+                </a>
+                <a href="/upload" class="flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors {{ 'bg-slate-50 text-slate-900 font-semibold' if request.path == '/upload' else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+                  <span>Subir Catálogo Excel</span>
+                  {% if request.path == '/upload' %}<span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>{% endif %}
+                </a>
+              </div>
+              <div class="py-1">
+                <a href="/compare" class="flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors {{ 'bg-slate-50 text-slate-900 font-semibold' if request.path == '/compare' else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+                  <span>Comparar Histórico</span>
+                  {% if request.path == '/compare' %}<span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>{% endif %}
+                </a>
+                <a href="/retail" class="flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors {{ 'bg-slate-50 text-slate-900 font-semibold' if request.path == '/retail' else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+                  <span>Comparativa Retail</span>
+                  {% if request.path == '/retail' %}<span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>{% endif %}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Operaciones & Clientes (Dropdown) -->
+        {% set ops_active = request.path.startswith('/admin/envios') or request.path.startswith('/admin/usuarios') or request.path.startswith('/admin/cupones') %}
+        <div class="relative nav-dropdown">
+          <button type="button" onclick="toggleDropdown(this)" class="inline-flex items-center gap-1 px-2.5 lg:px-3 py-1.5 text-xs lg:text-sm font-medium rounded-lg transition-colors whitespace-nowrap {{ 'bg-slate-900 text-white font-semibold shadow-sm' if ops_active else 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' }}">
+            <span>Operaciones</span>
+            <svg class="w-3.5 h-3.5 opacity-70 dropdown-arrow transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="dropdown-menu hidden absolute left-0 top-full pt-1.5 z-50 min-w-[210px]">
+            <div class="bg-white border border-slate-200 rounded-xl shadow-xl py-1 ring-1 ring-black/5">
+              <a href="/admin/envios" class="flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors {{ 'bg-slate-50 text-slate-900 font-semibold' if request.path == '/admin/envios' else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+                <span>Envíos y Despachos</span>
+                {% if request.path == '/admin/envios' %}<span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>{% endif %}
+              </a>
+              <a href="/admin/usuarios" class="flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors {{ 'bg-slate-50 text-slate-900 font-semibold' if request.path == '/admin/usuarios' else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+                <span>Usuarios y Clientes</span>
+                {% if request.path == '/admin/usuarios' %}<span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>{% endif %}
+              </a>
+              <a href="/admin/cupones" class="flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors {{ 'bg-slate-50 text-slate-900 font-semibold' if request.path == '/admin/cupones' else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+                <span>Cupones y Descuentos</span>
+                {% if request.path == '/admin/cupones' %}<span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>{% endif %}
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Marketing & Crecimiento (Dropdown) -->
+        {% set mkt_active = request.path.startswith('/admin/marketing') or request.path.startswith('/admin/comunicados') or request.path.startswith('/admin/premios') or request.path.startswith('/admin/cyber') %}
+        <div class="relative nav-dropdown">
+          <button type="button" onclick="toggleDropdown(this)" class="inline-flex items-center gap-1 px-2.5 lg:px-3 py-1.5 text-xs lg:text-sm font-medium rounded-lg transition-colors whitespace-nowrap {{ 'bg-slate-900 text-white font-semibold shadow-sm' if mkt_active else 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' }}">
+            <span>Marketing</span>
+            <svg class="w-3.5 h-3.5 opacity-70 dropdown-arrow transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="dropdown-menu hidden absolute right-0 lg:left-0 top-full pt-1.5 z-50 min-w-[230px]">
+            <div class="bg-white border border-slate-200 rounded-xl shadow-xl py-1 ring-1 ring-black/5 divide-y divide-slate-100">
+              <div class="py-1">
+                <a href="/admin/marketing" class="flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors {{ 'bg-slate-50 text-slate-900 font-semibold' if request.path == '/admin/marketing' else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+                  <span>Instagram & Social Studio</span>
+                  {% if request.path == '/admin/marketing' %}<span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>{% endif %}
+                </a>
+                <a href="/admin/comunicados" class="flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors {{ 'bg-slate-50 text-slate-900 font-semibold' if request.path == '/admin/comunicados' else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+                  <span>Comunicados Oficiales</span>
+                  {% if request.path == '/admin/comunicados' %}<span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>{% endif %}
+                </a>
+              </div>
+              <div class="py-1">
+                <a href="/admin/premios" class="flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors {{ 'bg-slate-50 text-slate-900 font-semibold' if request.path == '/admin/premios' else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+                  <span>Club de Premios</span>
+                  {% if request.path == '/admin/premios' %}<span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>{% endif %}
+                </a>
+                <a href="/admin/cyber" class="flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors {{ 'bg-slate-50 text-slate-900 font-semibold' if request.path == '/admin/cyber' else 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+                  <span>Cyber / Analítica</span>
+                  {% if request.path == '/admin/cyber' %}<span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>{% endif %}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right side: Tunnel + User + Mobile Toggle -->
       <div class="flex items-center gap-2">
+        {% if tunnel_url %}
+        <button type="button" onclick="navigator.clipboard.writeText('{{ tunnel_url }}'); var self=this; self.classList.add('bg-emerald-50','text-emerald-700','border-emerald-300'); self.querySelector('span').innerText='¡Copiado!'; setTimeout(function(){ self.classList.remove('bg-emerald-50','text-emerald-700','border-emerald-300'); self.querySelector('span').innerText='URL Túnel'; }, 2000)" class="hidden xl:inline-flex items-center gap-1.5 text-xs text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 transition-colors shrink-0 font-medium" title="Copiar URL de Túnel">
+          <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+          <span>URL Túnel</span>
+        </button>
+        {% endif %}
+
         {% if session.get('username') %}
-        <div class="hidden md:flex items-center gap-2">
-          <span class="text-xs text-slate-500">{{ session['username'] }}</span>
-          <a href="/logout" class="text-xs text-slate-500 hover:text-red-600 font-medium">Salir</a>
+        <div class="hidden md:flex items-center gap-2 pl-2 border-l border-slate-200">
+          <span class="text-xs text-slate-500 font-medium">{{ session['username'] }}</span>
+          <a href="/logout" class="text-xs text-slate-500 hover:text-red-600 font-medium transition-colors">Salir</a>
         </div>
         {% endif %}
-        {% if tunnel_url %}
-        <input type="text" readonly value="{{ tunnel_url }}" class="hidden lg:block text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 w-60 cursor-pointer shrink-0" onclick="this.select();navigator.clipboard.writeText(this.value)" title="Click para copiar">
-        {% endif %}
+
         <!-- Mobile hamburger -->
-        <button id="menu-btn" class="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100" onclick="toggleMenu()">
+        <button id="menu-btn" class="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors" onclick="toggleMenu()" aria-label="Abrir menú">
           <svg id="menu-icon-open" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
           <svg id="menu-icon-close" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
     </div>
 
-    <!-- Mobile menu -->
-    <div id="mobile-menu" class="hidden md:hidden border-t border-slate-100 pb-3">
-      <div class="flex flex-col gap-1 pt-2">
-        <a href="/" target="_blank" class="px-3 py-2 text-sm font-medium rounded-md text-indigo-600 hover:text-indigo-800 hover:bg-slate-50">Tienda</a>
-        <a href="/admin/productos" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/productos' else 'text-slate-600 hover:bg-slate-50' }}">Precios</a>
-        <a href="/admin/inventario" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/inventario' else 'text-slate-600 hover:bg-slate-50' }}">Inventario</a>
-        <a href="/upload" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/upload' else 'text-slate-600 hover:bg-slate-50' }}">Subir</a>
-        <a href="/compare" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/compare' else 'text-slate-600 hover:bg-slate-50' }}">Comparar</a>
-        <a href="/retail" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/retail' else 'text-slate-600 hover:bg-slate-50' }}">Comparativa</a>
-        
-        <a href="/pedidos" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/pedidos' else 'text-slate-600 hover:bg-slate-50' }}">Pedidos</a>
-        <a href="/admin/envios" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900 font-semibold' if request.path == '/admin/envios' else 'text-slate-600 hover:bg-slate-50' }}">Envíos y Logística</a>
-        <a href="/admin/usuarios" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900 font-semibold' if request.path == '/admin/usuarios' else 'text-slate-600 hover:bg-slate-50' }}">Usuarios / Clientes</a>
-        <a href="/admin/premios" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/premios' else 'text-slate-600 hover:bg-slate-50' }}">Premios / Fidelización</a>
-        <a href="/admin/cupones" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900' if request.path == '/admin/cupones' else 'text-slate-600 hover:bg-slate-50' }}">Cupones y Descuentos</a>
-        <a href="/admin/marketing" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900 font-semibold' if request.path == '/admin/marketing' else 'text-slate-600 hover:bg-slate-50' }}">Marketing & Instagram Studio</a>
-        <a href="/admin/comunicados" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900 font-semibold' if request.path == '/admin/comunicados' else 'text-slate-600 hover:bg-slate-50' }}">Comunicados & Redes Sociales</a>
-        <a href="/admin/cyber" class="px-3 py-2 text-sm font-medium rounded-md {{ 'bg-slate-100 text-slate-900 font-semibold' if request.path == '/admin/cyber' else 'text-slate-600 hover:bg-slate-50' }}">Cyber / Analítica</a>
+    <!-- Mobile menu (Scrollable & Categorized) -->
+    <div id="mobile-menu" class="hidden md:hidden border-t border-slate-100 py-3 space-y-4">
+      
+      <!-- Operaciones & Ventas -->
+      <div>
+        <p class="px-3 text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Operaciones & Ventas</p>
+        <div class="space-y-0.5">
+          <a href="/pedidos" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ 'bg-slate-900 text-white font-semibold' if request.path == '/pedidos' else 'text-slate-700 hover:bg-slate-100' }}">
+            <span>Pedidos</span>
+          </a>
+          <a href="/admin/envios" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ 'bg-slate-900 text-white font-semibold' if request.path == '/admin/envios' else 'text-slate-700 hover:bg-slate-100' }}">
+            <span>Envíos y Despachos</span>
+          </a>
+          <a href="/admin/usuarios" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ 'bg-slate-900 text-white font-semibold' if request.path == '/admin/usuarios' else 'text-slate-700 hover:bg-slate-100' }}">
+            <span>Usuarios y Clientes</span>
+          </a>
+          <a href="/admin/cupones" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ 'bg-slate-900 text-white font-semibold' if request.path == '/admin/cupones' else 'text-slate-700 hover:bg-slate-100' }}">
+            <span>Cupones y Descuentos</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Catálogo & Precios -->
+      <div>
+        <p class="px-3 text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Catálogo & Precios</p>
+        <div class="space-y-0.5">
+          <a href="/admin/inventario" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ 'bg-slate-900 text-white font-semibold' if request.path == '/admin/inventario' else 'text-slate-700 hover:bg-slate-100' }}">
+            <span>Inventario Tienda</span>
+          </a>
+          <a href="/admin/productos" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ 'bg-slate-900 text-white font-semibold' if request.path == '/admin/productos' else 'text-slate-700 hover:bg-slate-100' }}">
+            <span>Lista de Precios</span>
+          </a>
+          <a href="/upload" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ 'bg-slate-900 text-white font-semibold' if request.path == '/upload' else 'text-slate-700 hover:bg-slate-100' }}">
+            <span>Subir Catálogo Excel</span>
+          </a>
+          <a href="/compare" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ 'bg-slate-900 text-white font-semibold' if request.path == '/compare' else 'text-slate-700 hover:bg-slate-100' }}">
+            <span>Comparar Meses</span>
+          </a>
+          <a href="/retail" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ 'bg-slate-900 text-white font-semibold' if request.path == '/retail' else 'text-slate-700 hover:bg-slate-100' }}">
+            <span>Comparativa Retail</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Marketing & Redes -->
+      <div>
+        <p class="px-3 text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Marketing & Crecimiento</p>
+        <div class="space-y-0.5">
+          <a href="/admin/marketing" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ 'bg-slate-900 text-white font-semibold' if request.path == '/admin/marketing' else 'text-slate-700 hover:bg-slate-100' }}">
+            <span>Instagram & Social Studio</span>
+          </a>
+          <a href="/admin/comunicados" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ 'bg-slate-900 text-white font-semibold' if request.path == '/admin/comunicados' else 'text-slate-700 hover:bg-slate-100' }}">
+            <span>Comunicados Oficiales</span>
+          </a>
+          <a href="/admin/premios" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ 'bg-slate-900 text-white font-semibold' if request.path == '/admin/premios' else 'text-slate-700 hover:bg-slate-100' }}">
+            <span>Club de Premios</span>
+          </a>
+          <a href="/admin/cyber" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ 'bg-slate-900 text-white font-semibold' if request.path == '/admin/cyber' else 'text-slate-700 hover:bg-slate-100' }}">
+            <span>Cyber / Analítica</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Acceso a Tienda y Sesión -->
+      <div class="border-t border-slate-100 pt-3 px-3 flex items-center justify-between">
+        <a href="/" target="_blank" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-800 hover:text-slate-900">
+          <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          <span>Ver Tienda Pública</span>
+        </a>
         {% if session.get('username') %}
-        <div class="border-t border-slate-100 pt-2 mt-1 px-3">
-          <p class="text-xs text-slate-500 mb-1">{{ session['username'] }}</p>
-          <a href="/logout" class="block text-sm text-red-600 hover:bg-red-50 rounded-md px-3 py-2 font-medium">Cerrar sesión</a>
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-slate-400">{{ session['username'] }}</span>
+          <a href="/logout" class="text-xs font-semibold text-red-600 hover:text-red-700">Cerrar sesión</a>
         </div>
         {% endif %}
       </div>
+
     </div>
   </div>
 </nav>
@@ -171,12 +334,66 @@ function toggleMenu() {
     closeIcon.classList.add('hidden');
   }
 }
-// Close menu on resize to desktop
+
+function toggleDropdown(btn) {
+  var parent = btn.closest('.nav-dropdown');
+  var menu = parent.querySelector('.dropdown-menu');
+  var arrow = parent.querySelector('.dropdown-arrow');
+  var isHidden = menu.classList.contains('hidden');
+  
+  // Close any other open dropdowns first
+  document.querySelectorAll('.dropdown-menu').forEach(function(m) {
+    if (m !== menu) m.classList.add('hidden');
+  });
+  document.querySelectorAll('.dropdown-arrow').forEach(function(a) {
+    if (a !== arrow) a.classList.remove('rotate-180');
+  });
+
+  if (isHidden) {
+    menu.classList.remove('hidden');
+    if (arrow) arrow.classList.add('rotate-180');
+  } else {
+    menu.classList.add('hidden');
+    if (arrow) arrow.classList.remove('rotate-180');
+  }
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.nav-dropdown')) {
+    document.querySelectorAll('.dropdown-menu').forEach(function(m) {
+      m.classList.add('hidden');
+    });
+    document.querySelectorAll('.dropdown-arrow').forEach(function(a) {
+      a.classList.remove('rotate-180');
+    });
+  }
+});
+
+// Close dropdowns and mobile menu on Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.dropdown-menu').forEach(function(m) {
+      m.classList.add('hidden');
+    });
+    document.querySelectorAll('.dropdown-arrow').forEach(function(a) {
+      a.classList.remove('rotate-180');
+    });
+  }
+});
+
+// Close mobile menu and dropdowns on resize to desktop
 window.addEventListener('resize', function() {
   if (window.innerWidth >= 768) {
     document.getElementById('mobile-menu').classList.add('hidden');
     document.getElementById('menu-icon-open').classList.remove('hidden');
     document.getElementById('menu-icon-close').classList.add('hidden');
+    document.querySelectorAll('.dropdown-menu').forEach(function(m) {
+      m.classList.add('hidden');
+    });
+    document.querySelectorAll('.dropdown-arrow').forEach(function(a) {
+      a.classList.remove('rotate-180');
+    });
   }
 });
 </script>
